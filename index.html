@@ -1,0 +1,1700 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NTH Academy — Not That Hard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    /* ─── TOKENS ─── */
+    :root {
+      --navy:      #1a1f5e;
+      --navy-dark: #12174a;
+      --blue:      #3b5bdb;
+      --blue-light:#4c6ef5;
+      --accent:    #ffd43b;
+      --white:     #ffffff;
+      --off-white: #f8f9ff;
+      --gray-100:  #f1f3f9;
+      --gray-200:  #e2e8f0;
+      --gray-500:  #64748b;
+      --gray-700:  #334155;
+      --text:      #1e293b;
+      --radius:    12px;
+      --radius-lg: 20px;
+      --shadow:    0 4px 24px rgba(26,31,94,0.10);
+      --shadow-lg: 0 8px 40px rgba(26,31,94,0.18);
+      --font-en: 'Inter', sans-serif;
+      --font-ar: 'Cairo', sans-serif;
+    }
+
+    /* ─── RESET ─── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: var(--font-en);
+      color: var(--text);
+      background: var(--white);
+      line-height: 1.6;
+    }
+    body.ar {
+      font-family: var(--font-ar);
+      direction: rtl;
+    }
+    img { max-width: 100%; display: block; }
+    a { text-decoration: none; color: inherit; }
+
+    /* ─── LANG TOGGLE ─── */
+    .lang-toggle {
+      display: flex;
+      gap: 4px;
+      background: rgba(255,255,255,0.15);
+      border-radius: 8px;
+      padding: 3px;
+    }
+    .lang-toggle button {
+      background: transparent;
+      border: none;
+      color: rgba(255,255,255,0.75);
+      font-size: 13px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+    .lang-toggle button.active {
+      background: var(--white);
+      color: var(--navy);
+    }
+
+    /* ─── NAV ─── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--navy);
+      padding: 0 5%;
+      height: 68px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 2px 16px rgba(0,0,0,0.2);
+    }
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .nav-logo-mark {
+      width: 42px;
+      height: 42px;
+      background: var(--white);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 13px;
+      color: var(--navy);
+      letter-spacing: -0.5px;
+      line-height: 1.1;
+      text-align: center;
+    }
+    .nav-logo-text {
+      color: var(--white);
+      font-weight: 700;
+      font-size: 16px;
+    }
+    .nav-logo-text span {
+      color: var(--accent);
+    }
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 28px;
+      list-style: none;
+    }
+    .nav-links a {
+      color: rgba(255,255,255,0.8);
+      font-size: 14px;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: var(--white); }
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 22px;
+      border-radius: var(--radius);
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+      font-family: inherit;
+    }
+    .btn-primary {
+      background: var(--blue);
+      color: var(--white);
+    }
+    .btn-primary:hover { background: var(--blue-light); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(59,91,219,0.4); }
+    .btn-accent {
+      background: var(--accent);
+      color: var(--navy);
+    }
+    .btn-accent:hover { background: #ffe066; transform: translateY(-1px); }
+    .btn-outline {
+      background: transparent;
+      color: var(--white);
+      border: 2px solid rgba(255,255,255,0.4);
+    }
+    .btn-outline:hover { border-color: var(--white); background: rgba(255,255,255,0.08); }
+    .btn-lg { padding: 14px 32px; font-size: 16px; border-radius: 14px; }
+
+    /* ─── HERO ─── */
+    .hero {
+      background: linear-gradient(135deg, var(--navy-dark) 0%, var(--navy) 50%, #2a3080 100%);
+      padding: 90px 5% 80px;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      width: 600px;
+      height: 600px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(59,91,219,0.25) 0%, transparent 70%);
+      top: -200px;
+      right: -100px;
+      pointer-events: none;
+    }
+    .hero::after {
+      content: '';
+      position: absolute;
+      width: 400px;
+      height: 400px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255,212,59,0.12) 0%, transparent 70%);
+      bottom: -150px;
+      left: 10%;
+      pointer-events: none;
+    }
+    .hero-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 60px;
+      align-items: center;
+      position: relative;
+      z-index: 1;
+    }
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255,212,59,0.15);
+      border: 1px solid rgba(255,212,59,0.3);
+      color: var(--accent);
+      padding: 6px 14px;
+      border-radius: 100px;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 20px;
+    }
+    .hero h1 {
+      font-size: clamp(36px, 5vw, 56px);
+      font-weight: 800;
+      color: var(--white);
+      line-height: 1.1;
+      margin-bottom: 20px;
+    }
+    .hero h1 span { color: var(--accent); }
+    .hero p {
+      font-size: 17px;
+      color: rgba(255,255,255,0.75);
+      margin-bottom: 36px;
+      max-width: 480px;
+    }
+    .hero-actions {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+    .hero-stats {
+      display: flex;
+      gap: 32px;
+      margin-top: 48px;
+      padding-top: 32px;
+      border-top: 1px solid rgba(255,255,255,0.12);
+    }
+    .hero-stat-value {
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--white);
+    }
+    .hero-stat-label {
+      font-size: 13px;
+      color: rgba(255,255,255,0.55);
+      margin-top: 2px;
+    }
+    .hero-visual {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .hero-card {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.12);
+      backdrop-filter: blur(10px);
+      border-radius: var(--radius-lg);
+      padding: 20px 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      transition: transform 0.2s;
+    }
+    .hero-card:hover { transform: translateX(-4px); }
+    .hero-card-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      flex-shrink: 0;
+    }
+    .hero-card-title {
+      font-weight: 700;
+      color: var(--white);
+      font-size: 15px;
+    }
+    .hero-card-sub {
+      font-size: 13px;
+      color: rgba(255,255,255,0.6);
+      margin-top: 2px;
+    }
+    .hero-card-badge {
+      margin-left: auto;
+      background: rgba(255,212,59,0.2);
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 100px;
+      white-space: nowrap;
+    }
+
+    /* ─── PILLARS ─── */
+    .pillars {
+      background: var(--navy);
+      padding: 20px 5%;
+    }
+    .pillars-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .pillar-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: rgba(255,255,255,0.7);
+      font-size: 13px;
+      font-weight: 500;
+      padding: 10px 0;
+    }
+    .pillar-item span:first-child { font-size: 18px; }
+
+    /* ─── SECTION SHARED ─── */
+    .section {
+      padding: 80px 5%;
+    }
+    .section-alt { background: var(--off-white); }
+    .section-dark {
+      background: var(--navy);
+      color: var(--white);
+    }
+    .section-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    .section-header {
+      text-align: center;
+      margin-bottom: 52px;
+    }
+    .section-label {
+      display: inline-block;
+      background: rgba(59,91,219,0.1);
+      color: var(--blue);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      padding: 5px 14px;
+      border-radius: 100px;
+      margin-bottom: 14px;
+    }
+    .section-dark .section-label {
+      background: rgba(255,212,59,0.15);
+      color: var(--accent);
+    }
+    .section-header h2 {
+      font-size: clamp(28px, 4vw, 40px);
+      font-weight: 800;
+      color: var(--navy);
+      line-height: 1.2;
+    }
+    .section-dark .section-header h2 { color: var(--white); }
+    .section-header p {
+      font-size: 17px;
+      color: var(--gray-500);
+      margin-top: 12px;
+      max-width: 540px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .section-dark .section-header p { color: rgba(255,255,255,0.6); }
+
+    /* ─── COURSES ─── */
+    .courses-filters {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 40px;
+    }
+    .filter-btn {
+      background: var(--white);
+      border: 2px solid var(--gray-200);
+      color: var(--gray-700);
+      padding: 8px 20px;
+      border-radius: 100px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+    .filter-btn:hover, .filter-btn.active {
+      background: var(--navy);
+      border-color: var(--navy);
+      color: var(--white);
+    }
+    .courses-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 24px;
+    }
+    .course-card {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow: var(--shadow);
+      transition: all 0.25s;
+      border: 1px solid var(--gray-100);
+      display: flex;
+      flex-direction: column;
+    }
+    .course-card:hover {
+      transform: translateY(-6px);
+      box-shadow: var(--shadow-lg);
+    }
+    .course-thumb {
+      height: 160px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 52px;
+      position: relative;
+      overflow: hidden;
+    }
+    .course-thumb::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to bottom, transparent 50%, rgba(0,0,0,0.3));
+    }
+    .course-body { padding: 20px 22px; flex: 1; display: flex; flex-direction: column; }
+    .course-tag {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      padding: 4px 10px;
+      border-radius: 6px;
+      margin-bottom: 10px;
+    }
+    .course-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 8px;
+      line-height: 1.3;
+    }
+    .course-desc {
+      font-size: 14px;
+      color: var(--gray-500);
+      flex: 1;
+      margin-bottom: 16px;
+    }
+    .course-meta {
+      display: flex;
+      gap: 16px;
+      font-size: 13px;
+      color: var(--gray-500);
+      margin-bottom: 16px;
+    }
+    .course-meta span { display: flex; align-items: center; gap: 5px; }
+    .course-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 16px;
+      border-top: 1px solid var(--gray-100);
+    }
+    .course-price {
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--navy);
+    }
+    .course-price small {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--gray-500);
+    }
+
+    /* ─── INSTRUCTORS ─── */
+    .instructors-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 28px;
+    }
+    .instructor-card {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: var(--radius-lg);
+      padding: 32px 24px;
+      text-align: center;
+      transition: all 0.25s;
+    }
+    .instructor-card:hover {
+      background: rgba(255,255,255,0.1);
+      transform: translateY(-4px);
+    }
+    .instructor-avatar {
+      width: 90px;
+      height: 90px;
+      border-radius: 50%;
+      margin: 0 auto 16px;
+      object-fit: cover;
+      border: 3px solid rgba(255,212,59,0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 36px;
+      background: rgba(255,255,255,0.1);
+    }
+    .instructor-name {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--white);
+      margin-bottom: 4px;
+    }
+    .instructor-role {
+      font-size: 13px;
+      color: var(--accent);
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+    .instructor-bio {
+      font-size: 14px;
+      color: rgba(255,255,255,0.6);
+      line-height: 1.6;
+    }
+    .instructor-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      justify-content: center;
+      margin-top: 16px;
+    }
+    .instructor-tag {
+      background: rgba(59,91,219,0.25);
+      color: rgba(255,255,255,0.8);
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-weight: 500;
+    }
+
+    /* ─── WHY NTH ─── */
+    .why-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+    }
+    .why-card {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      padding: 28px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--gray-100);
+      transition: transform 0.2s;
+    }
+    .why-card:hover { transform: translateY(-4px); }
+    .why-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 14px;
+      background: rgba(59,91,219,0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      margin-bottom: 16px;
+    }
+    .why-title {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+    .why-desc {
+      font-size: 14px;
+      color: var(--gray-500);
+      line-height: 1.6;
+    }
+
+    /* ─── ABOUT ─── */
+    .about-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 60px;
+      align-items: center;
+    }
+    .about-content h2 {
+      font-size: clamp(28px, 3.5vw, 38px);
+      font-weight: 800;
+      color: var(--navy);
+      line-height: 1.2;
+      margin-bottom: 20px;
+    }
+    .about-content h2 span { color: var(--blue); }
+    .about-content p {
+      font-size: 16px;
+      color: var(--gray-500);
+      margin-bottom: 16px;
+      line-height: 1.7;
+    }
+    .about-values {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-top: 28px;
+    }
+    .about-value {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+    .about-value-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: rgba(59,91,219,0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .about-value-text strong {
+      display: block;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .about-value-text span {
+      font-size: 13px;
+      color: var(--gray-500);
+    }
+    .about-visual {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    .about-stat-card {
+      background: var(--navy);
+      border-radius: var(--radius-lg);
+      padding: 28px 20px;
+      text-align: center;
+      color: var(--white);
+    }
+    .about-stat-card.accent { background: var(--blue); }
+    .about-stat-card.full { grid-column: 1 / -1; }
+    .about-stat-card .stat-num {
+      font-size: 36px;
+      font-weight: 800;
+      color: var(--accent);
+      margin-bottom: 4px;
+    }
+    .about-stat-card.accent .stat-num { color: var(--white); }
+    .about-stat-card .stat-label {
+      font-size: 14px;
+      color: rgba(255,255,255,0.7);
+    }
+
+    /* ─── ENROLLMENT CTA ─── */
+    .enroll-cta {
+      background: linear-gradient(135deg, var(--navy-dark), var(--blue));
+      padding: 70px 5%;
+      text-align: center;
+    }
+    .enroll-cta h2 {
+      font-size: clamp(28px, 4vw, 42px);
+      font-weight: 800;
+      color: var(--white);
+      margin-bottom: 14px;
+    }
+    .enroll-cta p {
+      font-size: 17px;
+      color: rgba(255,255,255,0.7);
+      margin-bottom: 36px;
+      max-width: 520px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .enroll-actions {
+      display: flex;
+      gap: 14px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .btn-whatsapp {
+      background: #25d366;
+      color: var(--white);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 28px;
+      border-radius: 14px;
+      font-weight: 700;
+      font-size: 15px;
+      transition: all 0.2s;
+      border: none;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .btn-whatsapp:hover { background: #20ba5a; transform: translateY(-2px); }
+
+    /* ─── PAYMENT ─── */
+    .payment-section {
+      padding: 60px 5%;
+      background: var(--gray-100);
+    }
+    .payment-inner {
+      max-width: 700px;
+      margin: 0 auto;
+      text-align: center;
+    }
+    .payment-inner h2 {
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--navy);
+      margin-bottom: 10px;
+    }
+    .payment-inner p {
+      color: var(--gray-500);
+      margin-bottom: 32px;
+    }
+    .payment-methods {
+      display: flex;
+      gap: 14px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 32px;
+    }
+    .payment-method {
+      background: var(--white);
+      border: 2px solid var(--gray-200);
+      border-radius: var(--radius);
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600;
+      font-size: 15px;
+      color: var(--text);
+      transition: border-color 0.2s;
+      cursor: pointer;
+    }
+    .payment-method:hover { border-color: var(--blue); }
+    .payment-method .pm-icon { font-size: 24px; }
+
+    /* ─── CONTACT ─── */
+    .contact-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 48px;
+      align-items: start;
+    }
+    .contact-info h3 {
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--white);
+      margin-bottom: 16px;
+    }
+    .contact-info p {
+      color: rgba(255,255,255,0.65);
+      margin-bottom: 28px;
+      font-size: 15px;
+    }
+    .contact-links {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .contact-link {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: rgba(255,255,255,0.8);
+      font-size: 14px;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+    .contact-link:hover { color: var(--accent); }
+    .contact-link-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+    .contact-form {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: var(--radius-lg);
+      padding: 32px;
+    }
+    .form-group { margin-bottom: 18px; }
+    .form-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.7);
+      margin-bottom: 6px;
+    }
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: var(--radius);
+      padding: 12px 16px;
+      color: var(--white);
+      font-size: 14px;
+      font-family: inherit;
+      transition: border-color 0.2s;
+      outline: none;
+    }
+    .form-group input::placeholder,
+    .form-group textarea::placeholder { color: rgba(255,255,255,0.3); }
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus { border-color: var(--blue-light); }
+    .form-group select option { background: var(--navy); color: var(--white); }
+    .form-group textarea { min-height: 100px; resize: vertical; }
+
+    /* ─── FOOTER ─── */
+    footer {
+      background: var(--navy-dark);
+      padding: 50px 5% 28px;
+      color: rgba(255,255,255,0.6);
+    }
+    .footer-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    .footer-top {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr;
+      gap: 40px;
+      margin-bottom: 40px;
+    }
+    .footer-brand p {
+      font-size: 14px;
+      line-height: 1.7;
+      margin-top: 14px;
+      max-width: 280px;
+    }
+    .footer-col h4 {
+      color: var(--white);
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 16px;
+    }
+    .footer-col ul { list-style: none; }
+    .footer-col ul li { margin-bottom: 10px; }
+    .footer-col ul li a {
+      font-size: 14px;
+      color: rgba(255,255,255,0.55);
+      transition: color 0.2s;
+    }
+    .footer-col ul li a:hover { color: var(--white); }
+    .footer-bottom {
+      border-top: 1px solid rgba(255,255,255,0.08);
+      padding-top: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+    }
+    .social-links {
+      display: flex;
+      gap: 10px;
+    }
+    .social-link {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      transition: all 0.2s;
+      color: rgba(255,255,255,0.7);
+    }
+    .social-link:hover { background: var(--blue); color: var(--white); }
+
+    /* ─── RESPONSIVE ─── */
+    @media (max-width: 900px) {
+      .hero-inner { grid-template-columns: 1fr; }
+      .hero-visual { display: none; }
+      .why-grid { grid-template-columns: 1fr 1fr; }
+      .about-grid { grid-template-columns: 1fr; }
+      .contact-grid { grid-template-columns: 1fr; }
+      .footer-top { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 600px) {
+      .nav-links { display: none; }
+      .why-grid { grid-template-columns: 1fr; }
+      .footer-top { grid-template-columns: 1fr; }
+      .hero-stats { flex-direction: column; gap: 16px; }
+    }
+
+    /* ─── AR OVERRIDES ─── */
+    body.ar .hero-card:hover { transform: translateX(4px); }
+    body.ar .hero-badge, body.ar .hero h1, body.ar .hero p { text-align: right; }
+    body.ar .hero-actions { justify-content: flex-start; }
+    body.ar .section-header { direction: rtl; }
+    body.ar .about-content h2, body.ar .about-content p { text-align: right; }
+
+    /* ─── SMOOTH HIDE/SHOW BY LANG ─── */
+    .en-text { display: inline; }
+    .ar-text { display: none; }
+    body.ar .en-text { display: none; }
+    body.ar .ar-text { display: inline; }
+    .en-block { display: block; }
+    .ar-block { display: none; }
+    body.ar .en-block { display: none; }
+    body.ar .ar-block { display: block; }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════ NAV ═══════════════════════════════ -->
+<nav>
+  <a href="#" class="nav-logo">
+    <div class="nav-logo-mark">NTH</div>
+    <div class="nav-logo-text">
+      <span class="en-text">NTH Academy</span>
+      <span class="ar-text">أكاديمية NTH</span>
+    </div>
+  </a>
+
+  <ul class="nav-links">
+    <li><a href="#courses"><span class="en-text">Courses</span><span class="ar-text">الكورسات</span></a></li>
+    <li><a href="#instructors"><span class="en-text">Instructors</span><span class="ar-text">المدربون</span></a></li>
+    <li><a href="#about"><span class="en-text">About</span><span class="ar-text">عننا</span></a></li>
+    <li><a href="#contact"><span class="en-text">Contact</span><span class="ar-text">تواصل معنا</span></a></li>
+  </ul>
+
+  <div class="nav-right">
+    <div class="lang-toggle">
+      <button class="active" onclick="setLang('en')">EN</button>
+      <button onclick="setLang('ar')">AR</button>
+    </div>
+    <a href="#courses" class="btn btn-primary">
+      <span class="en-text">Browse Courses</span>
+      <span class="ar-text">اكتشف الكورسات</span>
+    </a>
+  </div>
+</nav>
+
+
+<!-- ═══════════════════════════════ HERO ═══════════════════════════════ -->
+<section class="hero">
+  <div class="hero-inner">
+    <div class="hero-content">
+      <div class="hero-badge">
+        🎓
+        <span class="en-text">Cairo's Fastest-Growing Academy</span>
+        <span class="ar-text">الأكاديمية الأسرع نمواً في القاهرة</span>
+      </div>
+      <h1>
+        <span class="en-block">Learning is<br /><span>Not That Hard.</span></span>
+        <span class="ar-block">التعلم<br /><span>مش صعب.</span></span>
+      </h1>
+      <p>
+        <span class="en-text">Real skills. Practical knowledge. Experienced instructors who make every subject click — in English, Arabic, Psychology, Art, and more.</span>
+        <span class="ar-text">مهارات حقيقية. معرفة عملية. مدربون محترفون يجعلون كل موضوع واضحاً — في الإنجليزية، علم النفس، الفن، وأكثر.</span>
+      </p>
+      <div class="hero-actions">
+        <a href="#courses" class="btn btn-accent btn-lg">
+          <span class="en-text">Explore Courses</span>
+          <span class="ar-text">اكتشف الكورسات</span>
+        </a>
+        <a href="#about" class="btn btn-outline btn-lg">
+          <span class="en-text">Our Story</span>
+          <span class="ar-text">قصتنا</span>
+        </a>
+      </div>
+      <div class="hero-stats">
+        <div>
+          <div class="hero-stat-value">10K+</div>
+          <div class="hero-stat-label"><span class="en-text">Students</span><span class="ar-text">طالب</span></div>
+        </div>
+        <div>
+          <div class="hero-stat-value">3+</div>
+          <div class="hero-stat-label"><span class="en-text">Subjects</span><span class="ar-text">تخصص</span></div>
+        </div>
+        <div>
+          <div class="hero-stat-value">12+</div>
+          <div class="hero-stat-label"><span class="en-text">Years Experience</span><span class="ar-text">سنة خبرة</span></div>
+        </div>
+        <div>
+          <div class="hero-stat-value">100%</div>
+          <div class="hero-stat-label"><span class="en-text">Practical</span><span class="ar-text">تطبيقي</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="hero-visual">
+      <div class="hero-card">
+        <div class="hero-card-icon" style="background:rgba(255,212,59,0.2)">🗣️</div>
+        <div>
+          <div class="hero-card-title"><span class="en-text">English Language</span><span class="ar-text">اللغة الإنجليزية</span></div>
+          <div class="hero-card-sub"><span class="en-text">SAT Prep · Fluency · Business</span><span class="ar-text">SAT · طلاقة · أعمال</span></div>
+        </div>
+        <div class="hero-card-badge"><span class="en-text">Popular</span><span class="ar-text">الأكثر طلباً</span></div>
+      </div>
+      <div class="hero-card">
+        <div class="hero-card-icon" style="background:rgba(59,91,219,0.3)">🧠</div>
+        <div>
+          <div class="hero-card-title"><span class="en-text">Psychology & Wellbeing</span><span class="ar-text">علم النفس والتطوير الذاتي</span></div>
+          <div class="hero-card-sub"><span class="en-text">Self-awareness · Emotional Growth</span><span class="ar-text">وعي ذاتي · نمو شخصي</span></div>
+        </div>
+        <div class="hero-card-badge"><span class="en-text">New</span><span class="ar-text">جديد</span></div>
+      </div>
+      <div class="hero-card">
+        <div class="hero-card-icon" style="background:rgba(255,107,107,0.2)">🎨</div>
+        <div>
+          <div class="hero-card-title"><span class="en-text">Art & Design</span><span class="ar-text">الفن والتصميم</span></div>
+          <div class="hero-card-sub"><span class="en-text">Creative skills for every level</span><span class="ar-text">مهارات إبداعية لكل المستويات</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ PILLARS BAR ═══════════════════════ -->
+<div class="pillars">
+  <div class="pillars-inner">
+    <div class="pillar-item"><span>💡</span><span class="en-text">Build Skills</span><span class="ar-text">طوّر مهاراتك</span></div>
+    <div class="pillar-item"><span>🚀</span><span class="en-text">Grow Confident</span><span class="ar-text">ازداد ثقة بنفسك</span></div>
+    <div class="pillar-item"><span>💬</span><span class="en-text">Communicate Better</span><span class="ar-text">تواصل بشكل أفضل</span></div>
+    <div class="pillar-item"><span>🌍</span><span class="en-text">Explore Opportunities</span><span class="ar-text">اكتشف فرص جديدة</span></div>
+    <div class="pillar-item"><span>📈</span><span class="en-text">Achieve More</span><span class="ar-text">حقق أكثر</span></div>
+    <div class="pillar-item"><span>🎓</span><span class="en-text">Learn Your Way</span><span class="ar-text">تعلم بأسلوبك</span></div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════ COURSES ══════════════════════════ -->
+<section class="section section-alt" id="courses">
+  <div class="section-inner">
+    <div class="section-header">
+      <div class="section-label">
+        <span class="en-text">What We Offer</span>
+        <span class="ar-text">ما نقدمه</span>
+      </div>
+      <h2>
+        <span class="en-text">Find Your Course</span>
+        <span class="ar-text">اختار كورسك</span>
+      </h2>
+      <p>
+        <span class="en-text">Practical, results-driven programs led by experts with real-world experience.</span>
+        <span class="ar-text">برامج تطبيقية وفعّالة يقودها خبراء بتجربة حقيقية.</span>
+      </p>
+    </div>
+
+    <div class="courses-filters">
+      <button class="filter-btn active" onclick="filterCourses('all', this)">
+        <span class="en-text">All Courses</span><span class="ar-text">الكل</span>
+      </button>
+      <button class="filter-btn" onclick="filterCourses('english', this)">
+        <span class="en-text">English</span><span class="ar-text">إنجليزي</span>
+      </button>
+      <button class="filter-btn" onclick="filterCourses('psychology', this)">
+        <span class="en-text">Psychology</span><span class="ar-text">علم النفس</span>
+      </button>
+      <button class="filter-btn" onclick="filterCourses('art', this)">
+        <span class="en-text">Art & Design</span><span class="ar-text">فن وتصميم</span>
+      </button>
+    </div>
+
+    <div class="courses-grid" id="coursesGrid">
+
+      <div class="course-card" data-cat="english">
+        <div class="course-thumb" style="background:linear-gradient(135deg,#1a1f5e,#3b5bdb)">🗣️</div>
+        <div class="course-body">
+          <span class="course-tag" style="background:rgba(59,91,219,0.1);color:#3b5bdb">
+            <span class="en-text">English</span><span class="ar-text">إنجليزي</span>
+          </span>
+          <div class="course-title">
+            <span class="en-text">SAT English Prep</span><span class="ar-text">تحضير SAT — الإنجليزية</span>
+          </div>
+          <div class="course-desc">
+            <span class="en-text">8 levels from beginner to advanced. Structured sessions that build on each other. Taught by Ahmed Bahr.</span>
+            <span class="ar-text">8 مستويات من المبتدئ للمتقدم. جلسات منظمة تبني على بعضها. مع أحمد بحر.</span>
+          </div>
+          <div class="course-meta">
+            <span>📚 <span class="en-text">8 Levels</span><span class="ar-text">8 مستويات</span></span>
+            <span>🕐 <span class="en-text">8 sessions/level</span><span class="ar-text">8 جلسات/مستوى</span></span>
+            <span>📍 <span class="en-text">Online + In-person</span><span class="ar-text">أونلاين + حضوري</span></span>
+          </div>
+          <div class="course-footer">
+            <div class="course-price">
+              <span class="en-text">Contact for price</span>
+              <span class="ar-text">اتواصل للسعر</span>
+            </div>
+            <a href="#contact" class="btn btn-primary">
+              <span class="en-text">Enroll</span><span class="ar-text">سجل الآن</span>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <div class="course-card" data-cat="english">
+        <div class="course-thumb" style="background:linear-gradient(135deg,#0f3460,#16213e)">💼</div>
+        <div class="course-body">
+          <span class="course-tag" style="background:rgba(59,91,219,0.1);color:#3b5bdb">
+            <span class="en-text">English</span><span class="ar-text">إنجليزي</span>
+          </span>
+          <div class="course-title">
+            <span class="en-text">Business English</span><span class="ar-text">الإنجليزية للأعمال</span>
+          </div>
+          <div class="course-desc">
+            <span class="en-text">Professional communication, emails, presentations, and negotiations — in English.</span>
+            <span class="ar-text">التواصل المهني، الإيميلات، العروض، والمفاوضات بالإنجليزية.</span>
+          </div>
+          <div class="course-meta">
+            <span>🕐 <span class="en-text">6 weeks</span><span class="ar-text">6 أسابيع</span></span>
+            <span>📍 <span class="en-text">Online</span><span class="ar-text">أونلاين</span></span>
+          </div>
+          <div class="course-footer">
+            <div class="course-price">
+              <span class="en-text">Contact for price</span>
+              <span class="ar-text">اتواصل للسعر</span>
+            </div>
+            <a href="#contact" class="btn btn-primary">
+              <span class="en-text">Enroll</span><span class="ar-text">سجل الآن</span>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <div class="course-card" data-cat="psychology">
+        <div class="course-thumb" style="background:linear-gradient(135deg,#2d1b69,#553c9a)">🧠</div>
+        <div class="course-body">
+          <span class="course-tag" style="background:rgba(85,60,154,0.1);color:#553c9a">
+            <span class="en-text">Psychology</span><span class="ar-text">علم النفس</span>
+          </span>
+          <div class="course-title">
+            <span class="en-text">Self-Awareness & Emotional Growth</span>
+            <span class="ar-text">الوعي الذاتي والنمو العاطفي</span>
+          </div>
+          <div class="course-desc">
+            <span class="en-text">Understand yourself better. Manage emotions, improve relationships, and build confidence with our clinical psychologist.</span>
+            <span class="ar-text">افهم نفسك أكتر. تحكم في مشاعرك، حسّن علاقاتك، وازداد ثقة مع طبيبتنا النفسية.</span>
+          </div>
+          <div class="course-meta">
+            <span>🕐 <span class="en-text">8 sessions</span><span class="ar-text">8 جلسات</span></span>
+            <span>📍 <span class="en-text">Online + In-person</span><span class="ar-text">أونلاين + حضوري</span></span>
+          </div>
+          <div class="course-footer">
+            <div class="course-price">
+              <span class="en-text">Contact for price</span>
+              <span class="ar-text">اتواصل للسعر</span>
+            </div>
+            <a href="#contact" class="btn btn-primary">
+              <span class="en-text">Enroll</span><span class="ar-text">سجل الآن</span>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <div class="course-card" data-cat="psychology">
+        <div class="course-thumb" style="background:linear-gradient(135deg,#1a3a4c,#0e6ba8)">💬</div>
+        <div class="course-body">
+          <span class="course-tag" style="background:rgba(85,60,154,0.1);color:#553c9a">
+            <span class="en-text">Psychology</span><span class="ar-text">علم النفس</span>
+          </span>
+          <div class="course-title">
+            <span class="en-text">Communication & Interpersonal Skills</span>
+            <span class="ar-text">مهارات التواصل والعلاقات الشخصية</span>
+          </div>
+          <div class="course-desc">
+            <span class="en-text">From active listening to conflict resolution — practical skills for every relationship.</span>
+            <span class="ar-text">من الإنصات الفعّال لحل النزاعات — مهارات عملية لكل علاقاتك.</span>
+          </div>
+          <div class="course-meta">
+            <span>🕐 <span class="en-text">6 sessions</span><span class="ar-text">6 جلسات</span></span>
+            <span>📍 <span class="en-text">Online</span><span class="ar-text">أونلاين</span></span>
+          </div>
+          <div class="course-footer">
+            <div class="course-price">
+              <span class="en-text">Contact for price</span>
+              <span class="ar-text">اتواصل للسعر</span>
+            </div>
+            <a href="#contact" class="btn btn-primary">
+              <span class="en-text">Enroll</span><span class="ar-text">سجل الآن</span>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <div class="course-card" data-cat="art">
+        <div class="course-thumb" style="background:linear-gradient(135deg,#6b2d2d,#c0392b)">🎨</div>
+        <div class="course-body">
+          <span class="course-tag" style="background:rgba(192,57,43,0.1);color:#c0392b">
+            <span class="en-text">Art & Design</span><span class="ar-text">فن وتصميم</span>
+          </span>
+          <div class="course-title">
+            <span class="en-text">Visual Design Fundamentals</span>
+            <span class="ar-text">أساسيات التصميم البصري</span>
+          </div>
+          <div class="course-desc">
+            <span class="en-text">Color theory, composition, and digital tools. For beginners who want to think visually.</span>
+            <span class="ar-text">نظرية الألوان، التكوين، والأدوات الرقمية. للمبتدئين اللي عايزين يفكروا بشكل إبداعي.</span>
+          </div>
+          <div class="course-meta">
+            <span>🕐 <span class="en-text">8 sessions</span><span class="ar-text">8 جلسات</span></span>
+            <span>📍 <span class="en-text">Online + In-person</span><span class="ar-text">أونلاين + حضوري</span></span>
+          </div>
+          <div class="course-footer">
+            <div class="course-price">
+              <span class="en-text">Contact for price</span>
+              <span class="ar-text">اتواصل للسعر</span>
+            </div>
+            <a href="#contact" class="btn btn-primary">
+              <span class="en-text">Enroll</span><span class="ar-text">سجل الآن</span>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <div class="course-card" data-cat="art">
+        <div class="course-thumb" style="background:linear-gradient(135deg,#3d2c2c,#8b4513)">✏️</div>
+        <div class="course-body">
+          <span class="course-tag" style="background:rgba(192,57,43,0.1);color:#c0392b">
+            <span class="en-text">Art & Design</span><span class="ar-text">فن وتصميم</span>
+          </span>
+          <div class="course-title">
+            <span class="en-text">Drawing & Illustration</span>
+            <span class="ar-text">الرسم والتصوير</span>
+          </div>
+          <div class="course-desc">
+            <span class="en-text">Start from zero and build a creative practice. Sketching, shading, and developing your personal style.</span>
+            <span class="ar-text">ابدأ من الصفر وطوّر ممارسة إبداعية. رسم، تظليل، وأسلوبك الخاص.</span>
+          </div>
+          <div class="course-meta">
+            <span>🕐 <span class="en-text">10 sessions</span><span class="ar-text">10 جلسات</span></span>
+            <span>📍 <span class="en-text">In-person (Cairo)</span><span class="ar-text">حضوري (القاهرة)</span></span>
+          </div>
+          <div class="course-footer">
+            <div class="course-price">
+              <span class="en-text">Contact for price</span>
+              <span class="ar-text">اتواصل للسعر</span>
+            </div>
+            <a href="#contact" class="btn btn-primary">
+              <span class="en-text">Enroll</span><span class="ar-text">سجل الآن</span>
+            </a>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ WHY NTH ══════════════════════════ -->
+<section class="section" id="why">
+  <div class="section-inner">
+    <div class="section-header">
+      <div class="section-label">
+        <span class="en-text">Why NTH?</span><span class="ar-text">ليه NTH؟</span>
+      </div>
+      <h2>
+        <span class="en-text">Learning that actually sticks</span>
+        <span class="ar-text">تعليم بيتأثر فيك فعلاً</span>
+      </h2>
+      <p>
+        <span class="en-text">We built NTH because traditional education makes things harder than they need to be.</span>
+        <span class="ar-text">بنينا NTH لأن التعليم التقليدي بيعقد الأمور أكتر من اللازم.</span>
+      </p>
+    </div>
+    <div class="why-grid">
+      <div class="why-card">
+        <div class="why-icon">🎯</div>
+        <div class="why-title"><span class="en-text">Real-world focus</span><span class="ar-text">تركيز على الواقع</span></div>
+        <div class="why-desc"><span class="en-text">Every lesson is designed around practical application — skills you use the same week you learn them.</span><span class="ar-text">كل درس مصمم حول التطبيق العملي — مهارات بتستخدمها في نفس الأسبوع اللي بتتعلمها.</span></div>
+      </div>
+      <div class="why-card">
+        <div class="why-icon">👨‍🏫</div>
+        <div class="why-title"><span class="en-text">Expert instructors</span><span class="ar-text">مدربون متخصصون</span></div>
+        <div class="why-desc"><span class="en-text">Not just teachers — practitioners. Our instructors bring years of real experience into every session.</span><span class="ar-text">مش بس مدرسين — متخصصون. مدربينا بيجيبوا سنين من الخبرة الحقيقية لكل جلسة.</span></div>
+      </div>
+      <div class="why-card">
+        <div class="why-icon">💬</div>
+        <div class="why-title"><span class="en-text">Approachable & casual</span><span class="ar-text">بسيط وودود</span></div>
+        <div class="why-desc"><span class="en-text">Learning shouldn't feel like a chore. Our style is warm, direct, and in the language you actually speak.</span><span class="ar-text">التعلم ما المفروضش يكون مملاً. أسلوبنا دافي، مباشر، وبلغتك الحقيقية.</span></div>
+      </div>
+      <div class="why-card">
+        <div class="why-icon">📍</div>
+        <div class="why-title"><span class="en-text">Flexible delivery</span><span class="ar-text">مرونة في التعلم</span></div>
+        <div class="why-desc"><span class="en-text">Online or in-person in Cairo — choose what works for your schedule and learning style.</span><span class="ar-text">أونلاين أو حضوري في القاهرة — اختار اللي يناسب جدولك وأسلوب تعلمك.</span></div>
+      </div>
+      <div class="why-card">
+        <div class="why-icon">📈</div>
+        <div class="why-title"><span class="en-text">Measurable progress</span><span class="ar-text">تقدم ملموس</span></div>
+        <div class="why-desc"><span class="en-text">Structured levels and clear milestones so you always know where you are and where you're going.</span><span class="ar-text">مستويات منظمة وأهداف واضحة تعرف دايماً فين أنت وفين رايح.</span></div>
+      </div>
+      <div class="why-card">
+        <div class="why-icon">🤝</div>
+        <div class="why-title"><span class="en-text">Community support</span><span class="ar-text">دعم المجتمع</span></div>
+        <div class="why-desc"><span class="en-text">You're not studying alone. Join a growing community of learners across Egypt who are on the same journey.</span><span class="ar-text">مش بتتعلم لوحدك. انضم لمجتمع متنامي من المتعلمين في مصر اللي ماشيين في نفس الرحلة.</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ INSTRUCTORS ══════════════════════ -->
+<section class="section section-dark" id="instructors">
+  <div class="section-inner">
+    <div class="section-header">
+      <div class="section-label">
+        <span class="en-text">Who's Teaching</span><span class="ar-text">مين بيدرّس</span>
+      </div>
+      <h2>
+        <span class="en-text">Meet the Instructors</span>
+        <span class="ar-text">تعرف على المدربين</span>
+      </h2>
+      <p>
+        <span class="en-text">Practitioners, not just educators. Every instructor has deep real-world experience in their field.</span>
+        <span class="ar-text">متخصصون، مش بس مدرسين. كل مدرب عنده خبرة حقيقية عميقة في مجاله.</span>
+      </p>
+    </div>
+    <div class="instructors-grid">
+
+      <div class="instructor-card">
+        <div class="instructor-avatar">👨‍🏫</div>
+        <div class="instructor-name"><span class="en-text">Ahmed Bahr</span><span class="ar-text">أحمد بحر</span></div>
+        <div class="instructor-role"><span class="en-text">Founder · English Language</span><span class="ar-text">المؤسس · اللغة الإنجليزية</span></div>
+        <div class="instructor-bio">
+          <span class="en-text">12+ years teaching English in international schools across the Gulf. Combines global expertise with a deep understanding of what Egyptian students need.</span>
+          <span class="ar-text">أكتر من 12 سنة تدريس الإنجليزية في مدارس دولية في الخليج. بيجمع بين خبرة عالمية وفهم عميق لاحتياجات الطلاب المصريين.</span>
+        </div>
+        <div class="instructor-tags">
+          <span class="instructor-tag">SAT Prep</span>
+          <span class="instructor-tag"><span class="en-text">Fluency</span><span class="ar-text">طلاقة</span></span>
+          <span class="instructor-tag"><span class="en-text">Business English</span><span class="ar-text">إنجليزية أعمال</span></span>
+        </div>
+      </div>
+
+      <div class="instructor-card">
+        <div class="instructor-avatar">👩‍⚕️</div>
+        <div class="instructor-name"><span class="en-text">Clinical Psychologist</span><span class="ar-text">أخصائية نفسية</span></div>
+        <div class="instructor-role"><span class="en-text">Psychology & Personal Development</span><span class="ar-text">علم النفس والتطوير الشخصي</span></div>
+        <div class="instructor-bio">
+          <span class="en-text">Clinical psychologist specializing in personal growth, emotional regulation, self-awareness, and interpersonal communication. Makes psychology accessible to everyone.</span>
+          <span class="ar-text">أخصائية نفسية متخصصة في النمو الشخصي، إدارة المشاعر، الوعي الذاتي، والتواصل الشخصي. بتخلي علم النفس في متناول الجميع.</span>
+        </div>
+        <div class="instructor-tags">
+          <span class="instructor-tag"><span class="en-text">Self-awareness</span><span class="ar-text">وعي ذاتي</span></span>
+          <span class="instructor-tag"><span class="en-text">Emotional Regulation</span><span class="ar-text">إدارة المشاعر</span></span>
+          <span class="instructor-tag"><span class="en-text">Communication</span><span class="ar-text">تواصل</span></span>
+        </div>
+      </div>
+
+      <div class="instructor-card">
+        <div class="instructor-avatar">🎨</div>
+        <div class="instructor-name"><span class="en-text">Art & Design Instructor</span><span class="ar-text">مدرب الفن والتصميم</span></div>
+        <div class="instructor-role"><span class="en-text">Art · Design · Illustration</span><span class="ar-text">فن · تصميم · رسم</span></div>
+        <div class="instructor-bio">
+          <span class="en-text">Professional artist and designer with experience across multiple disciplines. Passionate about making creativity accessible to beginners.</span>
+          <span class="ar-text">فنان ومصمم محترف بخبرة في تخصصات متعددة. شغوف بجعل الإبداع في متناول المبتدئين.</span>
+        </div>
+        <div class="instructor-tags">
+          <span class="instructor-tag"><span class="en-text">Drawing</span><span class="ar-text">رسم</span></span>
+          <span class="instructor-tag"><span class="en-text">Digital Design</span><span class="ar-text">تصميم رقمي</span></span>
+          <span class="instructor-tag"><span class="en-text">Color Theory</span><span class="ar-text">نظرية الألوان</span></span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ ABOUT ════════════════════════════ -->
+<section class="section" id="about">
+  <div class="section-inner">
+    <div class="about-grid">
+      <div class="about-content">
+        <div class="section-label" style="margin-bottom:16px">
+          <span class="en-text">Our Story</span><span class="ar-text">قصتنا</span>
+        </div>
+        <h2>
+          <span class="en-text">We built NTH because learning <span>shouldn't be complicated.</span></span>
+          <span class="ar-text">بنينا NTH لأن التعلم <span>ما المفروضش يكون معقد.</span></span>
+        </h2>
+        <p>
+          <span class="en-text">NTH Academy — Not That Hard — was founded in Cairo by Ahmed Bahr with a simple belief: the right teacher, the right approach, and the right environment makes any subject click.</span>
+          <span class="ar-text">NTH Academy — مش صعب — تأسست في القاهرة على يد أحمد بحر بإيمان بسيط: المدرب الصح، والأسلوب الصح، والبيئة الصحيحة بتخلي أي موضوع سهل.</span>
+        </p>
+        <p>
+          <span class="en-text">From English language programs to psychology workshops and art courses, every NTH program is built around practical skills, experienced instructors, and a learning environment that feels nothing like school.</span>
+          <span class="ar-text">من برامج اللغة الإنجليزية إلى ورش علم النفس وكورسات الفن، كل برنامج في NTH مبني حول مهارات عملية ومدربين محترفين وبيئة تعليمية لا تشبه المدرسة أبداً.</span>
+        </p>
+        <div class="about-values">
+          <div class="about-value">
+            <div class="about-value-icon">🎯</div>
+            <div class="about-value-text">
+              <strong><span class="en-text">Practical first</span><span class="ar-text">التطبيق أولاً</span></strong>
+              <span><span class="en-text">Skills you actually use</span><span class="ar-text">مهارات بتستخدمها فعلاً</span></span>
+            </div>
+          </div>
+          <div class="about-value">
+            <div class="about-value-icon">💬</div>
+            <div class="about-value-text">
+              <strong><span class="en-text">Real language</span><span class="ar-text">لغة حقيقية</span></strong>
+              <span><span class="en-text">Taught in Arabic + English</span><span class="ar-text">بالعربي والإنجليزي</span></span>
+            </div>
+          </div>
+          <div class="about-value">
+            <div class="about-value-icon">🚀</div>
+            <div class="about-value-text">
+              <strong><span class="en-text">Your pace</span><span class="ar-text">على إيقاعك</span></strong>
+              <span><span class="en-text">Structured but flexible</span><span class="ar-text">منظم ومرن</span></span>
+            </div>
+          </div>
+          <div class="about-value">
+            <div class="about-value-icon">🤝</div>
+            <div class="about-value-text">
+              <strong><span class="en-text">Success first</span><span class="ar-text">نجاحك أولاً</span></strong>
+              <span><span class="en-text">Your success is our priority</span><span class="ar-text">نجاحك هو أولويتنا</span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="about-visual">
+        <div class="about-stat-card">
+          <div class="stat-num">10K+</div>
+          <div class="stat-label"><span class="en-text">Students reached</span><span class="ar-text">طالب استفاد</span></div>
+        </div>
+        <div class="about-stat-card accent">
+          <div class="stat-num">3+</div>
+          <div class="stat-label"><span class="en-text">Disciplines</span><span class="ar-text">تخصص</span></div>
+        </div>
+        <div class="about-stat-card" style="background:#2a3080">
+          <div class="stat-num">12+</div>
+          <div class="stat-label"><span class="en-text">Years combined experience</span><span class="ar-text">سنة خبرة مجمعة</span></div>
+        </div>
+        <div class="about-stat-card" style="background:#1d3557">
+          <div class="stat-num">Cairo</div>
+          <div class="stat-label"><span class="en-text">Based in · Remote available</span><span class="ar-text">مقرنا · متاح أونلاين</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ ENROLL CTA ═══════════════════════ -->
+<div class="enroll-cta">
+  <h2>
+    <span class="en-text">Ready to start learning?</span>
+    <span class="ar-text">مستعد تبدأ تتعلم؟</span>
+  </h2>
+  <p>
+    <span class="en-text">Browse our courses, pick your level, and enroll today. Your first step is always the hardest — we make the rest easy.</span>
+    <span class="ar-text">تصفح كورساتنا، اختار مستواك، وسجل اليوم. الخطوة الأولى دايماً هي الأصعب — احنا بنخلي الباقي سهل.</span>
+  </p>
+  <div class="enroll-actions">
+    <a href="#courses" class="btn btn-accent btn-lg">
+      <span class="en-text">Browse All Courses</span>
+      <span class="ar-text">اكتشف كل الكورسات</span>
+    </a>
+    <a href="https://wa.me/20XXXXXXXXXX" target="_blank" class="btn-whatsapp">
+      💬 <span class="en-text">Chat on WhatsApp</span><span class="ar-text">تحدث على واتساب</span>
+    </a>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════ PAYMENT ══════════════════════════ -->
+<section class="payment-section" id="payment">
+  <div class="payment-inner">
+    <h2>
+      <span class="en-text">Secure, Easy Payment</span>
+      <span class="ar-text">دفع آمن وسهل</span>
+    </h2>
+    <p>
+      <span class="en-text">Pay online through your preferred method — funds go directly to NTH Academy.</span>
+      <span class="ar-text">ادفع أونلاين بالطريقة اللي تناسبك — الأموال بتروح مباشرة لأكاديمية NTH.</span>
+    </p>
+    <div class="payment-methods">
+      <div class="payment-method">
+        <span class="pm-icon">💳</span>
+        <span>Paymob</span>
+      </div>
+      <div class="payment-method">
+        <span class="pm-icon">🏧</span>
+        <span>Fawry</span>
+      </div>
+      <div class="payment-method">
+        <span class="pm-icon">📱</span>
+        <span>Vodafone Cash</span>
+      </div>
+      <div class="payment-method">
+        <span class="pm-icon">🏦</span>
+        <span><span class="en-text">Bank Transfer</span><span class="ar-text">تحويل بنكي</span></span>
+      </div>
+    </div>
+    <p style="font-size:13px;color:var(--gray-500)">
+      <span class="en-text">🔒 All transactions are encrypted and secure.</span>
+      <span class="ar-text">🔒 جميع المعاملات مشفرة وآمنة.</span>
+    </p>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ CONTACT ══════════════════════════ -->
+<section class="section section-dark" id="contact">
+  <div class="section-inner">
+    <div class="section-header">
+      <div class="section-label">
+        <span class="en-text">Get in Touch</span><span class="ar-text">تواصل معنا</span>
+      </div>
+      <h2>
+        <span class="en-text">Have a question? Let's talk.</span>
+        <span class="ar-text">عندك سؤال؟ خلينا نتكلم.</span>
+      </h2>
+    </div>
+    <div class="contact-grid">
+      <div class="contact-info">
+        <h3><span class="en-text">We're here for you</span><span class="ar-text">احنا هنا عشانك</span></h3>
+        <p>
+          <span class="en-text">Whether you're not sure which course is right for you, or you want to ask about group pricing — just reach out. We usually reply within a few hours.</span>
+          <span class="ar-text">سواء مش متأكد أي كورس الأنسب لك، أو عايز تسأل عن أسعار المجموعات — تواصل معنا. بنرد عادةً في خلال ساعات.</span>
+        </p>
+        <div class="contact-links">
+          <a href="https://wa.me/20XXXXXXXXXX" class="contact-link" target="_blank">
+            <div class="contact-link-icon">💬</div>
+            <span>WhatsApp — +20 XXX XXX XXXX</span>
+          </a>
+          <a href="https://instagram.com/nth.academy.eg" class="contact-link" target="_blank">
+            <div class="contact-link-icon">📸</div>
+            <span>Instagram — @nth.academy.eg</span>
+          </a>
+          <a href="https://linkedin.com/company/nthacademy" class="contact-link" target="_blank">
+            <div class="contact-link-icon">💼</div>
+            <span>LinkedIn — NTH Academy</span>
+          </a>
+          <div class="contact-link">
+            <div class="contact-link-icon">📍</div>
+            <span><span class="en-text">Cairo, Egypt · Online available worldwide</span><span class="ar-text">القاهرة، مصر · أونلاين متاح في كل مكان</span></span>
+          </div>
+        </div>
+      </div>
+      <div class="contact-form">
+        <div class="form-group">
+          <label><span class="en-text">Your Name</span><span class="ar-text">اسمك</span></label>
+          <input type="text" placeholder="Ahmed / أحمد" />
+        </div>
+        <div class="form-group">
+          <label><span class="en-text">Phone / WhatsApp</span><span class="ar-text">الهاتف / واتساب</span></label>
+          <input type="tel" placeholder="+20 XXX XXX XXXX" />
+        </div>
+        <div class="form-group">
+          <label><span class="en-text">Which course interests you?</span><span class="ar-text">أي كورس بيهمك؟</span></label>
+          <select>
+            <option value=""><span class="en-text">Select a course</span></option>
+            <option>SAT English Prep</option>
+            <option>Business English</option>
+            <option>Psychology — Self-Awareness</option>
+            <option>Psychology — Communication Skills</option>
+            <option>Art — Visual Design</option>
+            <option>Art — Drawing & Illustration</option>
+            <option>Not sure yet</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label><span class="en-text">Message (optional)</span><span class="ar-text">رسالة (اختياري)</span></label>
+          <textarea placeholder="Any questions or details..."></textarea>
+        </div>
+        <button class="btn btn-accent" style="width:100%;padding:14px;font-size:15px;border-radius:12px">
+          <span class="en-text">Send Message</span><span class="ar-text">أرسل الرسالة</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ FOOTER ═══════════════════════════ -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <div class="nav-logo">
+          <div class="nav-logo-mark">NTH</div>
+          <div class="nav-logo-text">
+            <span class="en-text">NTH Academy</span>
+            <span class="ar-text">أكاديمية NTH</span>
+          </div>
+        </div>
+        <p>
+          <span class="en-text">Learning, simplified. Empowering individuals for personal and professional growth in Cairo and beyond.</span>
+          <span class="ar-text">التعلم، مبسّط. نمكّن الأفراد للنمو الشخصي والمهني في القاهرة وخارجها.</span>
+        </p>
+      </div>
+      <div class="footer-col">
+        <h4><span class="en-text">Courses</span><span class="ar-text">الكورسات</span></h4>
+        <ul>
+          <li><a href="#courses"><span class="en-text">English Programs</span><span class="ar-text">برامج الإنجليزية</span></a></li>
+          <li><a href="#courses"><span class="en-text">Psychology</span><span class="ar-text">علم النفس</span></a></li>
+          <li><a href="#courses"><span class="en-text">Art & Design</span><span class="ar-text">فن وتصميم</span></a></li>
+          <li><a href="#courses"><span class="en-text">All Courses</span><span class="ar-text">كل الكورسات</span></a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4><span class="en-text">Academy</span><span class="ar-text">الأكاديمية</span></h4>
+        <ul>
+          <li><a href="#about"><span class="en-text">About NTH</span><span class="ar-text">عن NTH</span></a></li>
+          <li><a href="#instructors"><span class="en-text">Instructors</span><span class="ar-text">المدربون</span></a></li>
+          <li><a href="#why"><span class="en-text">Why NTH?</span><span class="ar-text">ليه NTH؟</span></a></li>
+          <li><a href="#contact"><span class="en-text">Contact</span><span class="ar-text">تواصل معنا</span></a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4><span class="en-text">Follow Us</span><span class="ar-text">تابعنا</span></h4>
+        <ul>
+          <li><a href="https://instagram.com/nth.academy.eg" target="_blank">Instagram</a></li>
+          <li><a href="https://linkedin.com/company/nthacademy" target="_blank">LinkedIn</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2025 NTH Academy · <span class="en-text">Not That Hard</span><span class="ar-text">مش صعب</span> · Cairo, Egypt</span>
+      <div class="social-links">
+        <a href="https://instagram.com/nth.academy.eg" class="social-link" target="_blank">📸</a>
+        <a href="https://linkedin.com/company/nthacademy" class="social-link" target="_blank">💼</a>
+        <a href="https://wa.me/20XXXXXXXXXX" class="social-link" target="_blank">💬</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+
+<!-- ═══════════════════════════════ JS ═══════════════════════════════ -->
+<script>
+  // Language toggle
+  function setLang(lang) {
+    const body = document.body;
+    const btns = document.querySelectorAll('.lang-toggle button');
+    if (lang === 'ar') {
+      body.classList.add('ar');
+      body.setAttribute('dir', 'rtl');
+      body.setAttribute('lang', 'ar');
+      btns[0].classList.remove('active');
+      btns[1].classList.add('active');
+    } else {
+      body.classList.remove('ar');
+      body.setAttribute('dir', 'ltr');
+      body.setAttribute('lang', 'en');
+      btns[0].classList.add('active');
+      btns[1].classList.remove('active');
+    }
+  }
+
+  // Course filter
+  function filterCourses(cat, btn) {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.course-card').forEach(card => {
+      if (cat === 'all' || card.dataset.cat === cat) {
+        card.style.display = 'flex';
+      } else {
+        card.style.display = 'none';
+      }
+    });
+  }
+
+  // Smooth nav active state
+  const sections = document.querySelectorAll('section[id], div[id]');
+  const navLinks = document.querySelectorAll('.nav-links a');
+  window.addEventListener('scroll', () => {
+    let current = '';
+    sections.forEach(s => {
+      if (window.scrollY >= s.offsetTop - 100) current = s.id;
+    });
+    navLinks.forEach(link => {
+      link.style.color = link.getAttribute('href') === `#${current}`
+        ? 'white' : 'rgba(255,255,255,0.8)';
+    });
+  });
+</script>
+
+</body>
+</html>
