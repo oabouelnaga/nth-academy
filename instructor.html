@@ -765,7 +765,7 @@
         .eq('id', currentUser.id)
         .single();
 
-      if (!profile || profile.role !== 'instructor') {
+      if (!profile || (profile.role !== 'instructor' && profile.role !== 'admin')) {
         window.location.href = 'login.html';
         return;
       }
