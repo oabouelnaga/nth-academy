@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NTH Academy — Student Login</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy: #1a1f5e;
+      --blue: #3b5bdb;
+      --blue-light: #4c6ef5;
+      --yellow: #ffd43b;
+      --white: #ffffff;
+      --gray-50: #f8f9fa;
+      --gray-100: #f1f3f5;
+      --gray-400: #adb5bd;
+      --gray-600: #495057;
+      --gray-800: #212529;
+      --error: #e03131;
+      --success: #2f9e44;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--gray-50);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    body.ar { font-family: 'Cairo', sans-serif; direction: rtl; }
+
+    .container {
+      width: 100%;
+      max-width: 440px;
+    }
+
+    .logo-bar {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .logo-bar a {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+
+    .logo-icon {
+      width: 44px;
+      height: 44px;
+      background: var(--navy);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--yellow);
+      font-weight: 800;
+      font-size: 18px;
+      letter-spacing: -1px;
+    }
+
+    .logo-text {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--navy);
+    }
+
+    .logo-text span { color: var(--blue); }
+
+    .card {
+      background: var(--white);
+      border-radius: 16px;
+      padding: 40px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 8px 32px rgba(0,0,0,0.06);
+    }
+
+    .card-header {
+      margin-bottom: 28px;
+    }
+
+    .card-header h1 {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--navy);
+      margin-bottom: 6px;
+    }
+
+    .card-header p {
+      font-size: 14px;
+      color: var(--gray-600);
+    }
+
+    .lang-toggle {
+      float: right;
+      background: var(--gray-100);
+      border: none;
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--gray-600);
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    body.ar .lang-toggle { float: left; }
+
+    .lang-toggle:hover { background: var(--gray-400); color: var(--white); }
+
+    .form-group {
+      margin-bottom: 18px;
+    }
+
+    label {
+      display: block;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--gray-800);
+      margin-bottom: 6px;
+    }
+
+    input[type="email"],
+    input[type="password"],
+    input[type="text"] {
+      width: 100%;
+      padding: 11px 14px;
+      border: 1.5px solid #dee2e6;
+      border-radius: 10px;
+      font-size: 15px;
+      font-family: inherit;
+      color: var(--gray-800);
+      background: var(--white);
+      transition: border-color 0.2s, box-shadow 0.2s;
+      outline: none;
+    }
+
+    input:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(59, 91, 219, 0.12);
+    }
+
+    input.error { border-color: var(--error); }
+
+    .forgot {
+      display: block;
+      text-align: right;
+      font-size: 13px;
+      color: var(--blue);
+      text-decoration: none;
+      margin-top: 6px;
+    }
+
+    body.ar .forgot { text-align: left; }
+    .forgot:hover { text-decoration: underline; }
+
+    .btn-primary {
+      width: 100%;
+      padding: 13px;
+      background: var(--blue);
+      color: var(--white);
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      margin-top: 8px;
+    }
+
+    .btn-primary:hover { background: var(--blue-light); }
+    .btn-primary:active { transform: scale(0.99); }
+    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .alert {
+      padding: 12px 14px;
+      border-radius: 10px;
+      font-size: 14px;
+      margin-bottom: 18px;
+      display: none;
+    }
+
+    .alert.error { background: #fff5f5; color: var(--error); border: 1px solid #ffc9c9; display: block; }
+    .alert.success { background: #ebfbee; color: var(--success); border: 1px solid #b2f2bb; display: block; }
+
+    .divider {
+      text-align: center;
+      font-size: 13px;
+      color: var(--gray-400);
+      margin: 20px 0;
+      position: relative;
+    }
+
+    .divider::before, .divider::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      width: 42%;
+      height: 1px;
+      background: #dee2e6;
+    }
+    .divider::before { left: 0; }
+    .divider::after { right: 0; }
+
+    .back-home {
+      display: block;
+      text-align: center;
+      font-size: 13px;
+      color: var(--gray-600);
+      text-decoration: none;
+      margin-top: 20px;
+    }
+
+    .back-home:hover { color: var(--blue); }
+
+    /* Forgot password view */
+    #forgot-view { display: none; }
+
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255,255,255,0.4);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* EN/AR text helpers */
+    .en-text { display: inline; }
+    .ar-text { display: none; }
+    body.ar .en-text { display: none; }
+    body.ar .ar-text { display: inline; }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <div class="logo-bar">
+      <a href="index.html">
+        <div class="logo-icon">NTH</div>
+        <div class="logo-text">NTH <span>Academy</span></div>
+      </a>
+    </div>
+
+    <!-- LOGIN VIEW -->
+    <div id="login-view" class="card">
+      <div class="card-header">
+        <button class="lang-toggle" onclick="toggleLang()">عربي / EN</button>
+        <h1>
+          <span class="en-text">Welcome back</span>
+          <span class="ar-text">مرحباً بعودتك</span>
+        </h1>
+        <p>
+          <span class="en-text">Sign in to your student portal</span>
+          <span class="ar-text">سجّل دخولك إلى بوابة الطالب</span>
+        </p>
+      </div>
+
+      <div id="login-alert" class="alert"></div>
+
+      <form id="login-form" onsubmit="handleLogin(event)">
+        <div class="form-group">
+          <label>
+            <span class="en-text">Email address</span>
+            <span class="ar-text">البريد الإلكتروني</span>
+          </label>
+          <input type="email" id="email" placeholder="you@example.com" required autocomplete="email">
+        </div>
+        <div class="form-group">
+          <label>
+            <span class="en-text">Password</span>
+            <span class="ar-text">كلمة المرور</span>
+          </label>
+          <input type="password" id="password" placeholder="••••••••" required autocomplete="current-password">
+          <a href="#" class="forgot" onclick="showForgot(event)">
+            <span class="en-text">Forgot password?</span>
+            <span class="ar-text">نسيت كلمة المرور؟</span>
+          </a>
+        </div>
+        <button type="submit" class="btn-primary" id="login-btn">
+          <span class="en-text">Sign in</span>
+          <span class="ar-text">تسجيل الدخول</span>
+        </button>
+      </form>
+
+      <div class="divider">
+        <span class="en-text">or</span>
+        <span class="ar-text">أو</span>
+      </div>
+
+      <a href="index.html" class="back-home">
+        <span class="en-text">← Back to NTH Academy</span>
+        <span class="ar-text">العودة إلى NTH Academy ←</span>
+      </a>
+    </div>
+
+    <!-- FORGOT PASSWORD VIEW -->
+    <div id="forgot-view" class="card">
+      <div class="card-header">
+        <h1>
+          <span class="en-text">Reset password</span>
+          <span class="ar-text">إعادة تعيين كلمة المرور</span>
+        </h1>
+        <p>
+          <span class="en-text">We'll send a reset link to your email</span>
+          <span class="ar-text">سنرسل رابط إعادة التعيين إلى بريدك</span>
+        </p>
+      </div>
+
+      <div id="reset-alert" class="alert"></div>
+
+      <form id="reset-form" onsubmit="handleReset(event)">
+        <div class="form-group">
+          <label>
+            <span class="en-text">Email address</span>
+            <span class="ar-text">البريد الإلكتروني</span>
+          </label>
+          <input type="email" id="reset-email" placeholder="you@example.com" required>
+        </div>
+        <button type="submit" class="btn-primary" id="reset-btn">
+          <span class="en-text">Send reset link</span>
+          <span class="ar-text">إرسال رابط الإعادة</span>
+        </button>
+      </form>
+
+      <a href="#" class="back-home" onclick="showLogin(event)">
+        <span class="en-text">← Back to sign in</span>
+        <span class="ar-text">العودة لتسجيل الدخول ←</span>
+      </a>
+    </div>
+
+  </div>
+
+  <script>
+    const SUPABASE_URL = 'https://mizkuzwfjvvulkiyotle.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_6ebgjsAV5DH3u_h-iKC3jw_WagYY6Mv';
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // Check if already logged in
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) redirectToDashboard(session.user);
+    });
+
+    supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session) redirectToDashboard(session.user);
+    });
+
+    async function redirectToDashboard(user) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+
+      const role = profile?.role || 'student';
+      if (role === 'instructor') window.location.href = 'instructor.html';
+      else if (role === 'admin') window.location.href = 'admin.html';
+      else window.location.href = 'dashboard.html';
+    }
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      const btn = document.getElementById('login-btn');
+      const alert = document.getElementById('login-alert');
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span>';
+      alert.className = 'alert';
+
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+
+      if (error) {
+        alert.className = 'alert error';
+        alert.textContent = document.body.classList.contains('ar')
+          ? 'البريد الإلكتروني أو كلمة المرور غير صحيحة'
+          : 'Incorrect email or password. Please try again.';
+        btn.disabled = false;
+        btn.innerHTML = document.body.classList.contains('ar')
+          ? '<span class="ar-text">تسجيل الدخول</span>'
+          : '<span class="en-text">Sign in</span>';
+      }
+    }
+
+    async function handleReset(e) {
+      e.preventDefault();
+      const btn = document.getElementById('reset-btn');
+      const alert = document.getElementById('reset-alert');
+      const email = document.getElementById('reset-email').value.trim();
+
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span>';
+
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin + '/login.html'
+      });
+
+      alert.className = error ? 'alert error' : 'alert success';
+      alert.textContent = error
+        ? 'Something went wrong. Please try again.'
+        : 'Reset link sent! Check your inbox.';
+      btn.disabled = false;
+      btn.innerHTML = document.body.classList.contains('ar')
+        ? '<span class="ar-text">إرسال رابط الإعادة</span>'
+        : '<span class="en-text">Send reset link</span>';
+    }
+
+    function showForgot(e) {
+      e.preventDefault();
+      document.getElementById('login-view').style.display = 'none';
+      document.getElementById('forgot-view').style.display = 'block';
+    }
+
+    function showLogin(e) {
+      e.preventDefault();
+      document.getElementById('forgot-view').style.display = 'none';
+      document.getElementById('login-view').style.display = 'block';
+    }
+
+    function toggleLang() {
+      document.body.classList.toggle('ar');
+      document.documentElement.lang = document.body.classList.contains('ar') ? 'ar' : 'en';
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NTH Academy — My Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy: #1a1f5e;
+      --blue: #3b5bdb;
+      --blue-light: #4c6ef5;
+      --blue-bg: #eef2ff;
+      --yellow: #ffd43b;
+      --yellow-bg: #fff9db;
+      --white: #ffffff;
+      --gray-50: #f8f9fa;
+      --gray-100: #f1f3f5;
+      --gray-200: #e9ecef;
+      --gray-400: #adb5bd;
+      --gray-600: #495057;
+      --gray-800: #212529;
+      --green: #2f9e44;
+      --green-bg: #ebfbee;
+      --orange: #e8590c;
+      --orange-bg: #fff4e6;
+      --red: #e03131;
+      --red-bg: #fff5f5;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--gray-50);
+      color: var(--gray-800);
+      min-height: 100vh;
+    }
+
+    body.ar { font-family: 'Cairo', sans-serif; direction: rtl; }
+
+    /* NAVBAR */
+    nav {
+      background: var(--navy);
+      padding: 0 32px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+
+    .logo-icon {
+      width: 36px;
+      height: 36px;
+      background: var(--yellow);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--navy);
+      font-weight: 800;
+      font-size: 14px;
+    }
+
+    .logo-name {
+      color: var(--white);
+      font-weight: 700;
+      font-size: 17px;
+    }
+
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .nav-user {
+      color: rgba(255,255,255,0.85);
+      font-size: 14px;
+    }
+
+    .nav-user strong { color: var(--white); }
+
+    .btn-nav {
+      background: transparent;
+      border: 1.5px solid rgba(255,255,255,0.3);
+      color: rgba(255,255,255,0.85);
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-nav:hover { background: rgba(255,255,255,0.1); color: var(--white); }
+
+    /* MAIN LAYOUT */
+    .main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 32px 24px 48px;
+    }
+
+    /* WELCOME BANNER */
+    .welcome-banner {
+      background: linear-gradient(135deg, var(--navy) 0%, var(--blue) 100%);
+      border-radius: 16px;
+      padding: 28px 32px;
+      color: var(--white);
+      margin-bottom: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .welcome-banner h1 {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .welcome-banner p {
+      font-size: 14px;
+      opacity: 0.8;
+    }
+
+    .badge {
+      background: var(--yellow);
+      color: var(--navy);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    /* STATS ROW */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+
+    .stat-card {
+      background: var(--white);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+
+    .stat-label {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--gray-600);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+
+    .stat-value {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--navy);
+    }
+
+    .stat-sub {
+      font-size: 12px;
+      color: var(--gray-400);
+      margin-top: 2px;
+    }
+
+    /* GRID */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+
+    .grid-full {
+      margin-bottom: 20px;
+    }
+
+    /* CARDS */
+    .card {
+      background: var(--white);
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+      overflow: hidden;
+    }
+
+    .card-head {
+      padding: 18px 20px 14px;
+      border-bottom: 1px solid var(--gray-100);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .card-head h2 {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--navy);
+    }
+
+    .card-head .count {
+      background: var(--blue-bg);
+      color: var(--blue);
+      padding: 2px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .card-body { padding: 16px 20px; }
+
+    /* SESSION LIST */
+    .session-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--gray-100);
+    }
+
+    .session-item:last-child { border-bottom: none; }
+
+    .session-date {
+      background: var(--blue-bg);
+      color: var(--blue);
+      border-radius: 10px;
+      padding: 8px 10px;
+      text-align: center;
+      min-width: 52px;
+    }
+
+    .session-date .day { font-size: 20px; font-weight: 700; line-height: 1; }
+    .session-date .mon { font-size: 11px; font-weight: 500; text-transform: uppercase; }
+
+    .session-info { flex: 1; }
+    .session-info .title { font-size: 14px; font-weight: 500; color: var(--gray-800); margin-bottom: 2px; }
+    .session-info .time { font-size: 12px; color: var(--gray-400); }
+
+    .status-pill {
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .status-scheduled { background: var(--blue-bg); color: var(--blue); }
+    .status-completed { background: var(--green-bg); color: var(--green); }
+    .status-cancelled { background: var(--red-bg); color: var(--red); }
+
+    /* HOMEWORK LIST */
+    .hw-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--gray-100);
+    }
+
+    .hw-item:last-child { border-bottom: none; }
+
+    .hw-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    .hw-pending { background: var(--orange-bg); }
+    .hw-submitted { background: var(--blue-bg); }
+    .hw-graded { background: var(--green-bg); }
+
+    .hw-info { flex: 1; }
+    .hw-info .title { font-size: 14px; font-weight: 500; color: var(--gray-800); margin-bottom: 2px; }
+    .hw-info .due { font-size: 12px; color: var(--gray-400); }
+
+    /* MATERIALS LIST */
+    .material-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--gray-100);
+      cursor: pointer;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .material-item:last-child { border-bottom: none; }
+    .material-item:hover .mat-title { color: var(--blue); }
+
+    .mat-icon {
+      width: 38px;
+      height: 38px;
+      background: var(--gray-100);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    .mat-info { flex: 1; }
+    .mat-title { font-size: 14px; font-weight: 500; color: var(--gray-800); margin-bottom: 2px; transition: color 0.2s; }
+    .mat-desc { font-size: 12px; color: var(--gray-400); }
+
+    .mat-download {
+      color: var(--blue);
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    /* EMPTY STATE */
+    .empty {
+      text-align: center;
+      padding: 28px 0;
+      color: var(--gray-400);
+      font-size: 14px;
+    }
+
+    .empty .icon { font-size: 32px; margin-bottom: 8px; }
+
+    /* LOADING */
+    .loading {
+      text-align: center;
+      padding: 28px 0;
+      color: var(--gray-400);
+    }
+
+    .loading-spinner {
+      width: 28px;
+      height: 28px;
+      border: 3px solid var(--gray-200);
+      border-top-color: var(--blue);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin: 0 auto 10px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* EN/AR */
+    .en-text { display: inline; }
+    .ar-text { display: none; }
+    body.ar .en-text { display: none; }
+    body.ar .ar-text { display: inline; }
+
+    @media (max-width: 768px) {
+      .stats-row { grid-template-columns: repeat(2, 1fr); }
+      .grid-2 { grid-template-columns: 1fr; }
+      .welcome-banner { flex-direction: column; align-items: flex-start; }
+      nav { padding: 0 16px; }
+      .main { padding: 20px 16px 40px; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <a href="index.html" class="nav-logo">
+      <div class="logo-icon">NTH</div>
+      <span class="logo-name">NTH Academy</span>
+    </a>
+    <div class="nav-right">
+      <span class="nav-user">
+        <span class="en-text">Hello, </span>
+        <span class="ar-text">مرحباً، </span>
+        <strong id="nav-name">...</strong>
+      </span>
+      <button class="btn-nav" onclick="toggleLang()">عربي / EN</button>
+      <button class="btn-nav" onclick="signOut()">
+        <span class="en-text">Sign out</span>
+        <span class="ar-text">تسجيل الخروج</span>
+      </button>
+    </div>
+  </nav>
+
+  <div class="main">
+
+    <!-- WELCOME BANNER -->
+    <div class="welcome-banner">
+      <div>
+        <h1 id="welcome-msg">Welcome back!</h1>
+        <p id="welcome-sub">Here's what's happening with your courses today.</p>
+      </div>
+      <div class="badge" id="level-badge">Loading...</div>
+    </div>
+
+    <!-- STATS -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-label"><span class="en-text">Sessions</span><span class="ar-text">الجلسات</span></div>
+        <div class="stat-value" id="stat-sessions">—</div>
+        <div class="stat-sub"><span class="en-text">scheduled</span><span class="ar-text">مجدولة</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label"><span class="en-text">Homework</span><span class="ar-text">الواجبات</span></div>
+        <div class="stat-value" id="stat-hw">—</div>
+        <div class="stat-sub"><span class="en-text">pending</span><span class="ar-text">معلقة</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label"><span class="en-text">Materials</span><span class="ar-text">المواد</span></div>
+        <div class="stat-value" id="stat-materials">—</div>
+        <div class="stat-sub"><span class="en-text">available</span><span class="ar-text">متاحة</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label"><span class="en-text">Graded</span><span class="ar-text">مصحّحة</span></div>
+        <div class="stat-value" id="stat-graded">—</div>
+        <div class="stat-sub"><span class="en-text">assignments</span><span class="ar-text">تكليفات</span></div>
+      </div>
+    </div>
+
+    <!-- SESSIONS + HOMEWORK -->
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-head">
+          <h2><span class="en-text">Upcoming Sessions</span><span class="ar-text">الجلسات القادمة</span></h2>
+          <span class="count" id="sessions-count">0</span>
+        </div>
+        <div class="card-body" id="sessions-list">
+          <div class="loading"><div class="loading-spinner"></div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h2><span class="en-text">Homework</span><span class="ar-text">الواجبات المنزلية</span></h2>
+          <span class="count" id="hw-count">0</span>
+        </div>
+        <div class="card-body" id="hw-list">
+          <div class="loading"><div class="loading-spinner"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MATERIALS -->
+    <div class="grid-full">
+      <div class="card">
+        <div class="card-head">
+          <h2><span class="en-text">Course Materials</span><span class="ar-text">مواد الدورة</span></h2>
+          <span class="count" id="materials-count">0</span>
+        </div>
+        <div class="card-body" id="materials-list">
+          <div class="loading"><div class="loading-spinner"></div></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const SUPABASE_URL = 'https://mizkuzwfjvvulkiyotle.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_6ebgjsAV5DH3u_h-iKC3jw_WagYY6Mv';
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    let currentUser = null;
+    let isAr = false;
+
+    // Auth guard
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) { window.location.href = 'login.html'; return; }
+      currentUser = session.user;
+      loadDashboard();
+    });
+
+    async function loadDashboard() {
+      const [profileRes, studentRes] = await Promise.all([
+        supabase.from('profiles').select('*').eq('id', currentUser.id).single(),
+        supabase.from('students').select('*, instructors(subject, bio, profiles(full_name))').eq('id', currentUser.id).single()
+      ]);
+
+      const profile = profileRes.data;
+      const student = studentRes.data;
+
+      // Update header
+      const name = profile?.full_name || profile?.email?.split('@')[0] || 'Student';
+      document.getElementById('nav-name').textContent = name;
+      document.getElementById('welcome-msg').textContent = isAr ? `أهلاً بك، ${name}!` : `Welcome back, ${name}!`;
+
+      const level = student?.level || 'student';
+      const levelLabels = { beginner: 'Beginner', intermediate: 'Intermediate', advanced: 'Advanced' };
+      document.getElementById('level-badge').textContent = levelLabels[level] || 'Enrolled';
+      document.getElementById('welcome-sub').textContent = student?.instructors?.subject
+        ? `${student.instructors.subject} — ${student.instructors.profiles?.full_name || 'Your Instructor'}`
+        : 'Here\'s what\'s happening with your courses today.';
+
+      // Load data in parallel
+      const [sessionsRes, hwRes, matsRes] = await Promise.all([
+        supabase.from('sessions').select('*').eq('student_id', currentUser.id).gte('scheduled_at', new Date().toISOString()).order('scheduled_at').limit(5),
+        supabase.from('homework').select('*').eq('student_id', currentUser.id).order('due_date').limit(10),
+        supabase.from('materials').select('*').eq('instructor_id', student?.instructor_id).order('created_at', { ascending: false }).limit(10)
+      ]);
+
+      renderSessions(sessionsRes.data || []);
+      renderHomework(hwRes.data || []);
+      renderMaterials(matsRes.data || []);
+
+      // Stats
+      const pending = (hwRes.data || []).filter(h => h.status === 'pending').length;
+      const graded = (hwRes.data || []).filter(h => h.status === 'graded').length;
+      document.getElementById('stat-sessions').textContent = (sessionsRes.data || []).length;
+      document.getElementById('stat-hw').textContent = pending;
+      document.getElementById('stat-materials').textContent = (matsRes.data || []).length;
+      document.getElementById('stat-graded').textContent = graded;
+    }
+
+    function renderSessions(sessions) {
+      const el = document.getElementById('sessions-list');
+      document.getElementById('sessions-count').textContent = sessions.length;
+      if (!sessions.length) {
+        el.innerHTML = '<div class="empty"><div class="icon">📅</div>No upcoming sessions</div>';
+        return;
+      }
+      el.innerHTML = sessions.map(s => {
+        const d = new Date(s.scheduled_at);
+        const day = d.getDate();
+        const mon = d.toLocaleString('en', { month: 'short' });
+        const time = d.toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' });
+        return `
+          <div class="session-item">
+            <div class="session-date">
+              <div class="day">${day}</div>
+              <div class="mon">${mon}</div>
+            </div>
+            <div class="session-info">
+              <div class="title">${s.title || 'Session'}</div>
+              <div class="time">${time} · ${s.duration_mins} min</div>
+            </div>
+            <span class="status-pill status-${s.status}">${s.status}</span>
+          </div>`;
+      }).join('');
+    }
+
+    function renderHomework(items) {
+      const el = document.getElementById('hw-list');
+      document.getElementById('hw-count').textContent = items.length;
+      if (!items.length) {
+        el.innerHTML = '<div class="empty"><div class="icon">✅</div>No assignments yet</div>';
+        return;
+      }
+      const icons = { pending: '📝', submitted: '📤', graded: '⭐' };
+      el.innerHTML = items.map(h => {
+        const due = h.due_date ? new Date(h.due_date).toLocaleDateString('en', { month: 'short', day: 'numeric' }) : 'No deadline';
+        return `
+          <div class="hw-item">
+            <div class="hw-icon hw-${h.status}">${icons[h.status] || '📝'}</div>
+            <div class="hw-info">
+              <div class="title">${h.title}</div>
+              <div class="due">Due: ${due} ${h.grade ? '· Grade: ' + h.grade : ''}</div>
+            </div>
+            <span class="status-pill status-${h.status === 'pending' ? 'scheduled' : h.status === 'submitted' ? 'scheduled' : 'completed'}">${h.status}</span>
+          </div>`;
+      }).join('');
+    }
+
+    function renderMaterials(items) {
+      const el = document.getElementById('materials-list');
+      document.getElementById('materials-count').textContent = items.length;
+      if (!items.length) {
+        el.innerHTML = '<div class="empty"><div class="icon">📚</div>No materials uploaded yet</div>';
+        return;
+      }
+      el.innerHTML = items.map(m => `
+        <a class="material-item" href="${m.file_url || '#'}" target="${m.file_url ? '_blank' : '_self'}">
+          <div class="mat-icon">📄</div>
+          <div class="mat-info">
+            <div class="mat-title">${m.title}</div>
+            <div class="mat-desc">${m.description || m.level || 'Course material'}</div>
+          </div>
+          ${m.file_url ? '<span class="mat-download">↓ Download</span>' : ''}
+        </a>`).join('');
+    }
+
+    async function signOut() {
+      await supabase.auth.signOut();
+      window.location.href = 'login.html';
+    }
+
+    function toggleLang() {
+      isAr = !isAr;
+      document.body.classList.toggle('ar');
+      document.documentElement.lang = isAr ? 'ar' : 'en';
+    }
+  </script>
+</body>
+</html>

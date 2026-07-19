@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NTH Academy — Admin Panel</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --navy: #1a1f5e; --blue: #3b5bdb; --blue-light: #4c6ef5; --blue-bg: #eef2ff;
+      --yellow: #ffd43b; --yellow-bg: #fff9db; --white: #fff;
+      --gray-50: #f8f9fa; --gray-100: #f1f3f5; --gray-200: #e9ecef;
+      --gray-400: #adb5bd; --gray-600: #495057; --gray-800: #212529;
+      --green: #2f9e44; --green-bg: #ebfbee; --red: #e03131; --red-bg: #fff5f5;
+      --orange: #e8590c; --orange-bg: #fff4e6;
+    }
+    body { font-family: 'Inter', sans-serif; background: var(--gray-50); color: var(--gray-800); min-height: 100vh; }
+
+    /* NAV */
+    nav {
+      background: var(--navy); padding: 0 28px; height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 200; box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+    .nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+    .logo-icon { width: 34px; height: 34px; background: var(--yellow); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--navy); font-weight: 800; font-size: 13px; }
+    .logo-name { color: var(--white); font-weight: 700; font-size: 16px; }
+    .nav-tag { background: var(--yellow); color: var(--navy); padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; margin-left: 6px; }
+    .btn-nav { background: transparent; border: 1.5px solid rgba(255,255,255,0.3); color: rgba(255,255,255,0.85); padding: 5px 13px; border-radius: 8px; font-size: 13px; font-family: inherit; cursor: pointer; transition: all 0.2s; }
+    .btn-nav:hover { background: rgba(255,255,255,0.1); color: var(--white); }
+
+    /* LAYOUT */
+    .layout { display: flex; min-height: calc(100vh - 60px); }
+
+    /* SIDEBAR */
+    .sidebar {
+      width: 220px; background: var(--white); border-right: 1px solid var(--gray-200);
+      padding: 20px 0; position: sticky; top: 60px; height: calc(100vh - 60px);
+      overflow-y: auto; flex-shrink: 0;
+    }
+    .sidebar-section { padding: 0 12px; margin-bottom: 6px; }
+    .sidebar-label { font-size: 11px; font-weight: 600; color: var(--gray-400); text-transform: uppercase; letter-spacing: 0.6px; padding: 8px 8px 4px; }
+    .nav-item {
+      display: flex; align-items: center; gap: 10px; padding: 9px 12px;
+      border-radius: 8px; font-size: 14px; font-weight: 500; color: var(--gray-600);
+      cursor: pointer; transition: all 0.15s; user-select: none;
+    }
+    .nav-item:hover { background: var(--gray-50); color: var(--navy); }
+    .nav-item.active { background: var(--blue-bg); color: var(--blue); }
+    .nav-item .icon { font-size: 16px; width: 20px; text-align: center; }
+    .nav-item .badge { margin-left: auto; background: var(--blue); color: var(--white); border-radius: 10px; padding: 1px 7px; font-size: 11px; }
+
+    /* MAIN */
+    .main { flex: 1; padding: 28px 28px 48px; overflow-x: hidden; }
+
+    /* PAGE SECTIONS */
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* PAGE HEADER */
+    .page-header { margin-bottom: 24px; }
+    .page-header h1 { font-size: 20px; font-weight: 700; color: var(--navy); margin-bottom: 4px; }
+    .page-header p { font-size: 14px; color: var(--gray-600); }
+
+    /* STATS */
+    .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+    .stat-card { background: var(--white); border-radius: 12px; padding: 18px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+    .stat-label { font-size: 12px; font-weight: 500; color: var(--gray-600); text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 6px; }
+    .stat-value { font-size: 26px; font-weight: 700; color: var(--navy); }
+
+    /* TOOLBAR */
+    .toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+    .search-box { flex: 1; max-width: 320px; position: relative; }
+    .search-box input { width: 100%; padding: 9px 12px 9px 36px; border: 1.5px solid var(--gray-200); border-radius: 10px; font-size: 14px; font-family: inherit; outline: none; background: var(--white); color: var(--gray-800); transition: border-color 0.2s; }
+    .search-box input:focus { border-color: var(--blue); }
+    .search-box::before { content: '🔍'; position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font-size: 13px; }
+
+    /* BUTTONS */
+    .btn-primary { background: var(--blue); color: var(--white); border: none; padding: 9px 18px; border-radius: 10px; font-size: 14px; font-weight: 600; font-family: inherit; cursor: pointer; transition: background 0.2s; }
+    .btn-primary:hover { background: var(--blue-light); }
+    .btn-sm { padding: 5px 12px; font-size: 13px; border-radius: 7px; }
+    .btn-danger { background: var(--red-bg); color: var(--red); border: none; padding: 5px 12px; border-radius: 7px; font-size: 13px; font-weight: 500; font-family: inherit; cursor: pointer; }
+    .btn-ghost { background: var(--gray-100); color: var(--gray-600); border: none; padding: 5px 12px; border-radius: 7px; font-size: 13px; font-weight: 500; font-family: inherit; cursor: pointer; }
+    .btn-ghost:hover { background: var(--gray-200); }
+
+    /* TABLE */
+    .table-wrap { background: var(--white); border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; }
+    thead { background: var(--gray-50); }
+    th { padding: 11px 16px; text-align: left; font-size: 12px; font-weight: 600; color: var(--gray-600); text-transform: uppercase; letter-spacing: 0.4px; border-bottom: 1px solid var(--gray-200); }
+    td { padding: 13px 16px; font-size: 14px; border-bottom: 1px solid var(--gray-100); vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--gray-50); }
+    .avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--blue-bg); color: var(--blue); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; }
+
+    /* PILLS */
+    .pill { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+    .pill-blue { background: var(--blue-bg); color: var(--blue); }
+    .pill-green { background: var(--green-bg); color: var(--green); }
+    .pill-yellow { background: var(--yellow-bg); color: #7d6608; }
+    .pill-gray { background: var(--gray-100); color: var(--gray-600); }
+
+    /* MODAL OVERLAY */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+      z-index: 500; align-items: center; justify-content: center; padding: 20px;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal { background: var(--white); border-radius: 16px; padding: 32px; width: 100%; max-width: 480px; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
+    .modal h2 { font-size: 18px; font-weight: 700; color: var(--navy); margin-bottom: 20px; }
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-size: 13px; font-weight: 500; color: var(--gray-800); margin-bottom: 5px; }
+    .form-group input, .form-group select { width: 100%; padding: 10px 12px; border: 1.5px solid var(--gray-200); border-radius: 9px; font-size: 14px; font-family: inherit; color: var(--gray-800); outline: none; transition: border-color 0.2s; background: var(--white); }
+    .form-group input:focus, .form-group select:focus { border-color: var(--blue); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px; }
+    .alert { padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 14px; display: none; }
+    .alert.error { background: var(--red-bg); color: var(--red); border: 1px solid #ffc9c9; display: block; }
+    .alert.success { background: var(--green-bg); color: var(--green); border: 1px solid #b2f2bb; display: block; }
+
+    /* LOADING */
+    .loading { text-align: center; padding: 40px; color: var(--gray-400); font-size: 14px; }
+    .spinner { display: inline-block; width: 24px; height: 24px; border: 3px solid var(--gray-200); border-top-color: var(--blue); border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 8px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .empty { text-align: center; padding: 40px; color: var(--gray-400); font-size: 14px; }
+    .empty .icon { font-size: 36px; display: block; margin-bottom: 8px; }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div style="display:flex;align-items:center;gap:6px;">
+    <a href="index.html" class="nav-logo">
+      <div class="logo-icon">NTH</div>
+      <span class="logo-name">NTH Academy</span>
+    </a>
+    <span class="nav-tag">Admin</span>
+  </div>
+  <button class="btn-nav" onclick="signOut()">Sign out</button>
+</nav>
+
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Overview</div>
+      <div class="nav-item active" onclick="showPage('dashboard')"><span class="icon">📊</span> Dashboard</div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">People</div>
+      <div class="nav-item" onclick="showPage('instructors')"><span class="icon">👨‍🏫</span> Instructors</div>
+      <div class="nav-item" onclick="showPage('students')"><span class="icon">🎓</span> Students <span class="badge" id="students-badge">0</span></div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Activity</div>
+      <div class="nav-item" onclick="showPage('sessions')"><span class="icon">📅</span> Sessions</div>
+      <div class="nav-item" onclick="showPage('homework')"><span class="icon">📝</span> Homework</div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main">
+
+    <!-- DASHBOARD PAGE -->
+    <div id="page-dashboard" class="page active">
+      <div class="page-header">
+        <h1>Admin Dashboard</h1>
+        <p>Overview of NTH Academy activity</p>
+      </div>
+      <div class="stats-row">
+        <div class="stat-card"><div class="stat-label">Instructors</div><div class="stat-value" id="s-instructors">—</div></div>
+        <div class="stat-card"><div class="stat-label">Students</div><div class="stat-value" id="s-students">—</div></div>
+        <div class="stat-card"><div class="stat-label">Sessions (total)</div><div class="stat-value" id="s-sessions">—</div></div>
+        <div class="stat-card"><div class="stat-label">Homework pending</div><div class="stat-value" id="s-hw">—</div></div>
+      </div>
+
+      <div style="background:var(--white);border-radius:12px;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+        <h2 style="font-size:15px;font-weight:600;color:var(--navy);margin-bottom:16px;">Quick Actions</h2>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;">
+          <button class="btn-primary" onclick="showPage('instructors');openModal('instructor-modal')">+ Add Instructor</button>
+          <button class="btn-primary" onclick="showPage('students');openModal('student-modal')">+ Add Student</button>
+          <button class="btn-primary" onclick="showPage('sessions');openModal('session-modal')">+ Schedule Session</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- INSTRUCTORS PAGE -->
+    <div id="page-instructors" class="page">
+      <div class="page-header">
+        <h1>Instructors</h1>
+        <p>Manage instructor accounts and profiles</p>
+      </div>
+      <div class="toolbar">
+        <div class="search-box"><input type="text" placeholder="Search instructors..." id="search-instructors" oninput="filterTable('instructors-tbody', this.value)"></div>
+        <button class="btn-primary" onclick="openModal('instructor-modal')">+ Add Instructor</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Name</th><th>Email</th><th>Subject</th><th>Students</th><th>Actions</th></tr></thead>
+          <tbody id="instructors-tbody"><tr><td colspan="5" class="loading"><span class="spinner"></span>Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- STUDENTS PAGE -->
+    <div id="page-students" class="page">
+      <div class="page-header">
+        <h1>Students</h1>
+        <p>Manage student accounts and instructor assignments</p>
+      </div>
+      <div class="toolbar">
+        <div class="search-box"><input type="text" placeholder="Search students..." id="search-students" oninput="filterTable('students-tbody', this.value)"></div>
+        <button class="btn-primary" onclick="openModal('student-modal')">+ Add Student</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Name</th><th>Email</th><th>Level</th><th>Instructor</th><th>Code</th><th>Actions</th></tr></thead>
+          <tbody id="students-tbody"><tr><td colspan="6" class="loading"><span class="spinner"></span>Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- SESSIONS PAGE -->
+    <div id="page-sessions" class="page">
+      <div class="page-header">
+        <h1>Sessions</h1>
+        <p>View and schedule all sessions</p>
+      </div>
+      <div class="toolbar">
+        <div class="search-box"><input type="text" placeholder="Search sessions..."></div>
+        <button class="btn-primary" onclick="openModal('session-modal')">+ Schedule Session</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Date & Time</th><th>Title</th><th>Student</th><th>Instructor</th><th>Duration</th><th>Status</th></tr></thead>
+          <tbody id="sessions-tbody"><tr><td colspan="6" class="loading"><span class="spinner"></span>Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- HOMEWORK PAGE -->
+    <div id="page-homework" class="page">
+      <div class="page-header">
+        <h1>Homework</h1>
+        <p>Track assignment submissions across all students</p>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Title</th><th>Student</th><th>Due Date</th><th>Status</th><th>Grade</th></tr></thead>
+          <tbody id="homework-tbody"><tr><td colspan="5" class="loading"><span class="spinner"></span>Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODALS -->
+
+<!-- ADD INSTRUCTOR -->
+<div class="modal-overlay" id="instructor-modal">
+  <div class="modal">
+    <h2>Add Instructor</h2>
+    <div class="alert" id="inst-alert"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Full Name</label><input type="text" id="inst-name" placeholder="Ahmed Bahr"></div>
+      <div class="form-group"><label>Full Name (Arabic)</label><input type="text" id="inst-name-ar" placeholder="أحمد بحر"></div>
+    </div>
+    <div class="form-group"><label>Email</label><input type="email" id="inst-email" placeholder="instructor@nth.com"></div>
+    <div class="form-group"><label>Temporary Password</label><input type="text" id="inst-password" placeholder="Min 8 characters"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Subject</label><input type="text" id="inst-subject" placeholder="English, Psychology..."></div>
+      <div class="form-group"><label>Max Students</label><input type="number" id="inst-max" value="45"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closeModal('instructor-modal')">Cancel</button>
+      <button class="btn-primary" onclick="createInstructor()">Create Instructor</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD STUDENT -->
+<div class="modal-overlay" id="student-modal">
+  <div class="modal">
+    <h2>Add Student</h2>
+    <div class="alert" id="student-alert"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Full Name</label><input type="text" id="stu-name" placeholder="Sara Hassan"></div>
+      <div class="form-group"><label>Full Name (Arabic)</label><input type="text" id="stu-name-ar" placeholder="سارة حسن"></div>
+    </div>
+    <div class="form-group"><label>Email</label><input type="email" id="stu-email" placeholder="student@email.com"></div>
+    <div class="form-group"><label>Temporary Password</label><input type="text" id="stu-password" placeholder="Min 8 characters"></div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Level</label>
+        <select id="stu-level">
+          <option value="beginner">Beginner</option>
+          <option value="intermediate">Intermediate</option>
+          <option value="advanced">Advanced</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Assign to Instructor</label>
+        <select id="stu-instructor"><option value="">Select instructor...</option></select>
+      </div>
+    </div>
+    <div class="form-group"><label>Student Code (optional)</label><input type="text" id="stu-code" placeholder="Auto-generated if blank"></div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closeModal('student-modal')">Cancel</button>
+      <button class="btn-primary" onclick="createStudent()">Create Student</button>
+    </div>
+  </div>
+</div>
+
+<!-- SCHEDULE SESSION -->
+<div class="modal-overlay" id="session-modal">
+  <div class="modal">
+    <h2>Schedule Session</h2>
+    <div class="alert" id="session-alert"></div>
+    <div class="form-group"><label>Session Title</label><input type="text" id="sess-title" placeholder="e.g. SAT Prep — Week 3"></div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Instructor</label>
+        <select id="sess-instructor" onchange="loadStudentsForInstructor()"><option value="">Select instructor...</option></select>
+      </div>
+      <div class="form-group">
+        <label>Student</label>
+        <select id="sess-student"><option value="">Select student...</option></select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Date & Time</label><input type="datetime-local" id="sess-datetime"></div>
+      <div class="form-group"><label>Duration (minutes)</label><input type="number" id="sess-duration" value="60"></div>
+    </div>
+    <div class="form-group"><label>Notes (optional)</label><input type="text" id="sess-notes" placeholder="Any details for the session..."></div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closeModal('session-modal')">Cancel</button>
+      <button class="btn-primary" onclick="createSession()">Schedule</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const SUPABASE_URL = 'https://mizkuzwfjvvulkiyotle.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_6ebgjsAV5DH3u_h-iKC3jw_WagYY6Mv';
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  let allInstructors = [];
+  let allStudents = [];
+  let currentPage = 'dashboard';
+
+  // Auth guard — admin only
+  supabase.auth.getSession().then(({ data: { session } }) => {
+    if (!session) { window.location.href = 'login.html'; return; }
+    supabase.from('profiles').select('role').eq('id', session.user.id).single().then(({ data }) => {
+      if (!data || data.role !== 'admin') { window.location.href = 'login.html'; return; }
+      loadAll();
+    });
+  });
+
+  async function loadAll() {
+    await Promise.all([loadStats(), loadInstructors(), loadStudents(), loadSessions(), loadHomework()]);
+  }
+
+  async function loadStats() {
+    const [i, s, sess, hw] = await Promise.all([
+      supabase.from('instructors').select('id', { count: 'exact' }),
+      supabase.from('students').select('id', { count: 'exact' }),
+      supabase.from('sessions').select('id', { count: 'exact' }),
+      supabase.from('homework').select('id', { count: 'exact' }).eq('status', 'pending')
+    ]);
+    document.getElementById('s-instructors').textContent = i.count ?? 0;
+    document.getElementById('s-students').textContent = s.count ?? 0;
+    document.getElementById('s-sessions').textContent = sess.count ?? 0;
+    document.getElementById('s-hw').textContent = hw.count ?? 0;
+    document.getElementById('students-badge').textContent = s.count ?? 0;
+  }
+
+  async function loadInstructors() {
+    const { data } = await supabase
+      .from('instructors')
+      .select('*, profiles(full_name, email)')
+      .order('id');
+
+    allInstructors = data || [];
+    populateInstructorSelects();
+
+    const tbody = document.getElementById('instructors-tbody');
+    if (!allInstructors.length) {
+      tbody.innerHTML = '<tr><td colspan="5"><div class="empty"><span class="icon">👨‍🏫</span>No instructors yet. Add one above.</div></td></tr>';
+      return;
+    }
+
+    const counts = {};
+    const { data: stuData } = await supabase.from('students').select('instructor_id');
+    (stuData || []).forEach(s => { counts[s.instructor_id] = (counts[s.instructor_id] || 0) + 1; });
+
+    tbody.innerHTML = allInstructors.map(i => `
+      <tr>
+        <td><div style="display:flex;align-items:center;gap:10px;">
+          <div class="avatar">${(i.profiles?.full_name || '?')[0].toUpperCase()}</div>
+          <span>${i.profiles?.full_name || '—'}</span>
+        </div></td>
+        <td style="color:var(--gray-600)">${i.profiles?.email || '—'}</td>
+        <td><span class="pill pill-blue">${i.subject || 'General'}</span></td>
+        <td>${counts[i.id] || 0} / ${i.max_students}</td>
+        <td><button class="btn-ghost">Edit</button></td>
+      </tr>`).join('');
+  }
+
+  async function loadStudents() {
+    const { data } = await supabase
+      .from('students')
+      .select('*, profiles(full_name, email), instructors(subject, profiles(full_name))')
+      .order('enrolled_at', { ascending: false });
+
+    allStudents = data || [];
+
+    const tbody = document.getElementById('students-tbody');
+    if (!allStudents.length) {
+      tbody.innerHTML = '<tr><td colspan="6"><div class="empty"><span class="icon">🎓</span>No students yet. Add one above.</div></td></tr>';
+      return;
+    }
+
+    const levelColors = { beginner: 'pill-green', intermediate: 'pill-yellow', advanced: 'pill-blue' };
+    tbody.innerHTML = allStudents.map(s => `
+      <tr>
+        <td><div style="display:flex;align-items:center;gap:10px;">
+          <div class="avatar">${(s.profiles?.full_name || '?')[0].toUpperCase()}</div>
+          <span>${s.profiles?.full_name || '—'}</span>
+        </div></td>
+        <td style="color:var(--gray-600)">${s.profiles?.email || '—'}</td>
+        <td><span class="pill ${levelColors[s.level] || 'pill-gray'}">${s.level || '—'}</span></td>
+        <td>${s.instructors?.profiles?.full_name || '—'}</td>
+        <td><code style="font-size:12px;color:var(--gray-600)">${s.student_code || '—'}</code></td>
+        <td><button class="btn-ghost">Edit</button></td>
+      </tr>`).join('');
+  }
+
+  async function loadSessions() {
+    const { data } = await supabase
+      .from('sessions')
+      .select('*, students(profiles(full_name)), instructors(profiles(full_name))')
+      .order('scheduled_at', { ascending: false })
+      .limit(50);
+
+    const tbody = document.getElementById('sessions-tbody');
+    if (!data?.length) {
+      tbody.innerHTML = '<tr><td colspan="6"><div class="empty"><span class="icon">📅</span>No sessions scheduled yet.</div></td></tr>';
+      return;
+    }
+
+    const statusColors = { scheduled: 'pill-blue', completed: 'pill-green', cancelled: 'pill-gray' };
+    tbody.innerHTML = data.map(s => {
+      const dt = new Date(s.scheduled_at);
+      return `<tr>
+        <td>${dt.toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' })} ${dt.toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' })}</td>
+        <td>${s.title || 'Session'}</td>
+        <td>${s.students?.profiles?.full_name || '—'}</td>
+        <td>${s.instructors?.profiles?.full_name || '—'}</td>
+        <td>${s.duration_mins} min</td>
+        <td><span class="pill ${statusColors[s.status]}">${s.status}</span></td>
+      </tr>`;
+    }).join('');
+  }
+
+  async function loadHomework() {
+    const { data } = await supabase
+      .from('homework')
+      .select('*, students(profiles(full_name))')
+      .order('due_date')
+      .limit(50);
+
+    const tbody = document.getElementById('homework-tbody');
+    if (!data?.length) {
+      tbody.innerHTML = '<tr><td colspan="5"><div class="empty"><span class="icon">📝</span>No homework assigned yet.</div></td></tr>';
+      return;
+    }
+
+    const statusColors = { pending: 'pill-yellow', submitted: 'pill-blue', graded: 'pill-green' };
+    tbody.innerHTML = data.map(h => `
+      <tr>
+        <td>${h.title}</td>
+        <td>${h.students?.profiles?.full_name || '—'}</td>
+        <td>${h.due_date ? new Date(h.due_date).toLocaleDateString('en', { month: 'short', day: 'numeric' }) : '—'}</td>
+        <td><span class="pill ${statusColors[h.status]}">${h.status}</span></td>
+        <td>${h.grade || '—'}</td>
+      </tr>`).join('');
+  }
+
+  function populateInstructorSelects() {
+    const options = allInstructors.map(i => `<option value="${i.id}">${i.profiles?.full_name || i.id}</option>`).join('');
+    document.getElementById('stu-instructor').innerHTML = '<option value="">Select instructor...</option>' + options;
+    document.getElementById('sess-instructor').innerHTML = '<option value="">Select instructor...</option>' + options;
+  }
+
+  async function loadStudentsForInstructor() {
+    const instructorId = document.getElementById('sess-instructor').value;
+    const sel = document.getElementById('sess-student');
+    if (!instructorId) { sel.innerHTML = '<option value="">Select student...</option>'; return; }
+    const filtered = allStudents.filter(s => s.instructor_id === instructorId);
+    sel.innerHTML = '<option value="">Select student...</option>' + filtered.map(s => `<option value="${s.id}">${s.profiles?.full_name || s.id}</option>`).join('');
+  }
+
+  async function createInstructor() {
+    const name = document.getElementById('inst-name').value.trim();
+    const nameAr = document.getElementById('inst-name-ar').value.trim();
+    const email = document.getElementById('inst-email').value.trim();
+    const password = document.getElementById('inst-password').value;
+    const subject = document.getElementById('inst-subject').value.trim();
+    const max = parseInt(document.getElementById('inst-max').value) || 45;
+    const alertEl = document.getElementById('inst-alert');
+    alertEl.className = 'alert';
+
+    if (!name || !email || !password) { alertEl.className = 'alert error'; alertEl.textContent = 'Name, email and password are required.'; return; }
+
+    // Create auth user with instructor role
+    const { data: authData, error: authErr } = await supabase.auth.admin?.createUser
+      ? await supabase.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { role: 'instructor', full_name: name } })
+      : { data: null, error: { message: 'Admin user creation requires service role. Use Supabase dashboard to create the auth user, then this will auto-populate.' } };
+
+    if (authErr) {
+      // Fallback: show instructions
+      alertEl.className = 'alert error';
+      alertEl.textContent = 'Note: Create the auth user in Supabase Auth dashboard first, then the profile will auto-populate. Error: ' + authErr.message;
+      return;
+    }
+
+    alertEl.className = 'alert success';
+    alertEl.textContent = 'Instructor created successfully!';
+    setTimeout(() => { closeModal('instructor-modal'); loadAll(); }, 1200);
+  }
+
+  async function createStudent() {
+    const name = document.getElementById('stu-name').value.trim();
+    const email = document.getElementById('stu-email').value.trim();
+    const password = document.getElementById('stu-password').value;
+    const level = document.getElementById('stu-level').value;
+    const instructorId = document.getElementById('stu-instructor').value;
+    const code = document.getElementById('stu-code').value.trim() || 'NTH-' + Math.random().toString(36).substr(2, 6).toUpperCase();
+    const alertEl = document.getElementById('student-alert');
+    alertEl.className = 'alert';
+
+    if (!name || !email || !password) { alertEl.className = 'alert error'; alertEl.textContent = 'Name, email and password are required.'; return; }
+
+    alertEl.className = 'alert error';
+    alertEl.textContent = 'Student accounts must be created via Supabase Auth dashboard (Authentication → Users → Invite user), then assign them here. This ensures secure password setup. Student code generated: ' + code;
+  }
+
+  async function createSession() {
+    const title = document.getElementById('sess-title').value.trim();
+    const instructorId = document.getElementById('sess-instructor').value;
+    const studentId = document.getElementById('sess-student').value;
+    const dt = document.getElementById('sess-datetime').value;
+    const duration = parseInt(document.getElementById('sess-duration').value) || 60;
+    const notes = document.getElementById('sess-notes').value.trim();
+    const alertEl = document.getElementById('session-alert');
+    alertEl.className = 'alert';
+
+    if (!title || !instructorId || !studentId || !dt) { alertEl.className = 'alert error'; alertEl.textContent = 'All fields except notes are required.'; return; }
+
+    const { error } = await supabase.from('sessions').insert({
+      title, instructor_id: instructorId, student_id: studentId,
+      scheduled_at: new Date(dt).toISOString(), duration_mins: duration, notes
+    });
+
+    if (error) { alertEl.className = 'alert error'; alertEl.textContent = error.message; return; }
+
+    alertEl.className = 'alert success';
+    alertEl.textContent = 'Session scheduled!';
+    setTimeout(() => { closeModal('session-modal'); loadSessions(); }, 1000);
+  }
+
+  // NAV
+  function showPage(page) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById('page-' + page).classList.add('active');
+    event.currentTarget.classList.add('active');
+    currentPage = page;
+  }
+
+  // MODAL
+  function openModal(id) { document.getElementById(id).classList.add('open'); }
+  function closeModal(id) {
+    document.getElementById(id).classList.remove('open');
+    document.querySelectorAll('#' + id + ' .alert').forEach(a => a.className = 'alert');
+  }
+  document.querySelectorAll('.modal-overlay').forEach(m => {
+    m.addEventListener('click', e => { if (e.target === m) closeModal(m.id); });
+  });
+
+  // TABLE FILTER
+  function filterTable(tbodyId, query) {
+    const q = query.toLowerCase();
+    document.querySelectorAll(`#${tbodyId} tr`).forEach(row => {
+      row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+    });
+  }
+
+  async function signOut() { await supabase.auth.signOut(); window.location.href = 'login.html'; }
+</script>
+</body>
+</html>
