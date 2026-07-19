@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NTH Academy — Community</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --navy: #1a1f5e; --navy-dark: #12174a; --blue: #3b5bdb; --blue-light: #4c6ef5;
+      --accent: #ffd43b; --white: #ffffff; --off-white: #f8f9ff;
+      --gray-100: #f1f3f9; --gray-200: #e2e8f0; --gray-500: #64748b; --gray-700: #334155;
+      --text: #1e293b; --radius: 12px; --radius-lg: 20px;
+      --shadow: 0 4px 24px rgba(26,31,94,0.10); --shadow-lg: 0 8px 40px rgba(26,31,94,0.18);
+    }
+    html { scroll-behavior: smooth; }
+    body { font-family: 'Inter', sans-serif; color: var(--text); background: var(--off-white); line-height: 1.6; }
+    body.ar { font-family: 'Cairo', sans-serif; direction: rtl; }
+    a { text-decoration: none; color: inherit; }
+
+    /* NAV */
+    nav {
+      position: sticky; top: 0; z-index: 100; background: var(--navy);
+      padding: 0 5%; height: 68px; display: flex; align-items: center;
+      justify-content: space-between; box-shadow: 0 2px 16px rgba(0,0,0,0.2);
+    }
+    .nav-logo { display: flex; align-items: center; gap: 10px; }
+    .nav-logo-mark {
+      width: 42px; height: 42px; background: var(--white); border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 13px; color: var(--navy);
+    }
+    .nav-logo-text { color: var(--white); font-weight: 700; font-size: 16px; }
+    .nav-logo-text span { color: var(--accent); }
+    .nav-right { display: flex; align-items: center; gap: 12px; }
+    .btn { display: inline-flex; align-items: center; padding: 9px 20px; border-radius: var(--radius); font-weight: 600; font-size: 14px; cursor: pointer; border: none; font-family: inherit; transition: all 0.2s; }
+    .btn-outline { background: transparent; color: var(--white); border: 2px solid rgba(255,255,255,0.4); }
+    .btn-outline:hover { border-color: var(--white); }
+    .btn-primary { background: var(--blue); color: var(--white); }
+    .btn-primary:hover { background: var(--blue-light); }
+    .lang-toggle { display: flex; gap: 4px; background: rgba(255,255,255,0.15); border-radius: 8px; padding: 3px; }
+    .lang-toggle button { background: transparent; border: none; color: rgba(255,255,255,0.75); font-size: 13px; font-weight: 600; padding: 4px 10px; border-radius: 6px; cursor: pointer; font-family: inherit; transition: all 0.2s; }
+    .lang-toggle button.active { background: var(--white); color: var(--navy); }
+
+    /* HERO */
+    .page-hero {
+      background: linear-gradient(135deg, var(--navy-dark) 0%, var(--navy) 60%, #2a3080 100%);
+      padding: 60px 5% 50px; text-align: center;
+    }
+    .page-hero h1 { font-size: clamp(28px, 4vw, 44px); font-weight: 800; color: var(--white); margin-bottom: 12px; }
+    .page-hero h1 span { color: var(--accent); }
+    .page-hero p { font-size: 16px; color: rgba(255,255,255,0.7); max-width: 520px; margin: 0 auto; }
+
+    /* FILTERS */
+    .filters-bar { background: var(--white); padding: 20px 5%; border-bottom: 1px solid var(--gray-200); position: sticky; top: 68px; z-index: 50; }
+    .filters-inner { max-width: 1100px; margin: 0 auto; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .filter-btn {
+      background: var(--gray-100); border: 2px solid transparent; color: var(--gray-700);
+      padding: 7px 18px; border-radius: 100px; font-size: 14px; font-weight: 500;
+      cursor: pointer; transition: all 0.2s; font-family: inherit;
+    }
+    .filter-btn:hover, .filter-btn.active { background: var(--navy); color: var(--white); }
+
+    /* FEED */
+    .feed-section { padding: 48px 5%; }
+    .feed-inner { max-width: 1100px; margin: 0 auto; }
+    .feed-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 24px; }
+
+    /* POST CARD */
+    .post-card {
+      background: var(--white); border-radius: var(--radius-lg);
+      box-shadow: var(--shadow); overflow: hidden; transition: all 0.25s;
+      border: 1px solid var(--gray-200); display: flex; flex-direction: column;
+    }
+    .post-card:hover { transform: translateY(-5px); box-shadow: var(--shadow-lg); }
+    .post-thumb {
+      height: 200px; overflow: hidden; position: relative;
+      background: linear-gradient(135deg, var(--navy), var(--blue));
+      display: flex; align-items: center; justify-content: center; font-size: 52px;
+    }
+    .post-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .post-type-badge {
+      position: absolute; top: 14px; left: 14px;
+      padding: 4px 12px; border-radius: 100px; font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.8px;
+    }
+    .badge-milestone { background: var(--accent); color: var(--navy); }
+    .badge-fact { background: #e0f2fe; color: #0369a1; }
+    .badge-news { background: #f0fdf4; color: #166534; }
+    .badge-reel { background: #fdf4ff; color: #7e22ce; }
+    .post-body { padding: 20px 22px; flex: 1; display: flex; flex-direction: column; }
+    .post-meta { font-size: 12px; color: var(--gray-500); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+    .post-title { font-size: 17px; font-weight: 700; color: var(--text); margin-bottom: 8px; line-height: 1.3; }
+    .post-excerpt { font-size: 14px; color: var(--gray-500); flex: 1; line-height: 1.6; }
+    .post-footer { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--gray-200); display: flex; align-items: center; justify-content: space-between; }
+    .post-author { font-size: 13px; color: var(--gray-500); font-weight: 500; }
+    .post-link { font-size: 13px; color: var(--blue); font-weight: 600; }
+    .post-link:hover { text-decoration: underline; }
+
+    /* INSTAGRAM SECTION */
+    .instagram-section { background: var(--white); padding: 60px 5%; border-top: 1px solid var(--gray-200); }
+    .instagram-inner { max-width: 1100px; margin: 0 auto; }
+    .section-header { text-align: center; margin-bottom: 36px; }
+    .section-label { display: inline-block; background: rgba(59,91,219,0.1); color: var(--blue); font-size: 12px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; padding: 5px 14px; border-radius: 100px; margin-bottom: 12px; }
+    .section-header h2 { font-size: clamp(24px, 3vw, 34px); font-weight: 800; color: var(--navy); }
+    .instagram-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 4px; }
+    .instagram-placeholder {
+      aspect-ratio: 1; background: var(--gray-100); border-radius: 8px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 8px; color: var(--gray-500); font-size: 13px; font-weight: 500;
+      text-align: center; padding: 16px;
+    }
+    .instagram-placeholder .ig-icon { font-size: 28px; }
+    .instagram-cta { text-align: center; margin-top: 28px; }
+    .btn-instagram { display: inline-flex; align-items: center; gap: 8px; background: linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888); color: var(--white); padding: 12px 28px; border-radius: 12px; font-weight: 700; font-size: 15px; transition: opacity 0.2s; }
+    .btn-instagram:hover { opacity: 0.9; }
+
+    /* EMPTY STATE */
+    .empty-state { text-align: center; padding: 80px 20px; color: var(--gray-500); }
+    .empty-state .empty-icon { font-size: 48px; margin-bottom: 16px; }
+    .empty-state h3 { font-size: 20px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+
+    /* LOADING */
+    .loading { text-align: center; padding: 60px; color: var(--gray-500); }
+    .spinner { display: inline-block; width: 32px; height: 32px; border: 3px solid var(--gray-200); border-top-color: var(--blue); border-radius: 50%; animation: spin 0.7s linear infinite; margin-bottom: 12px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* FOOTER */
+    .page-footer { background: var(--navy-dark); padding: 28px 5%; text-align: center; color: rgba(255,255,255,0.5); font-size: 13px; }
+
+    /* LANG */
+    .en-text { display: inline; } .ar-text { display: none; }
+    body.ar .en-text { display: none; } body.ar .ar-text { display: inline; }
+
+    @media (max-width: 600px) {
+      .feed-grid { grid-template-columns: 1fr; }
+      .instagram-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="nav-logo">
+    <div class="nav-logo-mark">NTH</div>
+    <div class="nav-logo-text">NTH <span>Academy</span></div>
+  </a>
+  <div class="nav-right">
+    <div class="lang-toggle">
+      <button class="active" onclick="setLang('en')">EN</button>
+      <button onclick="setLang('ar')">AR</button>
+    </div>
+    <a href="login.html" class="btn btn-outline">
+      <span class="en-text">Sign In</span><span class="ar-text">تسجيل الدخول</span>
+    </a>
+    <a href="register.html" class="btn btn-primary">
+      <span class="en-text">Get Started</span><span class="ar-text">ابدأ الآن</span>
+    </a>
+  </div>
+</nav>
+
+<div class="page-hero">
+  <h1>
+    <span class="en-text">NTH <span>Community</span></span>
+    <span class="ar-text">مجتمع <span>NTH</span></span>
+  </h1>
+  <p>
+    <span class="en-text">Academy milestones, instructor insights, learning facts, and everything happening at NTH.</span>
+    <span class="ar-text">إنجازات الأكاديمية، رؤى المدربين، حقائق تعليمية، وكل ما يحدث في NTH.</span>
+  </p>
+</div>
+
+<div class="filters-bar">
+  <div class="filters-inner">
+    <button class="filter-btn active" onclick="filterPosts('all', this)">
+      <span class="en-text">All</span><span class="ar-text">الكل</span>
+    </button>
+    <button class="filter-btn" onclick="filterPosts('milestone', this)">
+      🏆 <span class="en-text">Milestones</span><span class="ar-text">إنجازات</span>
+    </button>
+    <button class="filter-btn" onclick="filterPosts('fact', this)">
+      💡 <span class="en-text">Did You Know</span><span class="ar-text">هل تعلم</span>
+    </button>
+    <button class="filter-btn" onclick="filterPosts('news', this)">
+      📢 <span class="en-text">News</span><span class="ar-text">أخبار</span>
+    </button>
+    <button class="filter-btn" onclick="filterPosts('reel', this)">
+      🎬 <span class="en-text">Reels</span><span class="ar-text">ريلز</span>
+    </button>
+  </div>
+</div>
+
+<section class="feed-section">
+  <div class="feed-inner">
+    <div id="loading" class="loading">
+      <div class="spinner"></div>
+      <div><span class="en-text">Loading posts…</span><span class="ar-text">جارٍ التحميل…</span></div>
+    </div>
+    <div id="feed-grid" class="feed-grid" style="display:none"></div>
+    <div id="empty-state" class="empty-state" style="display:none">
+      <div class="empty-icon">📭</div>
+      <h3><span class="en-text">No posts yet</span><span class="ar-text">لا توجد منشورات بعد</span></h3>
+      <p><span class="en-text">Check back soon — the team is working on it!</span><span class="ar-text">تابعونا قريباً!</span></p>
+    </div>
+  </div>
+</section>
+
+<section class="instagram-section">
+  <div class="instagram-inner">
+    <div class="section-header">
+      <div class="section-label">Instagram</div>
+      <h2>
+        <span class="en-text">Follow us for daily content</span>
+        <span class="ar-text">تابعونا للمحتوى اليومي</span>
+      </h2>
+    </div>
+    <div class="instagram-grid" id="ig-grid">
+      <div class="instagram-placeholder"><span class="ig-icon">📸</span><span class="en-text">Connect Instagram to show your reels here</span><span class="ar-text">اربط انستغرام لعرض الريلز</span></div>
+      <div class="instagram-placeholder"><span class="ig-icon">🎬</span><span class="en-text">Instructor tips & lessons</span><span class="ar-text">نصائح ودروس المدربين</span></div>
+      <div class="instagram-placeholder"><span class="ig-icon">🏆</span><span class="en-text">Student achievements</span><span class="ar-text">إنجازات الطلاب</span></div>
+      <div class="instagram-placeholder"><span class="ig-icon">💡</span><span class="en-text">Daily learning facts</span><span class="ar-text">حقائق تعليمية يومية</span></div>
+      <div class="instagram-placeholder"><span class="ig-icon">🎓</span><span class="en-text">Academy life</span><span class="ar-text">حياة الأكاديمية</span></div>
+    </div>
+    <div class="instagram-cta">
+      <a href="https://instagram.com/nth.academy.eg" target="_blank" class="btn-instagram">
+        📸 <span class="en-text">Follow @nth.academy.eg</span><span class="ar-text">تابع @nth.academy.eg</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<div class="page-footer">
+  © 2026 NTH Academy · <span class="en-text">Not That Hard</span><span class="ar-text">مش صعب</span> · Cairo, Egypt
+</div>
+
+<script>
+  const SUPABASE_URL = 'https://mizkuzwfjvvulkiyotle.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_6ebgjsAV5DH3u_h-iKC3jw_WagYY6Mv';
+  const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  let allPosts = [];
+
+  const TYPE_META = {
+    milestone: { label: 'Milestone', labelAr: 'إنجاز', badge: 'badge-milestone', emoji: '🏆' },
+    fact:      { label: 'Did You Know', labelAr: 'هل تعلم', badge: 'badge-fact', emoji: '💡' },
+    news:      { label: 'News', labelAr: 'أخبار', badge: 'badge-news', emoji: '📢' },
+    reel:      { label: 'Reel', labelAr: 'ريل', badge: 'badge-reel', emoji: '🎬' },
+  };
+
+  async function loadPosts() {
+    const { data, error } = await db
+      .from('community_posts')
+      .select('*')
+      .eq('published', true)
+      .order('created_at', { ascending: false });
+
+    document.getElementById('loading').style.display = 'none';
+
+    if (error || !data || data.length === 0) {
+      document.getElementById('empty-state').style.display = 'block';
+      return;
+    }
+
+    allPosts = data;
+    renderPosts(data);
+  }
+
+  function renderPosts(posts) {
+    const grid = document.getElementById('feed-grid');
+    const empty = document.getElementById('empty-state');
+    const isAr = document.body.classList.contains('ar');
+
+    if (posts.length === 0) {
+      grid.style.display = 'none';
+      empty.style.display = 'block';
+      return;
+    }
+
+    empty.style.display = 'none';
+    grid.style.display = 'grid';
+    grid.innerHTML = posts.map(post => {
+      const meta = TYPE_META[post.type] || TYPE_META.news;
+      const date = new Date(post.created_at).toLocaleDateString(isAr ? 'ar-EG' : 'en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+      const title = isAr && post.title_ar ? post.title_ar : post.title;
+      const excerpt = isAr && post.excerpt_ar ? post.excerpt_ar : post.excerpt;
+      const thumb = post.image_url
+        ? `<img src="${post.image_url}" alt="${title}" loading="lazy" />`
+        : `<span>${meta.emoji}</span>`;
+
+      return `
+        <div class="post-card" data-type="${post.type}">
+          <div class="post-thumb">
+            ${thumb}
+            <span class="post-type-badge ${meta.badge}">${isAr ? meta.labelAr : meta.label}</span>
+          </div>
+          <div class="post-body">
+            <div class="post-meta">${date}</div>
+            <div class="post-title">${title}</div>
+            <div class="post-excerpt">${excerpt || ''}</div>
+            <div class="post-footer">
+              <span class="post-author">${post.author || 'NTH Academy'}</span>
+              ${post.link_url ? `<a href="${post.link_url}" target="_blank" class="post-link">${isAr ? 'اقرأ أكثر ←' : 'Read more →'}</a>` : ''}
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  function filterPosts(type, btn) {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const filtered = type === 'all' ? allPosts : allPosts.filter(p => p.type === type);
+    renderPosts(filtered);
+  }
+
+  function setLang(lang) {
+    const btns = document.querySelectorAll('.lang-toggle button');
+    if (lang === 'ar') {
+      document.body.classList.add('ar');
+      document.body.setAttribute('dir', 'rtl');
+      document.documentElement.lang = 'ar';
+      btns[0].classList.remove('active'); btns[1].classList.add('active');
+    } else {
+      document.body.classList.remove('ar');
+      document.body.setAttribute('dir', 'ltr');
+      document.documentElement.lang = 'en';
+      btns[0].classList.add('active'); btns[1].classList.remove('active');
+    }
+    renderPosts(document.querySelector('.filter-btn.active')?.dataset?.type === 'all' || !document.querySelector('.filter-btn.active')
+      ? allPosts
+      : allPosts.filter(p => p.type === document.querySelector('.filter-btn.active').dataset?.type));
+  }
+
+  loadPosts();
+</script>
+</body>
+</html>

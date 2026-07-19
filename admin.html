@@ -159,6 +159,10 @@
       <div class="nav-item" onclick="showPage('sessions')"><span class="icon">📅</span> Sessions</div>
       <div class="nav-item" onclick="showPage('homework')"><span class="icon">📝</span> Homework</div>
     </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Content</div>
+      <div class="nav-item" onclick="showPage('community')"><span class="icon">📣</span> Community</div>
+    </div>
   </aside>
 
   <!-- MAIN -->
@@ -255,6 +259,24 @@
       </div>
     </div>
 
+    <!-- COMMUNITY PAGE -->
+    <div id="page-community" class="page">
+      <div class="page-header">
+        <h1>Community Posts</h1>
+        <p>Create and manage posts shown on the homepage and community page</p>
+      </div>
+      <div class="toolbar">
+        <div class="search-box"><input type="text" placeholder="Search posts..." oninput="filterTable('community-tbody', this.value)"></div>
+        <button class="btn-primary" onclick="openModal('community-modal')">+ New Post</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Title</th><th>Type</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead>
+          <tbody id="community-tbody"><tr><td colspan="5" class="loading"><span class="spinner"></span>Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -315,6 +337,45 @@
   </div>
 </div>
 
+<!-- NEW COMMUNITY POST -->
+<div class="modal-overlay" id="community-modal">
+  <div class="modal" style="max-width:560px">
+    <h2>New Community Post</h2>
+    <div class="alert" id="community-alert"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Title (English)</label><input type="text" id="cp-title" placeholder="e.g. 300 students milestone!"></div>
+      <div class="form-group"><label>Title (Arabic)</label><input type="text" id="cp-title-ar" placeholder="مثلاً: وصلنا 300 طالب!"></div>
+    </div>
+    <div class="form-group"><label>Excerpt (English)</label><textarea id="cp-excerpt" rows="2" style="width:100%;padding:10px 12px;border:1.5px solid var(--gray-200);border-radius:9px;font-size:14px;font-family:inherit;resize:vertical;outline:none" placeholder="Short description shown on cards..."></textarea></div>
+    <div class="form-group"><label>Excerpt (Arabic)</label><textarea id="cp-excerpt-ar" rows="2" style="width:100%;padding:10px 12px;border:1.5px solid var(--gray-200);border-radius:9px;font-size:14px;font-family:inherit;resize:vertical;outline:none" placeholder="وصف قصير..."></textarea></div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Type</label>
+        <select id="cp-type">
+          <option value="news">📢 News</option>
+          <option value="milestone">🏆 Milestone</option>
+          <option value="fact">💡 Did You Know</option>
+          <option value="reel">🎬 Reel</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Status</label>
+        <select id="cp-published">
+          <option value="true">✅ Published</option>
+          <option value="false">📝 Draft</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group"><label>Image URL (optional)</label><input type="url" id="cp-image" placeholder="https://..."></div>
+    <div class="form-group"><label>Link URL (optional)</label><input type="url" id="cp-link" placeholder="https://..."></div>
+    <div class="form-group"><label>Author</label><input type="text" id="cp-author" placeholder="NTH Academy" value="NTH Academy"></div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closeModal('community-modal')">Cancel</button>
+      <button class="btn-primary" onclick="createCommunityPost()">Publish Post</button>
+    </div>
+  </div>
+</div>
+
 <!-- SCHEDULE SESSION -->
 <div class="modal-overlay" id="session-modal">
   <div class="modal">
@@ -362,7 +423,7 @@
   });
 
   async function loadAll() {
-    await Promise.all([loadStats(), loadInstructors(), loadStudents(), loadSessions(), loadHomework()]);
+    await Promise.all([loadStats(), loadInstructors(), loadStudents(), loadSessions(), loadHomework(), loadCommunity()]);
   }
 
   async function loadStats() {
@@ -602,6 +663,71 @@
   }
 
   async function signOut() { await db.auth.signOut(); window.location.href = 'login.html'; }
+
+  // COMMUNITY
+  async function loadCommunity() {
+    const { data } = await db
+      .from('community_posts')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    const tbody = document.getElementById('community-tbody');
+    if (!data?.length) {
+      tbody.innerHTML = '<tr><td colspan="5"><div class="empty"><span class="icon">📣</span>No posts yet. Create one above.</div></td></tr>';
+      return;
+    }
+
+    const typeEmoji = { milestone: '🏆', fact: '💡', news: '📢', reel: '🎬' };
+    tbody.innerHTML = data.map(p => `
+      <tr>
+        <td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.title}</td>
+        <td>${typeEmoji[p.type] || ''} ${p.type}</td>
+        <td><span class="pill ${p.published ? 'pill-green' : 'pill-gray'}">${p.published ? 'Published' : 'Draft'}</span></td>
+        <td style="color:var(--gray-600);font-size:13px">${new Date(p.created_at).toLocaleDateString('en', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
+        <td style="display:flex;gap:6px">
+          <button class="btn-ghost" onclick="togglePublish('${p.id}', ${p.published})">${p.published ? 'Unpublish' : 'Publish'}</button>
+          <button class="btn-danger" onclick="deletePost('${p.id}')">Delete</button>
+        </td>
+      </tr>`).join('');
+  }
+
+  async function createCommunityPost() {
+    const title = document.getElementById('cp-title').value.trim();
+    const titleAr = document.getElementById('cp-title-ar').value.trim();
+    const excerpt = document.getElementById('cp-excerpt').value.trim();
+    const excerptAr = document.getElementById('cp-excerpt-ar').value.trim();
+    const type = document.getElementById('cp-type').value;
+    const published = document.getElementById('cp-published').value === 'true';
+    const imageUrl = document.getElementById('cp-image').value.trim() || null;
+    const linkUrl = document.getElementById('cp-link').value.trim() || null;
+    const author = document.getElementById('cp-author').value.trim() || 'NTH Academy';
+    const alertEl = document.getElementById('community-alert');
+    alertEl.className = 'alert';
+
+    if (!title) { alertEl.className = 'alert error'; alertEl.textContent = 'Title is required.'; return; }
+
+    const { error } = await db.from('community_posts').insert({
+      title, title_ar: titleAr || null, excerpt: excerpt || null, excerpt_ar: excerptAr || null,
+      type, published, image_url: imageUrl, link_url: linkUrl, author
+    });
+
+    if (error) { alertEl.className = 'alert error'; alertEl.textContent = error.message; return; }
+
+    alertEl.className = 'alert success';
+    alertEl.textContent = 'Post created!';
+    setTimeout(() => { closeModal('community-modal'); loadCommunity(); }, 900);
+  }
+
+  async function togglePublish(id, current) {
+    await db.from('community_posts').update({ published: !current }).eq('id', id);
+    loadCommunity();
+  }
+
+  async function deletePost(id) {
+    if (!confirm('Delete this post?')) return;
+    await db.from('community_posts').delete().eq('id', id);
+    loadCommunity();
+  }
 </script>
 </body>
 </html>

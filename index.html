@@ -961,6 +961,49 @@
       .nav-right .btn { display: none; }
     }
 
+    /* ─── COMMUNITY STRIP ─── */
+    .community-strip {
+      background: linear-gradient(135deg, var(--navy-dark) 0%, var(--navy) 100%);
+      padding: 60px 5%;
+    }
+    .community-strip-inner { max-width: 1100px; margin: 0 auto; }
+    .community-strip-header {
+      display: flex; align-items: flex-end; justify-content: space-between;
+      margin-bottom: 32px; flex-wrap: wrap; gap: 16px;
+    }
+    .community-view-all { font-size: 14px; padding: 9px 20px; white-space: nowrap; }
+    .community-scroll-track { overflow-x: auto; padding-bottom: 12px; cursor: grab; }
+    .community-scroll-track:active { cursor: grabbing; }
+    .community-scroll-track::-webkit-scrollbar { height: 4px; }
+    .community-scroll-track::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius: 4px; }
+    .community-scroll-track::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
+    .community-scroll { display: flex; gap: 18px; width: max-content; }
+    .community-loading { color: rgba(255,255,255,0.4); font-size: 14px; padding: 40px 0; }
+    .community-card {
+      width: 280px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 16px; overflow: hidden; flex-shrink: 0;
+      transition: transform 0.2s, background 0.2s; display: flex; flex-direction: column;
+    }
+    .community-card:hover { transform: translateY(-4px); background: rgba(255,255,255,0.11); }
+    .community-card-thumb {
+      height: 140px; background: linear-gradient(135deg, rgba(59,91,219,0.4), rgba(26,31,94,0.8));
+      display: flex; align-items: center; justify-content: center; font-size: 40px;
+      position: relative; overflow: hidden;
+    }
+    .community-card-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .community-card-badge {
+      position: absolute; top: 10px; left: 10px; padding: 3px 10px; border-radius: 100px;
+      font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px;
+    }
+    .community-card-body { padding: 16px 18px; flex: 1; }
+    .community-card-date { font-size: 11px; color: rgba(255,255,255,0.4); margin-bottom: 6px; }
+    .community-card-title { font-size: 14px; font-weight: 700; color: var(--white); line-height: 1.4; }
+    .community-card-excerpt { font-size: 13px; color: rgba(255,255,255,0.55); margin-top: 6px; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .community-empty {
+      color: rgba(255,255,255,0.4); font-size: 14px; padding: 40px 0; text-align: center;
+    }
+    .community-empty a { color: var(--accent); }
+
     /* ─── AR OVERRIDES ─── */
     body.ar .hero-card:hover { transform: translateX(4px); }
     body.ar .hero-badge, body.ar .hero h1, body.ar .hero p { text-align: right; }
@@ -995,6 +1038,7 @@
     <li><a href="#courses"><span class="en-text">Courses</span><span class="ar-text">الكورسات</span></a></li>
     <li><a href="#instructors"><span class="en-text">Instructors</span><span class="ar-text">المدربون</span></a></li>
     <li><a href="#about"><span class="en-text">About</span><span class="ar-text">عننا</span></a></li>
+    <li><a href="community.html"><span class="en-text">Community</span><span class="ar-text">المجتمع</span></a></li>
     <li><a href="#contact"><span class="en-text">Contact</span><span class="ar-text">تواصل معنا</span></a></li>
   </ul>
 
@@ -1020,6 +1064,7 @@
   <a href="#courses" onclick="toggleMobileMenu()"><span class="en-text">Courses</span><span class="ar-text">الكورسات</span></a>
   <a href="#instructors" onclick="toggleMobileMenu()"><span class="en-text">Instructors</span><span class="ar-text">المدربون</span></a>
   <a href="#about" onclick="toggleMobileMenu()"><span class="en-text">About</span><span class="ar-text">عننا</span></a>
+  <a href="community.html" onclick="toggleMobileMenu()"><span class="en-text">Community</span><span class="ar-text">المجتمع</span></a>
   <a href="#contact" onclick="toggleMobileMenu()"><span class="en-text">Contact</span><span class="ar-text">تواصل معنا</span></a>
   <a href="login.html" class="mobile-menu-signin"><span class="en-text">Sign In</span><span class="ar-text">تسجيل الدخول</span></a>
   <a href="register.html" class="mobile-menu-register"><span class="en-text">Get Started</span><span class="ar-text">ابدأ الآن</span></a>
@@ -1660,6 +1705,34 @@
 </section>
 
 
+<!-- ═══════════════════════════════ COMMUNITY STRIP ═════════════════ -->
+<section class="community-strip" id="community">
+  <div class="community-strip-inner">
+    <div class="community-strip-header">
+      <div>
+        <div class="section-label" style="background:rgba(255,212,59,0.15);color:var(--accent);margin-bottom:10px">
+          <span class="en-text">Community</span><span class="ar-text">المجتمع</span>
+        </div>
+        <h2 style="font-size:clamp(22px,3vw,32px);font-weight:800;color:var(--white)">
+          <span class="en-text">What's happening at NTH</span>
+          <span class="ar-text">أحدث أخبار NTH</span>
+        </h2>
+      </div>
+      <a href="community.html" class="btn btn-outline community-view-all">
+        <span class="en-text">View All →</span><span class="ar-text">عرض الكل ←</span>
+      </a>
+    </div>
+    <div class="community-scroll-track">
+      <div class="community-scroll" id="community-scroll">
+        <div class="community-loading">
+          <span class="en-text">Loading…</span><span class="ar-text">جارٍ التحميل…</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
 <!-- ═══════════════════════════════ FOOTER ═══════════════════════════ -->
 <footer>
   <div class="footer-inner">
@@ -1714,6 +1787,9 @@
   </div>
 </footer>
 
+
+<!-- Supabase -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <!-- ═══════════════════════════════ JS ═══════════════════════════════ -->
 <script>
@@ -1770,6 +1846,61 @@
 
     window.open('https://wa.me/19028307243?text=' + encodeURIComponent(text.trim()), '_blank');
   }
+
+  // Community strip
+  (async () => {
+    const SUPABASE_URL = 'https://mizkuzwfjvvulkiyotle.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_6ebgjsAV5DH3u_h-iKC3jw_WagYY6Mv';
+    const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const TYPE_META = {
+      milestone: { label: 'Milestone', labelAr: 'إنجاز', bg: '#ffd43b', color: '#1a1f5e', emoji: '🏆' },
+      fact:      { label: 'Did You Know', labelAr: 'هل تعلم', bg: '#e0f2fe', color: '#0369a1', emoji: '💡' },
+      news:      { label: 'News', labelAr: 'أخبار', bg: '#f0fdf4', color: '#166534', emoji: '📢' },
+      reel:      { label: 'Reel', labelAr: 'ريل', bg: '#fdf4ff', color: '#7e22ce', emoji: '🎬' },
+    };
+    const { data } = await db
+      .from('community_posts')
+      .select('*')
+      .eq('published', true)
+      .order('created_at', { ascending: false })
+      .limit(6);
+
+    const scroll = document.getElementById('community-scroll');
+    const isAr = document.body.classList.contains('ar');
+
+    if (!data || data.length === 0) {
+      scroll.innerHTML = `<div class="community-empty"><span class="en-text">No posts yet — <a href="community.html">visit the community page</a>.</span><span class="ar-text">لا توجد منشورات بعد — <a href="community.html">زيارة صفحة المجتمع</a>.</span></div>`;
+      return;
+    }
+
+    scroll.innerHTML = data.map(post => {
+      const meta = TYPE_META[post.type] || TYPE_META.news;
+      const date = new Date(post.created_at).toLocaleDateString(isAr ? 'ar-EG' : 'en-GB', { day: 'numeric', month: 'short' });
+      const title = isAr && post.title_ar ? post.title_ar : post.title;
+      const excerpt = isAr && post.excerpt_ar ? post.excerpt_ar : (post.excerpt || '');
+      const thumb = post.image_url ? `<img src="${post.image_url}" alt="${title}" loading="lazy">` : `<span>${meta.emoji}</span>`;
+      return `
+        <a href="community.html" class="community-card" style="text-decoration:none">
+          <div class="community-card-thumb">
+            ${thumb}
+            <span class="community-card-badge" style="background:${meta.bg};color:${meta.color}">${isAr ? meta.labelAr : meta.label}</span>
+          </div>
+          <div class="community-card-body">
+            <div class="community-card-date">${date}</div>
+            <div class="community-card-title">${title}</div>
+            <div class="community-card-excerpt">${excerpt}</div>
+          </div>
+        </a>`;
+    }).join('');
+
+    // Drag-to-scroll
+    const track = scroll.parentElement;
+    let isDown = false, startX, scrollLeft;
+    track.addEventListener('mousedown', e => { isDown = true; startX = e.pageX - track.offsetLeft; scrollLeft = track.scrollLeft; });
+    track.addEventListener('mouseleave', () => isDown = false);
+    track.addEventListener('mouseup', () => isDown = false);
+    track.addEventListener('mousemove', e => { if (!isDown) return; e.preventDefault(); track.scrollLeft = scrollLeft - (e.pageX - track.offsetLeft - startX); });
+  })();
 
   // Smooth nav active state
   const sections = document.querySelectorAll('section[id], div[id]');
