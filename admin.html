@@ -380,7 +380,7 @@
   }
 
   async function loadInstructors() {
-    const { data } = await supabase
+    const { data } = await db
       .from('instructors')
       .select('*, profiles(full_name, email)')
       .order('id');
@@ -412,7 +412,7 @@
   }
 
   async function loadStudents() {
-    const { data } = await supabase
+    const { data } = await db
       .from('students')
       .select('*, profiles(full_name, email), instructors(subject, profiles(full_name))')
       .order('enrolled_at', { ascending: false });
@@ -441,7 +441,7 @@
   }
 
   async function loadSessions() {
-    const { data } = await supabase
+    const { data } = await db
       .from('sessions')
       .select('*, students(profiles(full_name)), instructors(profiles(full_name))')
       .order('scheduled_at', { ascending: false })
@@ -468,7 +468,7 @@
   }
 
   async function loadHomework() {
-    const { data } = await supabase
+    const { data } = await db
       .from('homework')
       .select('*, students(profiles(full_name))')
       .order('due_date')

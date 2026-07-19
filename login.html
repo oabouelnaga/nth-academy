@@ -359,7 +359,7 @@
     });
 
     async function redirectToDashboard(user) {
-      const { data: profile } = await supabase
+      const { data: profile } = await db
         .from('profiles')
         .select('role')
         .eq('id', user.id)
