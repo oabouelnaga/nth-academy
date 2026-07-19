@@ -14,6 +14,8 @@ Education academy based in Egypt. Student portal built as a static site on GitHu
 
 GitHub Pages from `main` branch. Deploy = commit + push (or upload via GitHub web UI). Pages rebuilds in ~30 seconds after each push.
 
+Custom domain `nth-academy.org` is live, DNS verified, and HTTPS enforced as of 2026-07-20.
+
 **Egypt network note:** GitHub Pages (github.io) is accessible from Egypt. Netlify and Cloudflare have been blocked since ~June 2026. Do not migrate hosting there.
 
 ## Supabase
@@ -64,11 +66,14 @@ const { data } = await db
 
 | File | Status | Notes |
 |---|---|---|
-| `index.html` | ✅ Done | Landing/marketing page |
+| `index.html` | ✅ Done | Landing/marketing page + community strip |
 | `login.html` | ✅ Done | Auth with role-based redirect → dashboard / instructor / admin |
+| `register.html` | ✅ Done | Student self-registration |
+| `set-password.html` | ✅ Done | Password set page for invite + reset email links |
 | `dashboard.html` | ✅ Done | Student dashboard — sessions, homework, materials, grades |
-| `admin.html` | ✅ Done | Admin panel |
+| `admin.html` | ✅ Done | Admin panel + community post management |
 | `instructor.html` | ✅ Done | Instructor dashboard — students, sessions, upload materials, assign/grade homework |
+| `community.html` | ✅ Done | Public community feed — posts from Supabase + Instagram section |
 
 ## Role-based routing (login.html)
 
