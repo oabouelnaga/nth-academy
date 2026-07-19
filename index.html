@@ -908,6 +908,59 @@
       .hero-stats { flex-direction: column; gap: 16px; }
     }
 
+    /* ─── MOBILE MENU ─── */
+    .mobile-menu-btn {
+      display: none;
+      background: transparent;
+      border: 2px solid rgba(255,255,255,0.4);
+      color: var(--white);
+      font-size: 18px;
+      width: 38px;
+      height: 38px;
+      border-radius: 8px;
+      cursor: pointer;
+      align-items: center;
+      justify-content: center;
+    }
+    .mobile-menu {
+      display: none;
+      flex-direction: column;
+      background: var(--navy-dark);
+      padding: 16px 5%;
+      gap: 4px;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      position: sticky;
+      top: 68px;
+      z-index: 99;
+    }
+    .mobile-menu.open { display: flex; }
+    .mobile-menu a {
+      color: rgba(255,255,255,0.8);
+      font-size: 15px;
+      font-weight: 500;
+      padding: 12px 8px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      transition: color 0.2s;
+    }
+    .mobile-menu a:hover { color: var(--white); }
+    .mobile-menu-signin {
+      margin-top: 8px;
+      border: 1px solid rgba(255,255,255,0.3) !important;
+      border-radius: 8px;
+      text-align: center;
+    }
+    .mobile-menu-register {
+      background: var(--blue);
+      color: var(--white) !important;
+      border-radius: 8px;
+      text-align: center;
+      font-weight: 600 !important;
+    }
+    @media (max-width: 600px) {
+      .mobile-menu-btn { display: flex; }
+      .nav-right .btn { display: none; }
+    }
+
     /* ─── AR OVERRIDES ─── */
     body.ar .hero-card:hover { transform: translateX(4px); }
     body.ar .hero-badge, body.ar .hero h1, body.ar .hero p { text-align: right; }
@@ -954,12 +1007,23 @@
       <span class="en-text">Sign In</span>
       <span class="ar-text">تسجيل الدخول</span>
     </a>
-    <a href="#courses" class="btn btn-primary">
-      <span class="en-text">Browse Courses</span>
-      <span class="ar-text">اكتشف الكورسات</span>
+    <a href="register.html" class="btn btn-primary">
+      <span class="en-text">Get Started</span>
+      <span class="ar-text">ابدأ الآن</span>
     </a>
+    <button class="mobile-menu-btn" onclick="toggleMobileMenu()" aria-label="Menu">☰</button>
   </div>
 </nav>
+
+<!-- Mobile menu -->
+<div id="mobile-menu" class="mobile-menu">
+  <a href="#courses" onclick="toggleMobileMenu()"><span class="en-text">Courses</span><span class="ar-text">الكورسات</span></a>
+  <a href="#instructors" onclick="toggleMobileMenu()"><span class="en-text">Instructors</span><span class="ar-text">المدربون</span></a>
+  <a href="#about" onclick="toggleMobileMenu()"><span class="en-text">About</span><span class="ar-text">عننا</span></a>
+  <a href="#contact" onclick="toggleMobileMenu()"><span class="en-text">Contact</span><span class="ar-text">تواصل معنا</span></a>
+  <a href="login.html" class="mobile-menu-signin"><span class="en-text">Sign In</span><span class="ar-text">تسجيل الدخول</span></a>
+  <a href="register.html" class="mobile-menu-register"><span class="en-text">Get Started</span><span class="ar-text">ابدأ الآن</span></a>
+</div>
 
 
 <!-- ═══════════════════════════════ HERO ═══════════════════════════════ -->
@@ -991,7 +1055,7 @@
       </div>
       <div class="hero-stats">
         <div>
-          <div class="hero-stat-value">10K+</div>
+          <div class="hero-stat-value">300+</div>
           <div class="hero-stat-label"><span class="en-text">Students</span><span class="ar-text">طالب</span></div>
         </div>
         <div>
@@ -1443,7 +1507,7 @@
       </div>
       <div class="about-visual">
         <div class="about-stat-card">
-          <div class="stat-num">10K+</div>
+          <div class="stat-num">300+</div>
           <div class="stat-label"><span class="en-text">Students reached</span><span class="ar-text">طالب استفاد</span></div>
         </div>
         <div class="about-stat-card accent">
@@ -1653,6 +1717,11 @@
 
 <!-- ═══════════════════════════════ JS ═══════════════════════════════ -->
 <script>
+  // Mobile menu
+  function toggleMobileMenu() {
+    document.getElementById('mobile-menu').classList.toggle('open');
+  }
+
   // Language toggle
   function setLang(lang) {
     const body = document.body;
