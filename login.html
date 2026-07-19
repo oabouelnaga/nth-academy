@@ -221,8 +221,9 @@
 
     .back-home:hover { color: var(--blue); }
 
-    /* Forgot password view */
+    /* Forgot / reset password views */
     #forgot-view { display: none; }
+    #set-password-view { display: none; }
 
     .spinner {
       display: inline-block;
@@ -312,6 +313,41 @@
       </a>
     </div>
 
+    <!-- SET NEW PASSWORD VIEW (invite + password reset) -->
+    <div id="set-password-view" class="card">
+      <div class="card-header">
+        <h1>
+          <span class="en-text">Set your password</span>
+          <span class="ar-text">تعيين كلمة المرور</span>
+        </h1>
+        <p>
+          <span class="en-text">Choose a password to secure your account</span>
+          <span class="ar-text">اختر كلمة مرور لتأمين حسابك</span>
+        </p>
+      </div>
+      <div id="setpw-alert" class="alert"></div>
+      <form id="setpw-form" onsubmit="handleSetPassword(event)">
+        <div class="form-group">
+          <label>
+            <span class="en-text">New password</span>
+            <span class="ar-text">كلمة المرور الجديدة</span>
+          </label>
+          <input type="password" id="new-password" placeholder="Min 8 characters" required autocomplete="new-password" />
+        </div>
+        <div class="form-group">
+          <label>
+            <span class="en-text">Confirm password</span>
+            <span class="ar-text">تأكيد كلمة المرور</span>
+          </label>
+          <input type="password" id="confirm-password" placeholder="Repeat password" required autocomplete="new-password" />
+        </div>
+        <button type="submit" class="btn-primary" id="setpw-btn">
+          <span class="en-text">Set password & sign in</span>
+          <span class="ar-text">تعيين كلمة المرور والدخول</span>
+        </button>
+      </form>
+    </div>
+
     <!-- FORGOT PASSWORD VIEW -->
     <div id="forgot-view" class="card">
       <div class="card-header">
@@ -354,13 +390,26 @@
     const SUPABASE_KEY = 'sb_publishable_6ebgjsAV5DH3u_h-iKC3jw_WagYY6Mv';
     const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    // Check if already logged in
+    // Check if already logged in — but not if we're handling a recovery/invite token
     db.auth.getSession().then(({ data: { session } }) => {
-      if (session) redirectToDashboard(session.user);
+      if (session && !window.location.hash.includes('type=recovery') && !window.location.hash.includes('type=invite')) {
+        redirectToDashboard(session.user);
+      }
     });
 
     db.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session) redirectToDashboard(session.user);
+      if (event === 'PASSWORD_RECOVERY') {
+        // User clicked a reset/invite link — show set-password form, don't redirect
+        showSetPassword();
+      } else if (event === 'USER_UPDATED' && session) {
+        // Password was just set — now redirect to dashboard
+        redirectToDashboard(session.user);
+      } else if (event === 'SIGNED_IN' && session) {
+        // Only redirect on normal sign-in, not when showing password form
+        if (document.getElementById('set-password-view').style.display !== 'block') {
+          redirectToDashboard(session.user);
+        }
+      }
     });
 
     async function redirectToDashboard(user) {
@@ -422,6 +471,50 @@
       btn.innerHTML = document.body.classList.contains('ar')
         ? '<span class="ar-text">إرسال رابط الإعادة</span>'
         : '<span class="en-text">Send reset link</span>';
+    }
+
+    function showSetPassword() {
+      document.getElementById('login-view').style.display = 'none';
+      document.getElementById('forgot-view').style.display = 'none';
+      document.getElementById('set-password-view').style.display = 'block';
+    }
+
+    async function handleSetPassword(e) {
+      e.preventDefault();
+      const pw = document.getElementById('new-password').value;
+      const confirm = document.getElementById('confirm-password').value;
+      const btn = document.getElementById('setpw-btn');
+      const alertEl = document.getElementById('setpw-alert');
+      alertEl.className = 'alert';
+
+      if (pw.length < 8) {
+        alertEl.className = 'alert error';
+        alertEl.textContent = document.body.classList.contains('ar') ? 'كلمة المرور يجب أن تكون 8 أحرف على الأقل' : 'Password must be at least 8 characters.';
+        return;
+      }
+      if (pw !== confirm) {
+        alertEl.className = 'alert error';
+        alertEl.textContent = document.body.classList.contains('ar') ? 'كلمتا المرور غير متطابقتين' : 'Passwords do not match.';
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span>';
+
+      const { error } = await db.auth.updateUser({ password: pw });
+
+      if (error) {
+        alertEl.className = 'alert error';
+        alertEl.textContent = error.message;
+        btn.disabled = false;
+        btn.innerHTML = document.body.classList.contains('ar')
+          ? '<span class="ar-text">تعيين كلمة المرور والدخول</span>'
+          : '<span class="en-text">Set password & sign in</span>';
+        return;
+      }
+
+      alertEl.className = 'alert success';
+      alertEl.textContent = document.body.classList.contains('ar') ? 'تم! جارٍ تحويلك...' : 'Password set! Redirecting…';
     }
 
     function showForgot(e) {
