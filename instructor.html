@@ -524,6 +524,7 @@
         <span class="ar-text">مرحباً، </span>
         <strong id="nav-name">...</strong>
       </span>
+      <a href="admin.html" class="btn-nav" id="admin-back-link" style="display:none;text-decoration:none">← Admin</a>
       <button class="btn-nav" onclick="toggleLang()">عربي / EN</button>
       <button class="btn-nav" onclick="signOut()">
         <span class="en-text">Sign out</span>
@@ -768,6 +769,10 @@
       if (!profile || (profile.role !== 'instructor' && profile.role !== 'admin')) {
         window.location.href = 'login.html';
         return;
+      }
+
+      if (profile.role === 'admin') {
+        document.getElementById('admin-back-link').style.display = '';
       }
 
       loadDashboard();
