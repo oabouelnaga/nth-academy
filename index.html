@@ -950,6 +950,10 @@
       <button class="active" onclick="setLang('en')">EN</button>
       <button onclick="setLang('ar')">AR</button>
     </div>
+    <a href="login.html" class="btn btn-outline">
+      <span class="en-text">Sign In</span>
+      <span class="ar-text">تسجيل الدخول</span>
+    </a>
     <a href="#courses" class="btn btn-primary">
       <span class="en-text">Browse Courses</span>
       <span class="ar-text">اكتشف الكورسات</span>
@@ -1353,7 +1357,7 @@
 
       <div class="instructor-card">
         <div class="instructor-avatar">👩‍⚕️</div>
-        <div class="instructor-name"><span class="en-text">Clinical Psychologist</span><span class="ar-text">أخصائية نفسية</span></div>
+        <div class="instructor-name"><span class="en-text">Menna El-Shatter</span><span class="ar-text">منة الشطر</span></div>
         <div class="instructor-role"><span class="en-text">Psychology & Personal Development</span><span class="ar-text">علم النفس والتطوير الشخصي</span></div>
         <div class="instructor-bio">
           <span class="en-text">Clinical psychologist specializing in personal growth, emotional regulation, self-awareness, and interpersonal communication. Makes psychology accessible to everyone.</span>
@@ -1475,7 +1479,7 @@
       <span class="en-text">Browse All Courses</span>
       <span class="ar-text">اكتشف كل الكورسات</span>
     </a>
-    <a href="https://wa.me/20XXXXXXXXXX" target="_blank" class="btn-whatsapp">
+    <a href="https://wa.me/19028307243" target="_blank" class="btn-whatsapp">
       💬 <span class="en-text">Chat on WhatsApp</span><span class="ar-text">تحدث على واتساب</span>
     </a>
   </div>
@@ -1539,9 +1543,9 @@
           <span class="ar-text">سواء مش متأكد أي كورس الأنسب لك، أو عايز تسأل عن أسعار المجموعات — تواصل معنا. بنرد عادةً في خلال ساعات.</span>
         </p>
         <div class="contact-links">
-          <a href="https://wa.me/20XXXXXXXXXX" class="contact-link" target="_blank">
+          <a href="https://wa.me/19028307243" class="contact-link" target="_blank">
             <div class="contact-link-icon">💬</div>
-            <span>WhatsApp — +20 XXX XXX XXXX</span>
+            <span>WhatsApp — +1 902 830 7243</span>
           </a>
           <a href="https://instagram.com/nth.academy.eg" class="contact-link" target="_blank">
             <div class="contact-link-icon">📸</div>
@@ -1583,7 +1587,7 @@
           <label><span class="en-text">Message (optional)</span><span class="ar-text">رسالة (اختياري)</span></label>
           <textarea placeholder="Any questions or details..."></textarea>
         </div>
-        <button class="btn btn-accent" style="width:100%;padding:14px;font-size:15px;border-radius:12px">
+        <button onclick="sendToWhatsApp()" class="btn btn-accent" style="width:100%;padding:14px;font-size:15px;border-radius:12px">
           <span class="en-text">Send Message</span><span class="ar-text">أرسل الرسالة</span>
         </button>
       </div>
@@ -1636,11 +1640,11 @@
       </div>
     </div>
     <div class="footer-bottom">
-      <span>© 2025 NTH Academy · <span class="en-text">Not That Hard</span><span class="ar-text">مش صعب</span> · Cairo, Egypt</span>
+      <span>© 2026 NTH Academy · <span class="en-text">Not That Hard</span><span class="ar-text">مش صعب</span> · Cairo, Egypt</span>
       <div class="social-links">
         <a href="https://instagram.com/nth.academy.eg" class="social-link" target="_blank">📸</a>
         <a href="https://linkedin.com/company/nthacademy" class="social-link" target="_blank">💼</a>
-        <a href="https://wa.me/20XXXXXXXXXX" class="social-link" target="_blank">💬</a>
+        <a href="https://wa.me/19028307243" class="social-link" target="_blank">💬</a>
       </div>
     </div>
   </div>
@@ -1679,6 +1683,23 @@
         card.style.display = 'none';
       }
     });
+  }
+
+  // Contact form → WhatsApp
+  function sendToWhatsApp() {
+    const name    = document.querySelector('.contact-form input[type="text"]').value.trim();
+    const phone   = document.querySelector('.contact-form input[type="tel"]').value.trim();
+    const course  = document.querySelector('.contact-form select').value;
+    const message = document.querySelector('.contact-form textarea').value.trim();
+
+    if (!name) { alert('Please enter your name.'); return; }
+
+    const isAr = document.body.classList.contains('ar');
+    let text = isAr
+      ? `مرحباً، اسمي ${name}.\nالكورس: ${course || 'غير محدد'}\nالهاتف: ${phone || 'لم يُذكر'}\n${message ? 'رسالة: ' + message : ''}`
+      : `Hi, my name is ${name}.\nCourse interest: ${course || 'Not specified'}\nPhone: ${phone || 'Not provided'}\n${message ? 'Message: ' + message : ''}`;
+
+    window.open('https://wa.me/19028307243?text=' + encodeURIComponent(text.trim()), '_blank');
   }
 
   // Smooth nav active state
