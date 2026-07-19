@@ -1588,7 +1588,7 @@
       <span class="en-text">Browse All Courses</span>
       <span class="ar-text">اكتشف كل الكورسات</span>
     </a>
-    <a href="https://wa.me/19028307243" target="_blank" class="btn-whatsapp">
+    <a href="#" target="_blank" class="btn-whatsapp">
       💬 <span class="en-text">Chat on WhatsApp</span><span class="ar-text">تحدث على واتساب</span>
     </a>
   </div>
@@ -1652,9 +1652,9 @@
           <span class="ar-text">سواء مش متأكد أي كورس الأنسب لك، أو عايز تسأل عن أسعار المجموعات — تواصل معنا. بنرد عادةً في خلال ساعات.</span>
         </p>
         <div class="contact-links">
-          <a href="https://wa.me/19028307243" class="contact-link" target="_blank">
+          <a href="#" class="contact-link" target="_blank">
             <div class="contact-link-icon">💬</div>
-            <span>WhatsApp — +1 902 830 7243</span>
+            <span>WhatsApp — coming soon</span>
           </a>
           <a href="https://instagram.com/nth.academy.eg" class="contact-link" target="_blank">
             <div class="contact-link-icon">📸</div>
@@ -1781,7 +1781,7 @@
       <div class="social-links">
         <a href="https://instagram.com/nth.academy.eg" class="social-link" target="_blank">📸</a>
         <a href="https://linkedin.com/company/nthacademy" class="social-link" target="_blank">💼</a>
-        <a href="https://wa.me/19028307243" class="social-link" target="_blank">💬</a>
+        <a href="#" class="social-link" target="_blank">💬</a>
       </div>
     </div>
   </div>
@@ -1846,7 +1846,8 @@
       ? `مرحباً، اسمي ${name}.\nالكورس: ${course || 'غير محدد'}\nالهاتف: ${phone || 'لم يُذكر'}\n${message ? 'رسالة: ' + message : ''}`
       : `Hi, my name is ${name}.\nCourse interest: ${course || 'Not specified'}\nPhone: ${phone || 'Not provided'}\n${message ? 'Message: ' + message : ''}`;
 
-    window.open('https://wa.me/19028307243?text=' + encodeURIComponent(text.trim()), '_blank');
+    // TODO: replace with real WhatsApp number when ready
+    window.open('https://wa.me/?text=' + encodeURIComponent(text.trim()), '_blank');
   }
 
   // Community strip
