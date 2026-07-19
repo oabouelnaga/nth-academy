@@ -226,7 +226,7 @@
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Name</th><th>Email</th><th>Level</th><th>Instructor</th><th>Code</th><th>Actions</th></tr></thead>
+          <thead><tr><th>Name</th><th>Email</th><th>Level</th><th>Instructor</th><th>Payment</th><th>Actions</th></tr></thead>
           <tbody id="students-tbody"><tr><td colspan="6" class="loading"><span class="spinner"></span>Loading...</td></tr></tbody>
         </table>
       </div>
@@ -492,7 +492,15 @@
     }
 
     const levelColors = { beginner: 'pill-green', intermediate: 'pill-yellow', advanced: 'pill-blue' };
-    tbody.innerHTML = allStudents.map(s => `
+    const payColors = { paid: 'pill-green', pending: 'pill-yellow', exempt: 'pill-blue' };
+    const payLabels = { paid: '✅ Paid', pending: '⏳ Pending', exempt: '🎓 Exempt' };
+    tbody.innerHTML = allStudents.map(s => {
+      const ps = s.payment_status || 'pending';
+      const actions = ps === 'paid'
+        ? `<button class="btn-ghost" onclick="setPaymentStatus('${s.id}', 'pending')">↩ Unpay</button>`
+        : `<button class="btn-primary" style="padding:4px 12px;font-size:12px" onclick="setPaymentStatus('${s.id}', 'paid')">Mark Paid</button>
+           <button class="btn-ghost" onclick="setPaymentStatus('${s.id}', 'exempt')">Exempt</button>`;
+      return `
       <tr>
         <td><div style="display:flex;align-items:center;gap:10px;">
           <div class="avatar">${(s.profiles?.full_name || '?')[0].toUpperCase()}</div>
@@ -501,9 +509,16 @@
         <td style="color:var(--gray-600)">${s.profiles?.email || '—'}</td>
         <td><span class="pill ${levelColors[s.level] || 'pill-gray'}">${s.level || '—'}</span></td>
         <td>${s.instructors?.profiles?.full_name || '—'}</td>
-        <td><code style="font-size:12px;color:var(--gray-600)">${s.student_code || '—'}</code></td>
-        <td><button class="btn-ghost">Edit</button></td>
-      </tr>`).join('');
+        <td><span class="pill ${payColors[ps]}">${payLabels[ps]}</span></td>
+        <td style="display:flex;gap:6px;flex-wrap:wrap">${actions}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  async function setPaymentStatus(studentId, status) {
+    const { error } = await db.from('students').update({ payment_status: status }).eq('id', studentId);
+    if (error) { alert('Error: ' + error.message); return; }
+    await loadStudents();
   }
 
   async function loadSessions() {

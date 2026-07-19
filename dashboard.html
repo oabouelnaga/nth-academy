@@ -363,6 +363,31 @@
 
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    /* PAYMENT BANNER */
+    .payment-banner {
+      background: linear-gradient(135deg, #fff4e6, #fff9db);
+      border: 1.5px solid #ffd43b;
+      border-radius: 16px;
+      padding: 24px 28px;
+      margin-bottom: 28px;
+      display: none;
+    }
+    .payment-banner.show { display: block; }
+    .payment-banner h2 { font-size: 17px; font-weight: 700; color: #864d0e; margin-bottom: 6px; }
+    .payment-banner p { font-size: 14px; color: #6b4a0b; margin-bottom: 18px; }
+    .payment-methods { display: flex; gap: 12px; flex-wrap: wrap; }
+    .pay-method {
+      background: var(--white);
+      border: 1.5px solid #ffe066;
+      border-radius: 12px;
+      padding: 14px 18px;
+      flex: 1;
+      min-width: 200px;
+    }
+    .pay-method-title { font-size: 13px; font-weight: 600; color: var(--navy); margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+    .pay-method-detail { font-size: 13px; color: var(--gray-600); font-family: monospace; }
+    .pay-method-note { font-size: 11px; color: var(--gray-400); margin-top: 4px; }
+
     /* EN/AR */
     .en-text { display: inline; }
     .ar-text { display: none; }
@@ -400,6 +425,30 @@
   </nav>
 
   <div class="main">
+
+    <!-- PAYMENT BANNER (shown only when payment_status = 'pending') -->
+    <div class="payment-banner" id="payment-banner">
+      <h2>
+        <span class="en-text">⚠️ Complete your enrollment payment</span>
+        <span class="ar-text">⚠️ أكمل دفع رسوم التسجيل</span>
+      </h2>
+      <p>
+        <span class="en-text">Your spot is reserved. Please send payment using any of the methods below, then contact your instructor to confirm.</span>
+        <span class="ar-text">تم حجز مكانك. برجاء إرسال الدفع بأي من الطرق أدناه ثم تواصل مع المدرس للتأكيد.</span>
+      </p>
+      <div class="payment-methods">
+        <div class="pay-method">
+          <div class="pay-method-title">📱 <span class="en-text">Instapay</span><span class="ar-text">إنستاباي</span></div>
+          <div class="pay-method-detail" id="pay-instapay">—</div>
+          <div class="pay-method-note"><span class="en-text">Send via Instapay app or any bank app</span><span class="ar-text">أرسل عبر تطبيق إنستاباي أو أي تطبيق بنكي</span></div>
+        </div>
+        <div class="pay-method">
+          <div class="pay-method-title">📞 <span class="en-text">Vodafone Cash</span><span class="ar-text">فودافون كاش</span></div>
+          <div class="pay-method-detail" id="pay-vodafone">—</div>
+          <div class="pay-method-note"><span class="en-text">Transfer via Vodafone Cash</span><span class="ar-text">حوّل عبر فودافون كاش</span></div>
+        </div>
+      </div>
+    </div>
 
     <!-- WELCOME BANNER -->
     <div class="welcome-banner">
@@ -507,6 +556,14 @@
       document.getElementById('welcome-sub').textContent = student?.instructors?.subject
         ? `${student.instructors.subject} — ${student.instructors.profiles?.full_name || 'Your Instructor'}`
         : 'Here\'s what\'s happening with your courses today.';
+
+      // Payment banner — show only if pending
+      if (student?.payment_status === 'pending') {
+        document.getElementById('payment-banner').classList.add('show');
+        // TODO: replace with real payment details when ready
+        document.getElementById('pay-instapay').textContent = 'coming soon';
+        document.getElementById('pay-vodafone').textContent = 'coming soon';
+      }
 
       // Load data in parallel
       const [sessionsRes, hwRes, matsRes] = await Promise.all([
