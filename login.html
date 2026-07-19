@@ -460,7 +460,7 @@
       btn.innerHTML = '<span class="spinner"></span>';
 
       const { error } = await db.auth.resetPasswordForEmail(email, {
-        redirectTo: window.location.origin + '/login.html'
+        redirectTo: window.location.origin + '/set-password.html'
       });
 
       alert.className = error ? 'alert error' : 'alert success';
