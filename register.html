@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NTH Academy — Create Account</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy: #1a1f5e;
+      --blue: #3b5bdb;
+      --blue-light: #4c6ef5;
+      --yellow: #ffd43b;
+      --white: #ffffff;
+      --gray-50: #f8f9fa;
+      --gray-100: #f1f3f5;
+      --gray-400: #adb5bd;
+      --gray-600: #495057;
+      --gray-800: #212529;
+      --error: #e03131;
+      --success: #2f9e44;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--gray-50);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    body.ar { font-family: 'Cairo', sans-serif; direction: rtl; }
+
+    .container {
+      width: 100%;
+      max-width: 440px;
+    }
+
+    .logo-bar {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .logo-bar a {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+
+    .logo-icon {
+      width: 44px;
+      height: 44px;
+      background: var(--navy);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--yellow);
+      font-weight: 800;
+      font-size: 18px;
+      letter-spacing: -1px;
+    }
+
+    .logo-text {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--navy);
+    }
+
+    .logo-text span { color: var(--blue); }
+
+    .card {
+      background: var(--white);
+      border-radius: 16px;
+      padding: 40px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 8px 32px rgba(0,0,0,0.06);
+    }
+
+    .card-header {
+      margin-bottom: 28px;
+    }
+
+    .card-header h1 {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--navy);
+      margin-bottom: 6px;
+    }
+
+    .card-header p {
+      font-size: 14px;
+      color: var(--gray-600);
+    }
+
+    .lang-toggle {
+      float: right;
+      background: var(--gray-100);
+      border: none;
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--gray-600);
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    body.ar .lang-toggle { float: left; }
+    .lang-toggle:hover { background: var(--gray-400); color: var(--white); }
+
+    .form-group {
+      margin-bottom: 18px;
+    }
+
+    label {
+      display: block;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--gray-800);
+      margin-bottom: 6px;
+    }
+
+    input[type="email"],
+    input[type="password"],
+    input[type="text"] {
+      width: 100%;
+      padding: 11px 14px;
+      border: 1.5px solid #dee2e6;
+      border-radius: 10px;
+      font-size: 15px;
+      font-family: inherit;
+      color: var(--gray-800);
+      background: var(--white);
+      transition: border-color 0.2s, box-shadow 0.2s;
+      outline: none;
+    }
+
+    input:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(59, 91, 219, 0.12);
+    }
+
+    input.error { border-color: var(--error); }
+
+    .hint {
+      font-size: 12px;
+      color: var(--gray-400);
+      margin-top: 5px;
+    }
+
+    .btn-primary {
+      width: 100%;
+      padding: 13px;
+      background: var(--blue);
+      color: var(--white);
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      margin-top: 8px;
+    }
+
+    .btn-primary:hover { background: var(--blue-light); }
+    .btn-primary:active { transform: scale(0.99); }
+    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .alert {
+      padding: 12px 14px;
+      border-radius: 10px;
+      font-size: 14px;
+      margin-bottom: 18px;
+      display: none;
+    }
+
+    .alert.error { background: #fff5f5; color: var(--error); border: 1px solid #ffc9c9; display: block; }
+    .alert.success { background: #ebfbee; color: var(--success); border: 1px solid #b2f2bb; display: block; }
+
+    .divider {
+      text-align: center;
+      font-size: 13px;
+      color: var(--gray-400);
+      margin: 20px 0;
+      position: relative;
+    }
+
+    .divider::before, .divider::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      width: 42%;
+      height: 1px;
+      background: #dee2e6;
+    }
+    .divider::before { left: 0; }
+    .divider::after { right: 0; }
+
+    .signin-link {
+      display: block;
+      text-align: center;
+      font-size: 14px;
+      color: var(--gray-600);
+      text-decoration: none;
+      margin-top: 4px;
+    }
+
+    .signin-link a { color: var(--blue); text-decoration: none; font-weight: 500; }
+    .signin-link a:hover { text-decoration: underline; }
+
+    .back-home {
+      display: block;
+      text-align: center;
+      font-size: 13px;
+      color: var(--gray-600);
+      text-decoration: none;
+      margin-top: 16px;
+    }
+
+    .back-home:hover { color: var(--blue); }
+
+    /* Success state */
+    #success-view { display: none; text-align: center; }
+    #success-view .check-icon {
+      width: 64px;
+      height: 64px;
+      background: #ebfbee;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+      font-size: 28px;
+    }
+    #success-view h2 {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--navy);
+      margin-bottom: 10px;
+    }
+    #success-view p {
+      font-size: 14px;
+      color: var(--gray-600);
+      margin-bottom: 24px;
+      line-height: 1.6;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255,255,255,0.4);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .en-text { display: inline; }
+    .ar-text { display: none; }
+    body.ar .en-text { display: none; }
+    body.ar .ar-text { display: inline; }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <div class="logo-bar">
+      <a href="index.html">
+        <div class="logo-icon">NTH</div>
+        <div class="logo-text">NTH <span>Academy</span></div>
+      </a>
+    </div>
+
+    <!-- REGISTER VIEW -->
+    <div id="register-view" class="card">
+      <div class="card-header">
+        <button class="lang-toggle" onclick="toggleLang()">عربي / EN</button>
+        <h1>
+          <span class="en-text">Create your account</span>
+          <span class="ar-text">إنشاء حسابك</span>
+        </h1>
+        <p>
+          <span class="en-text">Join NTH Academy and start learning</span>
+          <span class="ar-text">انضم إلى NTH Academy وابدأ التعلم</span>
+        </p>
+      </div>
+
+      <div id="register-alert" class="alert"></div>
+
+      <form id="register-form" onsubmit="handleRegister(event)">
+        <div class="form-group">
+          <label>
+            <span class="en-text">Full name</span>
+            <span class="ar-text">الاسم الكامل</span>
+          </label>
+          <input type="text" id="full-name" placeholder="Ahmed Mohamed" required autocomplete="name">
+        </div>
+        <div class="form-group">
+          <label>
+            <span class="en-text">Email address</span>
+            <span class="ar-text">البريد الإلكتروني</span>
+          </label>
+          <input type="email" id="email" placeholder="you@example.com" required autocomplete="email">
+        </div>
+        <div class="form-group">
+          <label>
+            <span class="en-text">Password</span>
+            <span class="ar-text">كلمة المرور</span>
+          </label>
+          <input type="password" id="password" placeholder="••••••••" required autocomplete="new-password" oninput="checkPasswordStrength()">
+          <p class="hint">
+            <span class="en-text">At least 8 characters</span>
+            <span class="ar-text">8 أحرف على الأقل</span>
+          </p>
+        </div>
+        <div class="form-group">
+          <label>
+            <span class="en-text">Confirm password</span>
+            <span class="ar-text">تأكيد كلمة المرور</span>
+          </label>
+          <input type="password" id="confirm-password" placeholder="••••••••" required autocomplete="new-password">
+        </div>
+        <button type="submit" class="btn-primary" id="register-btn">
+          <span class="en-text">Create account</span>
+          <span class="ar-text">إنشاء الحساب</span>
+        </button>
+      </form>
+
+      <div class="divider">
+        <span class="en-text">or</span>
+        <span class="ar-text">أو</span>
+      </div>
+
+      <p class="signin-link">
+        <span class="en-text">Already have an account? <a href="login.html">Sign in</a></span>
+        <span class="ar-text">لديك حساب بالفعل؟ <a href="login.html">تسجيل الدخول</a></span>
+      </p>
+
+      <a href="index.html" class="back-home">
+        <span class="en-text">← Back to NTH Academy</span>
+        <span class="ar-text">العودة إلى NTH Academy ←</span>
+      </a>
+    </div>
+
+    <!-- SUCCESS VIEW -->
+    <div id="success-view" class="card">
+      <div class="check-icon">✓</div>
+      <h2>
+        <span class="en-text">Account created!</span>
+        <span class="ar-text">تم إنشاء الحساب!</span>
+      </h2>
+      <p>
+        <span class="en-text">Welcome to NTH Academy. Taking you to your dashboard…</span>
+        <span class="ar-text">مرحباً بك في NTH Academy. جارٍ توجيهك إلى لوحة التحكم…</span>
+      </p>
+    </div>
+
+  </div>
+
+  <script>
+    const SUPABASE_URL = 'https://mizkuzwfjvvulkiyotle.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_6ebgjsAV5DH3u_h-iKC3jw_WagYY6Mv';
+    const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // Redirect if already logged in
+    db.auth.getSession().then(({ data: { session } }) => {
+      if (session) window.location.href = 'dashboard.html';
+    });
+
+    function checkPasswordStrength() {
+      const pw = document.getElementById('password').value;
+      const hint = document.querySelector('#password + .hint');
+      if (!hint) return;
+      const isAr = document.body.classList.contains('ar');
+      if (pw.length === 0) {
+        hint.style.color = 'var(--gray-400)';
+      } else if (pw.length < 8) {
+        hint.style.color = 'var(--error)';
+      } else {
+        hint.style.color = 'var(--success)';
+      }
+    }
+
+    async function handleRegister(e) {
+      e.preventDefault();
+      const isAr = document.body.classList.contains('ar');
+      const btn = document.getElementById('register-btn');
+      const alertEl = document.getElementById('register-alert');
+      const fullName = document.getElementById('full-name').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const confirm = document.getElementById('confirm-password').value;
+
+      alertEl.className = 'alert';
+
+      if (password.length < 8) {
+        alertEl.className = 'alert error';
+        alertEl.textContent = isAr
+          ? 'يجب أن تكون كلمة المرور 8 أحرف على الأقل'
+          : 'Password must be at least 8 characters.';
+        return;
+      }
+
+      if (password !== confirm) {
+        alertEl.className = 'alert error';
+        alertEl.textContent = isAr
+          ? 'كلمتا المرور غير متطابقتين'
+          : 'Passwords do not match.';
+        document.getElementById('confirm-password').classList.add('error');
+        return;
+      }
+
+      document.getElementById('confirm-password').classList.remove('error');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span>';
+
+      const { data, error } = await db.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { full_name: fullName }
+        }
+      });
+
+      if (error) {
+        alertEl.className = 'alert error';
+        alertEl.textContent = error.message || (isAr ? 'حدث خطأ. حاول مرة أخرى.' : 'Something went wrong. Please try again.');
+        btn.disabled = false;
+        btn.innerHTML = isAr
+          ? '<span class="ar-text">إنشاء الحساب</span>'
+          : '<span class="en-text">Create account</span>';
+        return;
+      }
+
+      // Update the profiles row with the full name (trigger creates the row,
+      // but doesn't capture full_name from user metadata automatically)
+      if (data.user) {
+        await db
+          .from('profiles')
+          .update({ full_name: fullName })
+          .eq('id', data.user.id);
+      }
+
+      // Show success and redirect
+      document.getElementById('register-view').style.display = 'none';
+      document.getElementById('success-view').style.display = 'block';
+      setTimeout(() => { window.location.href = 'dashboard.html'; }, 2000);
+    }
+
+    function toggleLang() {
+      document.body.classList.toggle('ar');
+      document.documentElement.lang = document.body.classList.contains('ar') ? 'ar' : 'en';
+    }
+  </script>
+</body>
+</html>
