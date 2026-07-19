@@ -347,14 +347,14 @@
   <script>
     const SUPABASE_URL = 'https://mizkuzwfjvvulkiyotle.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_6ebgjsAV5DH3u_h-iKC3jw_WagYY6Mv';
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     // Check if already logged in
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    db.auth.getSession().then(({ data: { session } }) => {
       if (session) redirectToDashboard(session.user);
     });
 
-    supabase.auth.onAuthStateChange((event, session) => {
+    db.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' && session) redirectToDashboard(session.user);
     });
 
@@ -382,7 +382,7 @@
       btn.innerHTML = '<span class="spinner"></span>';
       alert.className = 'alert';
 
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { error } = await db.auth.signInWithPassword({ email, password });
 
       if (error) {
         alert.className = 'alert error';
@@ -405,7 +405,7 @@
       btn.disabled = true;
       btn.innerHTML = '<span class="spinner"></span>';
 
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      const { error } = await db.auth.resetPasswordForEmail(email, {
         redirectTo: window.location.origin + '/login.html'
       });
 

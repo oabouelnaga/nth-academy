@@ -475,13 +475,13 @@
   <script>
     const SUPABASE_URL = 'https://mizkuzwfjvvulkiyotle.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_6ebgjsAV5DH3u_h-iKC3jw_WagYY6Mv';
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     let currentUser = null;
     let isAr = false;
 
     // Auth guard
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    db.auth.getSession().then(({ data: { session } }) => {
       if (!session) { window.location.href = 'login.html'; return; }
       currentUser = session.user;
       loadDashboard();
@@ -489,8 +489,8 @@
 
     async function loadDashboard() {
       const [profileRes, studentRes] = await Promise.all([
-        supabase.from('profiles').select('*').eq('id', currentUser.id).single(),
-        supabase.from('students').select('*, instructors(subject, bio, profiles(full_name))').eq('id', currentUser.id).single()
+        db.from('profiles').select('*').eq('id', currentUser.id).single(),
+        db.from('students').select('*, instructors(subject, bio, profiles(full_name))').eq('id', currentUser.id).single()
       ]);
 
       const profile = profileRes.data;
@@ -510,9 +510,9 @@
 
       // Load data in parallel
       const [sessionsRes, hwRes, matsRes] = await Promise.all([
-        supabase.from('sessions').select('*').eq('student_id', currentUser.id).gte('scheduled_at', new Date().toISOString()).order('scheduled_at').limit(5),
-        supabase.from('homework').select('*').eq('student_id', currentUser.id).order('due_date').limit(10),
-        supabase.from('materials').select('*').eq('instructor_id', student?.instructor_id).order('created_at', { ascending: false }).limit(10)
+        db.from('sessions').select('*').eq('student_id', currentUser.id).gte('scheduled_at', new Date().toISOString()).order('scheduled_at').limit(5),
+        db.from('homework').select('*').eq('student_id', currentUser.id).order('due_date').limit(10),
+        db.from('materials').select('*').eq('instructor_id', student?.instructor_id).order('created_at', { ascending: false }).limit(10)
       ]);
 
       renderSessions(sessionsRes.data || []);
@@ -596,7 +596,7 @@
     }
 
     async function signOut() {
-      await supabase.auth.signOut();
+      await db.auth.signOut();
       window.location.href = 'login.html';
     }
 

@@ -346,16 +346,16 @@
 <script>
   const SUPABASE_URL = 'https://mizkuzwfjvvulkiyotle.supabase.co';
   const SUPABASE_KEY = 'sb_publishable_6ebgjsAV5DH3u_h-iKC3jw_WagYY6Mv';
-  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
   let allInstructors = [];
   let allStudents = [];
   let currentPage = 'dashboard';
 
   // Auth guard — admin only
-  supabase.auth.getSession().then(({ data: { session } }) => {
+  db.auth.getSession().then(({ data: { session } }) => {
     if (!session) { window.location.href = 'login.html'; return; }
-    supabase.from('profiles').select('role').eq('id', session.user.id).single().then(({ data }) => {
+    db.from('profiles').select('role').eq('id', session.user.id).single().then(({ data }) => {
       if (!data || data.role !== 'admin') { window.location.href = 'login.html'; return; }
       loadAll();
     });
@@ -367,10 +367,10 @@
 
   async function loadStats() {
     const [i, s, sess, hw] = await Promise.all([
-      supabase.from('instructors').select('id', { count: 'exact' }),
-      supabase.from('students').select('id', { count: 'exact' }),
-      supabase.from('sessions').select('id', { count: 'exact' }),
-      supabase.from('homework').select('id', { count: 'exact' }).eq('status', 'pending')
+      db.from('instructors').select('id', { count: 'exact' }),
+      db.from('students').select('id', { count: 'exact' }),
+      db.from('sessions').select('id', { count: 'exact' }),
+      db.from('homework').select('id', { count: 'exact' }).eq('status', 'pending')
     ]);
     document.getElementById('s-instructors').textContent = i.count ?? 0;
     document.getElementById('s-students').textContent = s.count ?? 0;
@@ -395,7 +395,7 @@
     }
 
     const counts = {};
-    const { data: stuData } = await supabase.from('students').select('instructor_id');
+    const { data: stuData } = await db.from('students').select('instructor_id');
     (stuData || []).forEach(s => { counts[s.instructor_id] = (counts[s.instructor_id] || 0) + 1; });
 
     tbody.innerHTML = allInstructors.map(i => `
@@ -518,8 +518,8 @@
     if (!name || !email || !password) { alertEl.className = 'alert error'; alertEl.textContent = 'Name, email and password are required.'; return; }
 
     // Create auth user with instructor role
-    const { data: authData, error: authErr } = await supabase.auth.admin?.createUser
-      ? await supabase.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { role: 'instructor', full_name: name } })
+    const { data: authData, error: authErr } = await db.auth.admin?.createUser
+      ? await db.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { role: 'instructor', full_name: name } })
       : { data: null, error: { message: 'Admin user creation requires service role. Use Supabase dashboard to create the auth user, then this will auto-populate.' } };
 
     if (authErr) {
@@ -562,7 +562,7 @@
 
     if (!title || !instructorId || !studentId || !dt) { alertEl.className = 'alert error'; alertEl.textContent = 'All fields except notes are required.'; return; }
 
-    const { error } = await supabase.from('sessions').insert({
+    const { error } = await db.from('sessions').insert({
       title, instructor_id: instructorId, student_id: studentId,
       scheduled_at: new Date(dt).toISOString(), duration_mins: duration, notes
     });
@@ -601,7 +601,7 @@
     });
   }
 
-  async function signOut() { await supabase.auth.signOut(); window.location.href = 'login.html'; }
+  async function signOut() { await db.auth.signOut(); window.location.href = 'login.html'; }
 </script>
 </body>
 </html>
