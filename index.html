@@ -1026,7 +1026,7 @@
 
 <!-- ═══════════════════════════════ NAV ═══════════════════════════════ -->
 <nav>
-  <a href="#" class="nav-logo">
+  <a href="index.html" class="nav-logo">
     <div class="nav-logo-mark">NTH</div>
     <div class="nav-logo-text">
       <span class="en-text">NTH Academy</span>
@@ -1682,7 +1682,7 @@
         <div class="form-group">
           <label><span class="en-text">Which course interests you?</span><span class="ar-text">أي كورس بيهمك؟</span></label>
           <select>
-            <option value=""><span class="en-text">Select a course</span></option>
+            <option value="" class="en-only">Select a course</option>
             <option>SAT English Prep</option>
             <option>Business English</option>
             <option>Psychology — Self-Awareness</option>
@@ -1808,12 +1808,14 @@
       body.setAttribute('lang', 'ar');
       btns[0].classList.remove('active');
       btns[1].classList.add('active');
+      document.querySelector('select option[value=""]').textContent = 'اختر كورس';
     } else {
       body.classList.remove('ar');
       body.setAttribute('dir', 'ltr');
       body.setAttribute('lang', 'en');
       btns[0].classList.add('active');
       btns[1].classList.remove('active');
+      document.querySelector('select option[value=""]').textContent = 'Select a course';
     }
   }
 

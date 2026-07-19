@@ -328,9 +328,9 @@
       document.documentElement.lang = 'en';
       btns[0].classList.add('active'); btns[1].classList.remove('active');
     }
-    renderPosts(document.querySelector('.filter-btn.active')?.dataset?.type === 'all' || !document.querySelector('.filter-btn.active')
-      ? allPosts
-      : allPosts.filter(p => p.type === document.querySelector('.filter-btn.active').dataset?.type));
+    const activeBtn = document.querySelector('.filter-btn.active');
+    const activeType = activeBtn ? activeBtn.getAttribute('onclick').match(/'(\w+)'/)?.[1] : 'all';
+    renderPosts(activeType === 'all' ? allPosts : allPosts.filter(p => p.type === activeType));
   }
 
   loadPosts();
