@@ -161,6 +161,10 @@
       <div class="nav-item" onclick="showPage('homework')"><span class="icon">📝</span> Homework</div>
     </div>
     <div class="sidebar-section">
+      <div class="sidebar-label">Catalog</div>
+      <div class="nav-item" onclick="showPage('courses')"><span class="icon">📚</span> Courses</div>
+    </div>
+    <div class="sidebar-section">
       <div class="sidebar-label">Content</div>
       <div class="nav-item" onclick="showPage('community')"><span class="icon">📣</span> Community</div>
       <div class="nav-item" onclick="showPage('inquiries')"><span class="icon">📬</span> Inquiries <span class="badge" id="inquiries-badge" style="display:none">0</span></div>
@@ -262,6 +266,23 @@
         <table>
           <thead><tr><th>Title</th><th>Student</th><th>Due Date</th><th>Status</th><th>Grade</th></tr></thead>
           <tbody id="homework-tbody"><tr><td colspan="5" class="loading"><span class="spinner"></span>Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- COURSES PAGE -->
+    <div id="page-courses" class="page">
+      <div class="page-header">
+        <h1>Courses</h1>
+        <p>Create and manage the course catalog</p>
+      </div>
+      <div class="toolbar">
+        <button class="btn-primary" onclick="openCourseModal()">+ New Course</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Name</th><th>Level</th><th>Price</th><th>Instructors</th><th>Enrollments</th><th>Published</th><th>Actions</th></tr></thead>
+          <tbody id="courses-tbody"><tr><td colspan="7" class="loading"><span class="spinner"></span>Loading...</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -427,6 +448,46 @@
   </div>
 </div>
 
+<!-- COURSE MODAL -->
+<div class="modal-overlay" id="course-modal">
+  <div class="modal" style="max-width:540px">
+    <h2 id="course-modal-title">New Course</h2>
+    <div class="alert" id="course-alert"></div>
+    <div class="form-group"><label>Course Name</label><input type="text" id="course-name" placeholder="e.g. SAT English Prep"></div>
+    <div class="form-group"><label>Description</label><textarea id="course-desc" rows="3" style="width:100%;padding:10px 12px;border:1.5px solid var(--gray-200);border-radius:9px;font-size:14px;font-family:inherit;resize:vertical;outline:none" placeholder="What students will learn..."></textarea></div>
+    <div class="form-row">
+      <div class="form-group"><label>Price (EGP)</label><input type="number" id="course-price" value="0" min="0"></div>
+      <div class="form-group"><label>Level</label>
+        <select id="course-level">
+          <option value="">Any level</option>
+          <option value="beginner">Beginner</option>
+          <option value="intermediate">Intermediate</option>
+          <option value="advanced">Advanced</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Duration (weeks)</label><input type="number" id="course-weeks" placeholder="e.g. 8" min="1"></div>
+      <div class="form-group"><label>Status</label>
+        <select id="course-published">
+          <option value="false">Draft</option>
+          <option value="true">Published</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group"><label>Cover Image URL (optional)</label><input type="url" id="course-cover" placeholder="https://..."></div>
+    <div class="form-group">
+      <label>Assign Instructors</label>
+      <select id="course-instructors-select" multiple style="width:100%;padding:10px;border:1.5px solid var(--gray-200);border-radius:9px;font-size:14px;font-family:inherit;min-height:80px"></select>
+      <div style="font-size:11px;color:var(--gray-400);margin-top:4px">Hold Ctrl/Cmd to select multiple</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closeModal('course-modal')">Cancel</button>
+      <button class="btn-primary" id="course-save-btn" onclick="saveCourse()">Create Course</button>
+    </div>
+  </div>
+</div>
+
 <script>
   const SUPABASE_URL = 'https://mizkuzwfjvvulkiyotle.supabase.co';
   const SUPABASE_KEY = 'sb_publishable_6ebgjsAV5DH3u_h-iKC3jw_WagYY6Mv';
@@ -437,6 +498,7 @@
   let allInstructors = [];
   let allStudents = [];
   let allCourses = [];
+  let editingCourseId = null;
   let currentPage = 'dashboard';
 
   // Auth guard — admin only
@@ -453,8 +515,130 @@
   }
 
   async function loadCourses() {
-    const { data } = await db.from('courses').select('id, name, instructor_id').order('created_at');
-    allCourses = data || [];
+    const { data: courses } = await db
+      .from('courses')
+      .select('*, course_instructors(instructor_id)')
+      .order('created_at');
+    allCourses = courses || [];
+
+    const courseIds = allCourses.map(c => c.id);
+    const { data: enrollData } = courseIds.length
+      ? await db.from('enrollments').select('course_id').in('course_id', courseIds)
+      : { data: [] };
+    const enrollCounts = {};
+    (enrollData || []).forEach(e => { enrollCounts[e.course_id] = (enrollCounts[e.course_id] || 0) + 1; });
+
+    const instIds = [...new Set(allCourses.flatMap(c => (c.course_instructors || []).map(ci => ci.instructor_id)))];
+    const { data: instProfs } = instIds.length
+      ? await db.from('profiles').select('id, full_name').in('id', instIds)
+      : { data: [] };
+    const instNameMap = Object.fromEntries((instProfs || []).map(p => [p.id, p.full_name || '?']));
+
+    const tbody = document.getElementById('courses-tbody');
+    if (!allCourses.length) {
+      tbody.innerHTML = '<tr><td colspan="7"><div class="empty"><span class="icon">📚</span>No courses yet. Create one above.</div></td></tr>';
+      return;
+    }
+    tbody.innerHTML = allCourses.map(c => {
+      const instructorNames = (c.course_instructors || []).map(ci => instNameMap[ci.instructor_id] || '?').join(', ') || '—';
+      const priceLabel = c.price > 0 ? 'EGP ' + c.price : '<span class="pill pill-green">Free</span>';
+      return `<tr>
+        <td><strong>${c.name}</strong>${c.description ? `<div style="font-size:12px;color:var(--gray-400);margin-top:2px">${c.description.slice(0,60)}${c.description.length > 60 ? '…' : ''}</div>` : ''}</td>
+        <td>${c.level ? `<span class="pill pill-blue">${c.level}</span>` : '—'}</td>
+        <td>${priceLabel}</td>
+        <td style="font-size:13px">${instructorNames}</td>
+        <td>${enrollCounts[c.id] || 0}</td>
+        <td><span class="pill ${c.published ? 'pill-green' : 'pill-gray'}">${c.published ? 'Published' : 'Draft'}</span></td>
+        <td style="display:flex;gap:6px">
+          <button class="btn-ghost" onclick="editCourse('${c.id}')">Edit</button>
+          <button class="btn-ghost" onclick="toggleCoursePublish('${c.id}', ${c.published})">${c.published ? 'Unpublish' : 'Publish'}</button>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  function openCourseModal() {
+    editingCourseId = null;
+    document.getElementById('course-modal-title').textContent = 'New Course';
+    document.getElementById('course-save-btn').textContent = 'Create Course';
+    document.getElementById('course-name').value = '';
+    document.getElementById('course-desc').value = '';
+    document.getElementById('course-price').value = '0';
+    document.getElementById('course-level').value = '';
+    document.getElementById('course-weeks').value = '';
+    document.getElementById('course-published').value = 'false';
+    document.getElementById('course-cover').value = '';
+    populateCourseInstructorSelect([]);
+    openModal('course-modal');
+  }
+
+  async function populateCourseInstructorSelect(selectedIds) {
+    const sel = document.getElementById('course-instructors-select');
+    if (!allInstructors.length) { sel.innerHTML = '<option disabled>No instructors yet</option>'; return; }
+    const ids = allInstructors.map(i => i.id);
+    const { data: profs } = await db.from('profiles').select('id, full_name').in('id', ids);
+    const nameMap = Object.fromEntries((profs || []).map(p => [p.id, p.full_name || p.id]));
+    sel.innerHTML = allInstructors.map(i =>
+      `<option value="${i.id}" ${selectedIds.includes(i.id) ? 'selected' : ''}>${nameMap[i.id] || i.id}</option>`
+    ).join('');
+  }
+
+  async function editCourse(courseId) {
+    const course = allCourses.find(c => c.id === courseId);
+    if (!course) return;
+    editingCourseId = courseId;
+    document.getElementById('course-modal-title').textContent = 'Edit Course';
+    document.getElementById('course-save-btn').textContent = 'Save Changes';
+    document.getElementById('course-name').value = course.name || '';
+    document.getElementById('course-desc').value = course.description || '';
+    document.getElementById('course-price').value = course.price || 0;
+    document.getElementById('course-level').value = course.level || '';
+    document.getElementById('course-weeks').value = course.duration_weeks || '';
+    document.getElementById('course-published').value = course.published ? 'true' : 'false';
+    document.getElementById('course-cover').value = course.cover_image_url || '';
+    const currentInstructorIds = (course.course_instructors || []).map(ci => ci.instructor_id);
+    await populateCourseInstructorSelect(currentInstructorIds);
+    openModal('course-modal');
+  }
+
+  async function saveCourse() {
+    const name = document.getElementById('course-name').value.trim();
+    const desc = document.getElementById('course-desc').value.trim();
+    const price = parseFloat(document.getElementById('course-price').value) || 0;
+    const level = document.getElementById('course-level').value || null;
+    const weeks = parseInt(document.getElementById('course-weeks').value) || null;
+    const published = document.getElementById('course-published').value === 'true';
+    const cover = document.getElementById('course-cover').value.trim() || null;
+    const selEl = document.getElementById('course-instructors-select');
+    const selectedInstIds = [...selEl.selectedOptions].map(o => o.value);
+    const alertEl = document.getElementById('course-alert');
+    alertEl.className = 'alert';
+    if (!name) { alertEl.className = 'alert error'; alertEl.textContent = 'Course name is required.'; return; }
+    const btn = document.getElementById('course-save-btn');
+    btn.disabled = true; btn.textContent = 'Saving…';
+    const payload = { name, description: desc || null, price, level, duration_weeks: weeks, published, cover_image_url: cover };
+    let courseId = editingCourseId;
+    if (editingCourseId) {
+      const { error } = await db.from('courses').update(payload).eq('id', editingCourseId);
+      if (error) { alertEl.className = 'alert error'; alertEl.textContent = error.message; btn.disabled = false; btn.textContent = 'Save Changes'; return; }
+    } else {
+      const { data, error } = await db.from('courses').insert(payload).select('id').single();
+      if (error) { alertEl.className = 'alert error'; alertEl.textContent = error.message; btn.disabled = false; btn.textContent = 'Create Course'; return; }
+      courseId = data.id;
+    }
+    await db.from('course_instructors').delete().eq('course_id', courseId);
+    if (selectedInstIds.length) {
+      await db.from('course_instructors').insert(selectedInstIds.map(iid => ({ course_id: courseId, instructor_id: iid })));
+    }
+    alertEl.className = 'alert success';
+    alertEl.textContent = editingCourseId ? 'Course updated!' : 'Course created!';
+    btn.disabled = false;
+    setTimeout(() => { closeModal('course-modal'); editingCourseId = null; loadAll(); }, 1000);
+  }
+
+  async function toggleCoursePublish(courseId, current) {
+    await db.from('courses').update({ published: !current }).eq('id', courseId);
+    loadCourses();
   }
 
   async function loadStats() {
@@ -594,14 +778,16 @@
   async function adminEnrollCourse(studentId) {
     const sel = document.getElementById('course-sel-' + studentId);
     const btn = document.getElementById('course-btn-' + studentId);
-    const courseId = sel.value || null;
+    const courseId = sel.value;
+    if (!courseId) { alert('Select a course first.'); return; }
     btn.textContent = 'Saving...'; btn.disabled = true;
-    const { error } = await db.from('students').update({ course_id: courseId }).eq('id', studentId);
+    const { error } = await db.from('enrollments')
+      .upsert({ student_id: studentId, course_id: courseId }, { onConflict: 'student_id,course_id' });
     if (error) {
       alert('Error: ' + error.message);
       btn.textContent = 'Save'; btn.disabled = false;
     } else {
-      btn.textContent = '✓'; btn.style.background = 'var(--green)';
+      btn.textContent = '✓'; btn.style.background = 'var(--green,#2f9e44)';
       setTimeout(() => { btn.textContent = 'Save'; btn.disabled = false; btn.style.background = ''; }, 2000);
     }
   }
