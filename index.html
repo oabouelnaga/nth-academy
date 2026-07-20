@@ -1182,201 +1182,58 @@
       <button class="filter-btn active" onclick="filterCourses('all', this)">
         <span class="en-text">All Courses</span><span class="ar-text">الكل</span>
       </button>
-      <button class="filter-btn" onclick="filterCourses('english', this)">
-        <span class="en-text">English</span><span class="ar-text">إنجليزي</span>
+      <button class="filter-btn" onclick="filterCourses('beginner', this)">
+        <span class="en-text">Beginner</span><span class="ar-text">مبتدئ</span>
       </button>
-      <button class="filter-btn" onclick="filterCourses('psychology', this)">
-        <span class="en-text">Psychology</span><span class="ar-text">علم النفس</span>
+      <button class="filter-btn" onclick="filterCourses('intermediate', this)">
+        <span class="en-text">Intermediate</span><span class="ar-text">متوسط</span>
       </button>
-      <button class="filter-btn" onclick="filterCourses('art', this)">
-        <span class="en-text">Art & Design</span><span class="ar-text">فن وتصميم</span>
+      <button class="filter-btn" onclick="filterCourses('advanced', this)">
+        <span class="en-text">Advanced</span><span class="ar-text">متقدم</span>
       </button>
     </div>
 
     <div class="courses-grid" id="coursesGrid">
-
-      <div class="course-card" data-cat="english">
-        <div class="course-thumb" style="background:linear-gradient(135deg,#1a1f5e,#3b5bdb)">🗣️</div>
-        <div class="course-body">
-          <span class="course-tag" style="background:rgba(59,91,219,0.1);color:#3b5bdb">
-            <span class="en-text">English</span><span class="ar-text">إنجليزي</span>
-          </span>
-          <div class="course-title">
-            <span class="en-text">SAT English Prep</span><span class="ar-text">تحضير SAT — الإنجليزية</span>
-          </div>
-          <div class="course-desc">
-            <span class="en-text">8 levels from beginner to advanced. Structured sessions that build on each other. Taught by Ahmed Bahr.</span>
-            <span class="ar-text">8 مستويات من المبتدئ للمتقدم. جلسات منظمة تبني على بعضها. مع أحمد بحر.</span>
-          </div>
-          <div class="course-meta">
-            <span>📚 <span class="en-text">8 Levels</span><span class="ar-text">8 مستويات</span></span>
-            <span>🕐 <span class="en-text">8 sessions/level</span><span class="ar-text">8 جلسات/مستوى</span></span>
-            <span>📍 <span class="en-text">Online + In-person</span><span class="ar-text">أونلاين + حضوري</span></span>
-          </div>
-          <div class="course-footer">
-            <div class="course-price">
-              <span class="en-text">Contact for price</span>
-              <span class="ar-text">اتواصل للسعر</span>
-            </div>
-            <a href="#contact" class="btn btn-primary">
-              <span class="en-text">Enroll</span><span class="ar-text">سجل الآن</span>
-            </a>
-          </div>
-        </div>
+      <div id="courses-loading" style="grid-column:1/-1;text-align:center;padding:48px 0;color:var(--gray-400);font-size:15px;">
+        <span class="en-text">Loading courses…</span><span class="ar-text">جارٍ تحميل الكورسات…</span>
       </div>
 
-      <div class="course-card" data-cat="english">
-        <div class="course-thumb" style="background:linear-gradient(135deg,#0f3460,#16213e)">💼</div>
-        <div class="course-body">
-          <span class="course-tag" style="background:rgba(59,91,219,0.1);color:#3b5bdb">
-            <span class="en-text">English</span><span class="ar-text">إنجليزي</span>
-          </span>
-          <div class="course-title">
-            <span class="en-text">Business English</span><span class="ar-text">الإنجليزية للأعمال</span>
-          </div>
-          <div class="course-desc">
-            <span class="en-text">Professional communication, emails, presentations, and negotiations — in English.</span>
-            <span class="ar-text">التواصل المهني، الإيميلات، العروض، والمفاوضات بالإنجليزية.</span>
-          </div>
-          <div class="course-meta">
-            <span>🕐 <span class="en-text">6 weeks</span><span class="ar-text">6 أسابيع</span></span>
-            <span>📍 <span class="en-text">Online</span><span class="ar-text">أونلاين</span></span>
-          </div>
-          <div class="course-footer">
-            <div class="course-price">
-              <span class="en-text">Contact for price</span>
-              <span class="ar-text">اتواصل للسعر</span>
-            </div>
-            <a href="#contact" class="btn btn-primary">
-              <span class="en-text">Enroll</span><span class="ar-text">سجل الآن</span>
-            </a>
-          </div>
-        </div>
-      </div>
-
-      <div class="course-card" data-cat="psychology">
-        <div class="course-thumb" style="background:linear-gradient(135deg,#2d1b69,#553c9a)">🧠</div>
-        <div class="course-body">
-          <span class="course-tag" style="background:rgba(85,60,154,0.1);color:#553c9a">
-            <span class="en-text">Psychology</span><span class="ar-text">علم النفس</span>
-          </span>
-          <div class="course-title">
-            <span class="en-text">Self-Awareness & Emotional Growth</span>
-            <span class="ar-text">الوعي الذاتي والنمو العاطفي</span>
-          </div>
-          <div class="course-desc">
-            <span class="en-text">Understand yourself better. Manage emotions, improve relationships, and build confidence with our clinical psychologist.</span>
-            <span class="ar-text">افهم نفسك أكتر. تحكم في مشاعرك، حسّن علاقاتك، وازداد ثقة مع طبيبتنا النفسية.</span>
-          </div>
-          <div class="course-meta">
-            <span>🕐 <span class="en-text">8 sessions</span><span class="ar-text">8 جلسات</span></span>
-            <span>📍 <span class="en-text">Online + In-person</span><span class="ar-text">أونلاين + حضوري</span></span>
-          </div>
-          <div class="course-footer">
-            <div class="course-price">
-              <span class="en-text">Contact for price</span>
-              <span class="ar-text">اتواصل للسعر</span>
-            </div>
-            <a href="#contact" class="btn btn-primary">
-              <span class="en-text">Enroll</span><span class="ar-text">سجل الآن</span>
-            </a>
-          </div>
-        </div>
-      </div>
-
-      <div class="course-card" data-cat="psychology">
-        <div class="course-thumb" style="background:linear-gradient(135deg,#1a3a4c,#0e6ba8)">💬</div>
-        <div class="course-body">
-          <span class="course-tag" style="background:rgba(85,60,154,0.1);color:#553c9a">
-            <span class="en-text">Psychology</span><span class="ar-text">علم النفس</span>
-          </span>
-          <div class="course-title">
-            <span class="en-text">Communication & Interpersonal Skills</span>
-            <span class="ar-text">مهارات التواصل والعلاقات الشخصية</span>
-          </div>
-          <div class="course-desc">
-            <span class="en-text">From active listening to conflict resolution — practical skills for every relationship.</span>
-            <span class="ar-text">من الإنصات الفعّال لحل النزاعات — مهارات عملية لكل علاقاتك.</span>
-          </div>
-          <div class="course-meta">
-            <span>🕐 <span class="en-text">6 sessions</span><span class="ar-text">6 جلسات</span></span>
-            <span>📍 <span class="en-text">Online</span><span class="ar-text">أونلاين</span></span>
-          </div>
-          <div class="course-footer">
-            <div class="course-price">
-              <span class="en-text">Contact for price</span>
-              <span class="ar-text">اتواصل للسعر</span>
-            </div>
-            <a href="#contact" class="btn btn-primary">
-              <span class="en-text">Enroll</span><span class="ar-text">سجل الآن</span>
-            </a>
-          </div>
-        </div>
-      </div>
-
-      <div class="course-card" data-cat="art">
-        <div class="course-thumb" style="background:linear-gradient(135deg,#6b2d2d,#c0392b)">🎨</div>
-        <div class="course-body">
-          <span class="course-tag" style="background:rgba(192,57,43,0.1);color:#c0392b">
-            <span class="en-text">Art & Design</span><span class="ar-text">فن وتصميم</span>
-          </span>
-          <div class="course-title">
-            <span class="en-text">Visual Design Fundamentals</span>
-            <span class="ar-text">أساسيات التصميم البصري</span>
-          </div>
-          <div class="course-desc">
-            <span class="en-text">Color theory, composition, and digital tools. For beginners who want to think visually.</span>
-            <span class="ar-text">نظرية الألوان، التكوين، والأدوات الرقمية. للمبتدئين اللي عايزين يفكروا بشكل إبداعي.</span>
-          </div>
-          <div class="course-meta">
-            <span>🕐 <span class="en-text">8 sessions</span><span class="ar-text">8 جلسات</span></span>
-            <span>📍 <span class="en-text">Online + In-person</span><span class="ar-text">أونلاين + حضوري</span></span>
-          </div>
-          <div class="course-footer">
-            <div class="course-price">
-              <span class="en-text">Contact for price</span>
-              <span class="ar-text">اتواصل للسعر</span>
-            </div>
-            <a href="#contact" class="btn btn-primary">
-              <span class="en-text">Enroll</span><span class="ar-text">سجل الآن</span>
-            </a>
-          </div>
-        </div>
-      </div>
-
-      <div class="course-card" data-cat="art">
-        <div class="course-thumb" style="background:linear-gradient(135deg,#3d2c2c,#8b4513)">✏️</div>
-        <div class="course-body">
-          <span class="course-tag" style="background:rgba(192,57,43,0.1);color:#c0392b">
-            <span class="en-text">Art & Design</span><span class="ar-text">فن وتصميم</span>
-          </span>
-          <div class="course-title">
-            <span class="en-text">Drawing & Illustration</span>
-            <span class="ar-text">الرسم والتصوير</span>
-          </div>
-          <div class="course-desc">
-            <span class="en-text">Start from zero and build a creative practice. Sketching, shading, and developing your personal style.</span>
-            <span class="ar-text">ابدأ من الصفر وطوّر ممارسة إبداعية. رسم، تظليل، وأسلوبك الخاص.</span>
-          </div>
-          <div class="course-meta">
-            <span>🕐 <span class="en-text">10 sessions</span><span class="ar-text">10 جلسات</span></span>
-            <span>📍 <span class="en-text">In-person (Cairo)</span><span class="ar-text">حضوري (القاهرة)</span></span>
-          </div>
-          <div class="course-footer">
-            <div class="course-price">
-              <span class="en-text">Contact for price</span>
-              <span class="ar-text">اتواصل للسعر</span>
-            </div>
-            <a href="#contact" class="btn btn-primary">
-              <span class="en-text">Enroll</span><span class="ar-text">سجل الآن</span>
-            </a>
-          </div>
-        </div>
-      </div>
-
-    </div>
+    </div><!-- end courses-grid -->
   </div>
 </section>
+
+<!-- ═══════════════════════════════ ENROLL MODAL ══════════════════════ -->
+<div id="enroll-modal" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,0.55);align-items:center;justify-content:center;padding:16px;">
+  <div style="background:#fff;border-radius:20px;max-width:560px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,0.25);">
+    <div id="enroll-modal-cover" style="height:180px;border-radius:20px 20px 0 0;display:flex;align-items:center;justify-content:center;font-size:56px;background:linear-gradient(135deg,#1a1f5e,#3b5bdb);">📚</div>
+    <div style="padding:28px 28px 24px;">
+      <h2 id="enroll-modal-title" style="font-size:20px;font-weight:700;color:#1a1f5e;margin-bottom:8px;"></h2>
+      <div id="enroll-modal-meta" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px;font-size:13px;color:#495057;"></div>
+      <p id="enroll-modal-desc" style="font-size:14px;color:#495057;line-height:1.6;margin-bottom:16px;"></p>
+      <div id="enroll-modal-instructors" style="margin-bottom:16px;font-size:14px;color:#212529;"></div>
+      <!-- Payment placeholder -->
+      <div style="background:#f8f9fa;border:1.5px dashed #dee2e6;border-radius:12px;padding:16px 18px;margin-bottom:20px;">
+        <div style="font-weight:600;font-size:14px;color:#1a1f5e;margin-bottom:8px;">
+          <span class="en-text">How to pay</span><span class="ar-text">طريقة الدفع</span>
+        </div>
+        <div style="font-size:13px;color:#495057;line-height:1.7;">
+          <span class="en-text">Send payment via <strong>Instapay</strong> or <strong>Vodafone Cash</strong>.<br>After transferring, send a screenshot to our WhatsApp to confirm your enrollment.</span>
+          <span class="ar-text">ابعت الدفع عن طريق <strong>Instapay</strong> أو <strong>Vodafone Cash</strong>.<br>بعد التحويل، ابعت صورة من الإيصال على WhatsApp علشان نأكد تسجيلك.</span>
+        </div>
+        <div id="enroll-modal-price" style="margin-top:10px;font-size:22px;font-weight:700;color:#3b5bdb;"></div>
+      </div>
+      <div id="enroll-modal-feedback" style="display:none;padding:10px 14px;border-radius:8px;font-size:14px;margin-bottom:14px;"></div>
+      <div style="display:flex;gap:10px;">
+        <button id="enroll-confirm-btn" onclick="confirmEnroll()" style="flex:1;padding:12px;background:#3b5bdb;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;font-family:inherit;cursor:pointer;">
+          <span class="en-text">Confirm Enrollment</span><span class="ar-text">تأكيد التسجيل</span>
+        </button>
+        <button onclick="closeEnrollModal()" style="padding:12px 18px;background:#f1f3f5;color:#495057;border:none;border-radius:10px;font-size:14px;font-family:inherit;cursor:pointer;">
+          <span class="en-text">Cancel</span><span class="ar-text">إلغاء</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 
 
 <!-- ═══════════════════════════════ WHY NTH ══════════════════════════ -->
@@ -1819,18 +1676,209 @@
     }
   }
 
-  // Course filter
+  // ── Course catalog (Supabase) ─────────────────────────────────────────
+  const CATALOG_URL  = 'https://mizkuzwfjvvulkiyotle.supabase.co';
+  const CATALOG_KEY  = 'sb_publishable_6ebgjsAV5DH3u_h-iKC3jw_WagYY6Mv';
+  const catalogDb    = window.supabase.createClient(CATALOG_URL, CATALOG_KEY);
+
+  const LEVEL_COLORS = {
+    beginner:     { bg: 'rgba(47,158,68,0.1)',  color: '#2f9e44' },
+    intermediate: { bg: 'rgba(59,91,219,0.1)',  color: '#3b5bdb' },
+    advanced:     { bg: 'rgba(232,89,12,0.1)',  color: '#e8590c' },
+  };
+  const THUMB_GRADIENTS = [
+    'linear-gradient(135deg,#1a1f5e,#3b5bdb)',
+    'linear-gradient(135deg,#2d1b69,#553c9a)',
+    'linear-gradient(135deg,#0f3460,#16213e)',
+    'linear-gradient(135deg,#1a3a4c,#0e6ba8)',
+    'linear-gradient(135deg,#6b2d2d,#c0392b)',
+    'linear-gradient(135deg,#3d2c2c,#8b4513)',
+  ];
+  const THUMB_EMOJIS = ['📚','🎓','🗣️','🧠','🎨','✏️','💼','💡'];
+
+  let allCatalogCourses = [];
+  let activeCatalogFilter = 'all';
+  let enrollingCourseId = null;
+
+  async function loadCatalog() {
+    const { data, error } = await catalogDb
+      .from('courses')
+      .select('id, name, description, price, level, duration_weeks, cover_image_url, course_instructors(instructor_id)')
+      .eq('published', true)
+      .order('name');
+
+    const grid = document.getElementById('coursesGrid');
+    document.getElementById('courses-loading').style.display = 'none';
+
+    if (error || !data || data.length === 0) {
+      grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:48px 0;color:#adb5bd;font-size:15px;"><span class="en-text">No courses available yet. Check back soon!</span><span class="ar-text">لا توجد كورسات متاحة حالياً. تابع معنا!</span></div>';
+      return;
+    }
+
+    // Resolve instructor names
+    const instructorIds = [...new Set(data.flatMap(c => (c.course_instructors || []).map(r => r.instructor_id)))];
+    let instructorMap = {};
+    if (instructorIds.length) {
+      const { data: profs } = await catalogDb.from('profiles').select('id, full_name').in('id', instructorIds);
+      (profs || []).forEach(p => { instructorMap[p.id] = p.full_name || p.id; });
+    }
+
+    allCatalogCourses = data.map((c, i) => ({
+      ...c,
+      instructorNames: (c.course_instructors || []).map(r => instructorMap[r.instructor_id] || '').filter(Boolean),
+    }));
+
+    renderCatalog();
+  }
+
+  function renderCatalog() {
+    const grid = document.getElementById('coursesGrid');
+    const isAr = document.body.classList.contains('ar');
+    const courses = activeCatalogFilter === 'all'
+      ? allCatalogCourses
+      : allCatalogCourses.filter(c => (c.level || '').toLowerCase() === activeCatalogFilter);
+
+    if (courses.length === 0) {
+      grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:48px 0;color:#adb5bd;font-size:15px;"><span class="en-text">No courses in this category.</span><span class="ar-text">لا يوجد كورسات في هذا القسم.</span></div>';
+      return;
+    }
+
+    grid.innerHTML = courses.map((c, i) => {
+      const lvl = (c.level || 'beginner').toLowerCase();
+      const lc = LEVEL_COLORS[lvl] || LEVEL_COLORS.beginner;
+      const grad = THUMB_GRADIENTS[i % THUMB_GRADIENTS.length];
+      const emoji = THUMB_EMOJIS[i % THUMB_EMOJIS.length];
+      const thumb = c.cover_image_url
+        ? `<img src="${c.cover_image_url}" alt="${c.name}" style="width:100%;height:100%;object-fit:cover;border-radius:12px 12px 0 0;">`
+        : `<span style="font-size:48px">${emoji}</span>`;
+      const priceLabel = c.price ? `${Number(c.price).toLocaleString()} EGP` : (isAr ? 'تواصل للسعر' : 'Contact for price');
+      const durLabel = c.duration_weeks ? (isAr ? `${c.duration_weeks} أسابيع` : `${c.duration_weeks} weeks`) : '';
+      const instrLabel = c.instructorNames.length ? c.instructorNames.join(', ') : '';
+      return `
+        <div class="course-card">
+          <div class="course-thumb" style="background:${grad}">${thumb}</div>
+          <div class="course-body">
+            <span class="course-tag" style="background:${lc.bg};color:${lc.color}">${lvl.charAt(0).toUpperCase()+lvl.slice(1)}</span>
+            <div class="course-title">${c.name}</div>
+            <div class="course-desc">${(c.description || '').slice(0, 120)}${c.description && c.description.length > 120 ? '…' : ''}</div>
+            <div class="course-meta">
+              ${durLabel ? `<span>🕐 ${durLabel}</span>` : ''}
+              ${instrLabel ? `<span>👨‍🏫 ${instrLabel}</span>` : ''}
+            </div>
+            <div class="course-footer">
+              <div class="course-price">${priceLabel}</div>
+              <button class="btn btn-primary" onclick="openEnrollModal('${c.id}')">
+                <span class="en-text">Enroll</span><span class="ar-text">سجل الآن</span>
+              </button>
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
   function filterCourses(cat, btn) {
     document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    document.querySelectorAll('.course-card').forEach(card => {
-      if (cat === 'all' || card.dataset.cat === cat) {
-        card.style.display = 'flex';
-      } else {
-        card.style.display = 'none';
-      }
-    });
+    activeCatalogFilter = cat;
+    renderCatalog();
   }
+
+  function openEnrollModal(courseId) {
+    const c = allCatalogCourses.find(x => x.id === courseId);
+    if (!c) return;
+    enrollingCourseId = courseId;
+    const isAr = document.body.classList.contains('ar');
+
+    const cover = document.getElementById('enroll-modal-cover');
+    if (c.cover_image_url) {
+      cover.innerHTML = `<img src="${c.cover_image_url}" alt="${c.name}" style="width:100%;height:100%;object-fit:cover;border-radius:20px 20px 0 0;">`;
+      cover.style.padding = '0';
+    } else {
+      cover.innerHTML = THUMB_EMOJIS[allCatalogCourses.indexOf(c) % THUMB_EMOJIS.length];
+      cover.style.fontSize = '56px';
+    }
+
+    document.getElementById('enroll-modal-title').textContent = c.name;
+    document.getElementById('enroll-modal-desc').textContent = c.description || '';
+
+    const lvl = (c.level || '').charAt(0).toUpperCase() + (c.level || '').slice(1);
+    const dur = c.duration_weeks ? (isAr ? `${c.duration_weeks} أسابيع` : `${c.duration_weeks} weeks`) : '';
+    document.getElementById('enroll-modal-meta').innerHTML = [
+      lvl ? `<span style="background:#eef2ff;color:#3b5bdb;padding:3px 10px;border-radius:20px;font-weight:600;">${lvl}</span>` : '',
+      dur ? `<span>🕐 ${dur}</span>` : '',
+    ].filter(Boolean).join('');
+
+    document.getElementById('enroll-modal-instructors').innerHTML = c.instructorNames.length
+      ? `<strong>${isAr ? 'المدرب' : 'Instructor'}:</strong> ${c.instructorNames.join(', ')}`
+      : '';
+
+    const price = c.price ? `${Number(c.price).toLocaleString()} EGP` : (isAr ? 'تواصل للسعر' : 'Contact for price');
+    document.getElementById('enroll-modal-price').textContent = price;
+
+    const fb = document.getElementById('enroll-modal-feedback');
+    fb.style.display = 'none';
+    fb.className = '';
+    const btn = document.getElementById('enroll-confirm-btn');
+    btn.disabled = false;
+    btn.innerHTML = '<span class="en-text">Confirm Enrollment</span><span class="ar-text">تأكيد التسجيل</span>';
+
+    const modal = document.getElementById('enroll-modal');
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeEnrollModal() {
+    document.getElementById('enroll-modal').style.display = 'none';
+    document.body.style.overflow = '';
+    enrollingCourseId = null;
+  }
+
+  async function confirmEnroll() {
+    if (!enrollingCourseId) return;
+    const isAr = document.body.classList.contains('ar');
+    const btn = document.getElementById('enroll-confirm-btn');
+    const fb = document.getElementById('enroll-modal-feedback');
+
+    // Check if logged in
+    const { data: { session } } = await catalogDb.auth.getSession();
+    if (!session) {
+      sessionStorage.setItem('enroll_after_login', enrollingCourseId);
+      window.location.href = 'login.html';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = isAr ? 'جارٍ التسجيل…' : 'Enrolling…';
+
+    const { error } = await catalogDb.from('enrollments').upsert(
+      { student_id: session.user.id, course_id: enrollingCourseId, payment_status: 'pending' },
+      { onConflict: 'student_id,course_id' }
+    );
+
+    if (error) {
+      fb.style.display = 'block';
+      fb.style.background = '#fff5f5';
+      fb.style.color = '#e03131';
+      fb.textContent = isAr ? 'حدث خطأ. حاول مرة أخرى.' : 'Something went wrong. Please try again.';
+      btn.disabled = false;
+      btn.innerHTML = '<span class="en-text">Confirm Enrollment</span><span class="ar-text">تأكيد التسجيل</span>';
+      return;
+    }
+
+    fb.style.display = 'block';
+    fb.style.background = '#ebfbee';
+    fb.style.color = '#2f9e44';
+    fb.textContent = isAr ? '🎉 تم تسجيلك! تحقق من لوحة التحكم.' : '🎉 Enrolled! Check your dashboard.';
+    btn.textContent = isAr ? 'تم ✓' : 'Done ✓';
+    setTimeout(() => { closeEnrollModal(); window.location.href = 'dashboard.html'; }, 1800);
+  }
+
+  // Close modal on backdrop click
+  document.getElementById('enroll-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeEnrollModal();
+  });
+
+  loadCatalog();
 
   // Contact form → Supabase
   async function sendToWhatsApp() {
