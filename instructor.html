@@ -724,11 +724,18 @@
         </div>
       </div>
       <div class="form-group">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="checkbox" id="hw-all-students" onchange="toggleAllStudents(this.checked)" style="width:16px;height:16px;cursor:pointer">
+          <span class="en-text">Assign to all my students</span><span class="ar-text">إسناد لجميع طلابي</span>
+        </label>
+      </div>
+      <div class="form-group" id="hw-student-group">
         <label><span class="en-text">Assign to</span><span class="ar-text">للطالب</span></label>
         <select id="hw-student">
           <option value="">Loading students...</option>
         </select>
       </div>
+      <div id="hw-all-students-note" style="display:none;padding:10px 14px;background:var(--blue-bg);border-radius:8px;font-size:13px;color:var(--blue);margin-bottom:16px"></div>
       <div class="form-group">
         <label><span class="en-text">Due date</span><span class="ar-text">تاريخ التسليم</span></label>
         <input type="date" id="hw-due">
@@ -1056,6 +1063,18 @@
         }).join('');
     }
 
+    function toggleAllStudents(checked) {
+      document.getElementById('hw-student-group').style.display = checked ? 'none' : '';
+      const note = document.getElementById('hw-all-students-note');
+      if (checked) {
+        const names = studentsList.map(s => s._prof?.full_name || s._prof?.email || 'Student').join(', ');
+        note.style.display = '';
+        note.textContent = `Will assign to ${studentsList.length} student${studentsList.length !== 1 ? 's' : ''}: ${names}`;
+      } else {
+        note.style.display = 'none';
+      }
+    }
+
     // ── MODALS ──────────────────────────────────────────────
 
     function openModal(id) {
@@ -1199,10 +1218,11 @@
       const studentId = document.getElementById('hw-student').value;
       const due       = document.getElementById('hw-due').value;
       const file      = document.getElementById('hw-file').files[0];
+      const assignAll = document.getElementById('hw-all-students').checked;
 
-      if (!title || !studentId) {
+      if (!title || (!assignAll && !studentId)) {
         alertEl.className = 'alert-modal error';
-        alertEl.textContent = 'Title and student are required.';
+        alertEl.textContent = 'Title is required, and you must select a student (or check "Assign to all").';
         return;
       }
 
@@ -1231,15 +1251,27 @@
         document.getElementById('hw-upload-progress').style.display = 'none';
       }
 
-      const { error } = await db.from('homework').insert({
+      const targets = assignAll ? studentsList.map(s => s.id) : (studentId ? [studentId] : []);
+
+      if (!targets.length) {
+        alertEl.className = 'alert-modal error';
+        alertEl.textContent = assignAll ? 'No students assigned to you yet.' : 'Please select a student.';
+        btn.disabled = false;
+        btn.innerHTML = '<span class="en-text">Assign</span><span class="ar-text">إسناد</span>';
+        return;
+      }
+
+      const rows = targets.map(sid => ({
         instructor_id:  currentUser.id,
-        student_id:     studentId,
+        student_id:     sid,
         title,
-        description:    desc           || null,
-        due_date:       due            || null,
+        description:    desc        || null,
+        due_date:       due         || null,
         assignment_url: assignmentUrl,
         status:         'pending'
-      });
+      }));
+
+      const { error } = await db.from('homework').insert(rows);
 
       btn.disabled = false;
       btn.innerHTML = '<span class="en-text">Assign</span><span class="ar-text">إسناد</span>';
@@ -1251,12 +1283,16 @@
       }
 
       alertEl.className = 'alert-modal success';
-      alertEl.textContent = 'Homework assigned!';
+      alertEl.textContent = assignAll
+        ? `Assigned to all ${targets.length} students!`
+        : 'Homework assigned!';
       document.getElementById('hw-title').value   = '';
       document.getElementById('hw-desc').value    = '';
       document.getElementById('hw-student').value = '';
       document.getElementById('hw-due').value     = '';
       document.getElementById('hw-file').value    = '';
+      document.getElementById('hw-all-students').checked = false;
+      toggleAllStudents(false);
 
       setTimeout(() => {
         closeModal('assign-hw-modal');
