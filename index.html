@@ -1832,22 +1832,47 @@
     });
   }
 
-  // Contact form → WhatsApp
-  function sendToWhatsApp() {
+  // Contact form → Supabase
+  async function sendToWhatsApp() {
+    const btn     = document.querySelector('.contact-form button');
     const name    = document.querySelector('.contact-form input[type="text"]').value.trim();
     const phone   = document.querySelector('.contact-form input[type="tel"]').value.trim();
     const course  = document.querySelector('.contact-form select').value;
     const message = document.querySelector('.contact-form textarea').value.trim();
+    const isAr    = document.body.classList.contains('ar');
 
-    if (!name) { alert('Please enter your name.'); return; }
+    if (!name) {
+      alert(isAr ? 'يرجى إدخال اسمك.' : 'Please enter your name.');
+      return;
+    }
 
-    const isAr = document.body.classList.contains('ar');
-    let text = isAr
-      ? `مرحباً، اسمي ${name}.\nالكورس: ${course || 'غير محدد'}\nالهاتف: ${phone || 'لم يُذكر'}\n${message ? 'رسالة: ' + message : ''}`
-      : `Hi, my name is ${name}.\nCourse interest: ${course || 'Not specified'}\nPhone: ${phone || 'Not provided'}\n${message ? 'Message: ' + message : ''}`;
+    btn.disabled = true;
+    btn.textContent = isAr ? 'جاري الإرسال...' : 'Sending...';
 
-    // TODO: replace with real WhatsApp number when ready
-    window.open('https://wa.me/?text=' + encodeURIComponent(text.trim()), '_blank');
+    const db = window.supabase.createClient(
+      'https://mizkuzwfjvvulkiyotle.supabase.co',
+      'sb_publishable_6ebgjsAV5DH3u_h-iKC3jw_WagYY6Mv'
+    );
+
+    const { error } = await db.from('contacts').insert({ name, phone, course, message });
+
+    btn.disabled = false;
+
+    if (error) {
+      alert(isAr ? 'حدث خطأ، حاول مرة أخرى.' : 'Something went wrong, please try again.');
+      btn.innerHTML = '<span class="en-text">Send Message</span><span class="ar-text">أرسل الرسالة</span>';
+      return;
+    }
+
+    // Clear form and show success
+    document.querySelector('.contact-form input[type="text"]').value = '';
+    document.querySelector('.contact-form input[type="tel"]').value = '';
+    document.querySelector('.contact-form select').value = '';
+    document.querySelector('.contact-form textarea').value = '';
+    btn.innerHTML = '<span class="en-text">✓ Message sent!</span><span class="ar-text">✓ تم الإرسال!</span>';
+    setTimeout(() => {
+      btn.innerHTML = '<span class="en-text">Send Message</span><span class="ar-text">أرسل الرسالة</span>';
+    }, 3000);
   }
 
   // Community strip

@@ -163,6 +163,7 @@
     <div class="sidebar-section">
       <div class="sidebar-label">Content</div>
       <div class="nav-item" onclick="showPage('community')"><span class="icon">📣</span> Community</div>
+      <div class="nav-item" onclick="showPage('inquiries')"><span class="icon">📬</span> Inquiries <span class="badge" id="inquiries-badge" style="display:none">0</span></div>
     </div>
     <div class="sidebar-section">
       <div class="sidebar-label">Switch View</div>
@@ -279,6 +280,22 @@
         <table>
           <thead><tr><th>Title</th><th>Type</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead>
           <tbody id="community-tbody"><tr><td colspan="5" class="loading"><span class="spinner"></span>Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="page-inquiries" class="page">
+      <div class="page-header">
+        <h1>Inquiries</h1>
+        <p>Contact form submissions from the website</p>
+      </div>
+      <div class="toolbar">
+        <div class="search-box"><input type="text" placeholder="Search inquiries..." oninput="filterTable('inquiries-tbody', this.value)"></div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Name</th><th>Phone</th><th>Course</th><th>Message</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="inquiries-tbody"><tr><td colspan="7" class="loading"><span class="spinner"></span>Loading...</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -431,7 +448,7 @@
   });
 
   async function loadAll() {
-    await Promise.all([loadStats(), loadInstructors(), loadStudents(), loadSessions(), loadHomework(), loadCommunity()]);
+    await Promise.all([loadStats(), loadInstructors(), loadStudents(), loadSessions(), loadHomework(), loadCommunity(), loadInquiries()]);
   }
 
   async function loadStats() {
@@ -844,6 +861,56 @@
     if (!confirm('Delete this post?')) return;
     await db.from('community_posts').delete().eq('id', id);
     loadCommunity();
+  }
+
+  // INQUIRIES
+  async function loadInquiries() {
+    const { data } = await db.from('contacts').select('*').order('created_at', { ascending: false });
+    const tbody = document.getElementById('inquiries-tbody');
+    const items = data || [];
+
+    const newCount = items.filter(i => i.status === 'new').length;
+    const badge = document.getElementById('inquiries-badge');
+    if (newCount > 0) {
+      badge.textContent = newCount;
+      badge.style.display = '';
+    } else {
+      badge.style.display = 'none';
+    }
+
+    if (!items.length) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--gray-400);padding:32px">No inquiries yet</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = items.map(i => {
+      const date = new Date(i.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+      const statusBadge = i.status === 'new'
+        ? '<span style="background:#fef3c7;color:#92400e;padding:2px 10px;border-radius:10px;font-size:12px;font-weight:600">New</span>'
+        : '<span style="background:#d1fae5;color:#065f46;padding:2px 10px;border-radius:10px;font-size:12px;font-weight:600">Contacted</span>';
+      return `<tr>
+        <td><strong>${i.name}</strong></td>
+        <td>${i.phone || '—'}</td>
+        <td>${i.course || '—'}</td>
+        <td style="max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${i.message || '—'}</td>
+        <td>${date}</td>
+        <td>${statusBadge}</td>
+        <td>${i.status === 'new'
+          ? `<button class="btn-primary" style="padding:4px 12px;font-size:12px" onclick="markContacted('${i.id}')">Mark Contacted</button>`
+          : `<button class="btn-secondary" style="padding:4px 12px;font-size:12px" onclick="markNew('${i.id}')">Mark New</button>`
+        }</td>
+      </tr>`;
+    }).join('');
+  }
+
+  async function markContacted(id) {
+    await db.from('contacts').update({ status: 'contacted' }).eq('id', id);
+    loadInquiries();
+  }
+
+  async function markNew(id) {
+    await db.from('contacts').update({ status: 'new' }).eq('id', id);
+    loadInquiries();
   }
 </script>
 </body>
