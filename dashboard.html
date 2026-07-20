@@ -539,7 +539,7 @@
     async function loadDashboard() {
       const [profileRes, studentRes] = await Promise.all([
         db.from('profiles').select('*').eq('id', currentUser.id).single(),
-        db.from('students').select('*, instructors(subject, bio, profiles(full_name))').eq('id', currentUser.id).single()
+        db.from('students').select('*').eq('id', currentUser.id).single()
       ]);
 
       const profile = profileRes.data;
@@ -553,9 +553,12 @@
       const level = student?.level || 'student';
       const levelLabels = { beginner: 'Beginner', intermediate: 'Intermediate', advanced: 'Advanced' };
       document.getElementById('level-badge').textContent = levelLabels[level] || 'Enrolled';
-      document.getElementById('welcome-sub').textContent = student?.instructors?.subject
-        ? `${student.instructors.subject} — ${student.instructors.profiles?.full_name || 'Your Instructor'}`
-        : 'Here\'s what\'s happening with your courses today.';
+      let welcomeSub = "Here's what's happening with your courses today.";
+      if (student?.instructor_id) {
+        const { data: instProf } = await db.from('profiles').select('full_name').eq('id', student.instructor_id).single();
+        if (instProf?.full_name) welcomeSub = `Instructor: ${instProf.full_name}`;
+      }
+      document.getElementById('welcome-sub').textContent = welcomeSub;
 
       // Payment banner — show only if pending
       if (student?.payment_status === 'pending') {
