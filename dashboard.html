@@ -610,6 +610,25 @@
     .pay-method-detail { font-size: 13px; color: var(--gray-600); font-family: monospace; }
     .pay-method-note { font-size: 11px; color: var(--gray-400); margin-top: 4px; }
 
+    .course-pill {
+      padding: 7px 16px;
+      border: 1.5px solid var(--gray-200);
+      background: var(--white);
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      color: var(--gray-600);
+      transition: all 0.2s;
+    }
+    .course-pill.active {
+      border-color: var(--blue);
+      background: var(--blue-bg);
+      color: var(--blue);
+      font-weight: 600;
+    }
+
     /* EN/AR */
     .en-text { display: inline; }
     .ar-text { display: none; }
@@ -647,6 +666,17 @@
   </nav>
 
   <div class="main">
+
+    <!-- COURSE SWITCHER -->
+    <div id="course-switcher" style="display:none;margin-bottom:20px;">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;" id="course-pills"></div>
+    </div>
+    <div id="no-enrollment-state" style="display:none;text-align:center;padding:48px 24px;background:var(--white);border-radius:16px;box-shadow:0 1px 3px rgba(0,0,0,0.06);margin-bottom:20px;">
+      <div style="font-size:40px;margin-bottom:12px;">📚</div>
+      <h2 style="font-size:18px;font-weight:700;color:var(--navy);margin-bottom:8px;">No courses yet</h2>
+      <p style="font-size:14px;color:var(--gray-600);margin-bottom:20px;">Browse available courses and enroll to get started.</p>
+      <a href="index.html#courses" style="background:var(--blue);color:#fff;padding:10px 24px;border-radius:10px;font-size:14px;font-weight:600;text-decoration:none;">Browse Courses →</a>
+    </div>
 
     <!-- PAYMENT BANNER (shown only when payment_status = 'pending') -->
     <div class="payment-banner" id="payment-banner">
@@ -786,6 +816,8 @@
     let currentUser = null;
     let isAr = false;
     let homeworkItems = [];
+    let activeCourseId = null;
+    let enrollments = [];
     let submittingHomeworkId = null;
 
     // Auth guard
@@ -796,58 +828,87 @@
     });
 
     async function loadDashboard() {
-      const [profileRes, studentRes] = await Promise.all([
-        db.from('profiles').select('*').eq('id', currentUser.id).single(),
-        db.from('students').select('*').eq('id', currentUser.id).single()
-      ]);
-
-      const profile = profileRes.data;
-      const student = studentRes.data;
-
-      // Update header
+      const { data: profile } = await db.from('profiles').select('*').eq('id', currentUser.id).single();
       const name = profile?.full_name || profile?.email?.split('@')[0] || 'Student';
       document.getElementById('nav-name').textContent = name;
       document.getElementById('welcome-msg').textContent = isAr ? `أهلاً بك، ${name}!` : `Welcome back, ${name}!`;
 
-      const level = student?.level || 'student';
-      const levelLabels = { beginner: 'Beginner', intermediate: 'Intermediate', advanced: 'Advanced' };
-      document.getElementById('level-badge').textContent = levelLabels[level] || 'Enrolled';
-      document.getElementById('welcome-sub').textContent = "Here's what's happening with your courses today.";
+      // Fetch all enrollments with course names
+      const { data: enrollData } = await db
+        .from('enrollments')
+        .select('id, course_id, payment_status, enrolled_at, courses(id, name)')
+        .eq('student_id', currentUser.id)
+        .order('enrolled_at');
+      enrollments = enrollData || [];
 
-      // Payment banner — show only if pending
-      if (student?.payment_status === 'pending') {
+      if (!enrollments.length) {
+        document.getElementById('no-enrollment-state').style.display = '';
+        document.getElementById('course-switcher').style.display = 'none';
+        document.getElementById('level-badge').textContent = 'Student';
+        document.getElementById('welcome-sub').textContent = "Browse courses to get started.";
+        ['sessions-list','hw-list','avail-list','materials-list'].forEach(id => {
+          document.getElementById(id).innerHTML = '<div class="empty"><div class="icon">📭</div>No course selected</div>';
+        });
+        document.getElementById('stat-sessions').textContent = '0';
+        document.getElementById('stat-hw').textContent = '0';
+        document.getElementById('stat-materials').textContent = '0';
+        document.getElementById('stat-graded').textContent = '0';
+        return;
+      }
+
+      document.getElementById('no-enrollment-state').style.display = 'none';
+
+      // Pick active course
+      const stored = localStorage.getItem('nth_active_course');
+      const validStored = enrollments.find(e => e.course_id === stored);
+      if (!activeCourseId || !enrollments.find(e => e.course_id === activeCourseId)) {
+        activeCourseId = validStored ? stored : enrollments[0].course_id;
+      }
+
+      // Payment banner for active enrollment
+      const activeEnrollment = enrollments.find(e => e.course_id === activeCourseId);
+      if (activeEnrollment?.payment_status === 'pending') {
         document.getElementById('payment-banner').classList.add('show');
-        // TODO: replace with real payment details when ready
         document.getElementById('pay-instapay').textContent = 'coming soon';
         document.getElementById('pay-vodafone').textContent = 'coming soon';
+      } else {
+        document.getElementById('payment-banner').classList.remove('show');
       }
 
-      // Load course name if enrolled
-      if (student?.course_id) {
-        const { data: course } = await db.from('courses').select('name').eq('id', student.course_id).single();
-        if (course?.name) {
-          document.getElementById('welcome-sub').textContent = `Course: ${course.name}`;
-        }
-      }
+      // Course name in badge
+      const courseName = activeEnrollment?.courses?.name || 'Enrolled';
+      document.getElementById('level-badge').textContent = courseName;
+      document.getElementById('welcome-sub').textContent = `Course: ${courseName}`;
 
-      // Load data in parallel — filter by course_id when available
-      const courseId = student?.course_id;
-      let sessQ = db.from('sessions').select('*').eq('student_id', currentUser.id).gte('scheduled_at', new Date().toISOString()).order('scheduled_at').limit(5);
-      let hwQ   = db.from('homework').select('*').eq('student_id', currentUser.id).order('due_date').limit(10);
-      let matsQ = db.from('materials').select('*').eq('instructor_id', student?.instructor_id).order('created_at', { ascending: false }).limit(10);
-      let availQ = student?.instructor_id
-        ? db.from('availability').select('*').eq('instructor_id', student.instructor_id).eq('is_booked', false).gte('available_at', new Date().toISOString()).order('available_at').limit(10)
-        : null;
+      // Render switcher
+      renderCoursePills(enrollments);
 
-      if (courseId) {
-        sessQ  = sessQ.eq('course_id', courseId);
-        hwQ    = hwQ.eq('course_id', courseId);
-        matsQ  = matsQ.eq('course_id', courseId);
-        if (availQ) availQ = availQ.eq('course_id', courseId);
-      }
+      // Load course content
+      await loadCourseContent(activeCourseId);
+    }
 
+    function renderCoursePills(enrollments) {
+      const container = document.getElementById('course-pills');
+      document.getElementById('course-switcher').style.display = '';
+      container.innerHTML = enrollments.map(e => `
+        <button class="course-pill ${e.course_id === activeCourseId ? 'active' : ''}"
+          onclick="switchCourse('${e.course_id}')">
+          ${e.courses?.name || 'Course'}
+        </button>`).join('');
+    }
+
+    function switchCourse(courseId) {
+      activeCourseId = courseId;
+      localStorage.setItem('nth_active_course', courseId);
+      loadDashboard();
+    }
+
+    async function loadCourseContent(courseId) {
       const [sessionsRes, hwRes, matsRes, availRes] = await Promise.all([
-        sessQ, hwQ, matsQ, availQ || Promise.resolve({ data: [] })
+        db.from('sessions').select('*').eq('student_id', currentUser.id).eq('course_id', courseId).gte('scheduled_at', new Date().toISOString()).order('scheduled_at').limit(5),
+        db.from('homework').select('*').eq('student_id', currentUser.id).eq('course_id', courseId).order('due_date').limit(10),
+        db.from('materials').select('*').eq('course_id', courseId).order('created_at', { ascending: false }).limit(10),
+        db.from('availability').select('*').eq('course_id', courseId).eq('is_booked', false).gte('available_at', new Date().toISOString()).order('available_at').limit(10)
       ]);
 
       renderSessions(sessionsRes.data || []);
@@ -855,13 +916,12 @@
       renderMaterials(matsRes.data || []);
       renderAvailability(availRes.data || []);
 
-      // Stats
       const pending = (hwRes.data || []).filter(h => h.status === 'pending').length;
-      const graded = (hwRes.data || []).filter(h => h.status === 'graded').length;
-      document.getElementById('stat-sessions').textContent = (sessionsRes.data || []).length;
-      document.getElementById('stat-hw').textContent = pending;
+      const graded  = (hwRes.data || []).filter(h => h.status === 'graded').length;
+      document.getElementById('stat-sessions').textContent  = (sessionsRes.data || []).length;
+      document.getElementById('stat-hw').textContent        = pending;
       document.getElementById('stat-materials').textContent = (matsRes.data || []).length;
-      document.getElementById('stat-graded').textContent = graded;
+      document.getElementById('stat-graded').textContent    = graded;
     }
 
     function renderSessions(sessions) {
