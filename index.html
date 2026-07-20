@@ -1047,10 +1047,12 @@
       <button class="active" onclick="setLang('en')">EN</button>
       <button onclick="setLang('ar')">AR</button>
     </div>
-    <a href="login.html" class="btn btn-outline">
-      <span class="en-text">Sign In</span>
-      <span class="ar-text">تسجيل الدخول</span>
-    </a>
+    <div id="nav-auth">
+      <a href="login.html" class="btn btn-outline">
+        <span class="en-text">Sign In</span>
+        <span class="ar-text">تسجيل الدخول</span>
+      </a>
+    </div>
     <button class="mobile-menu-btn" onclick="toggleMobileMenu()" aria-label="Menu">☰</button>
   </div>
 </nav>
@@ -1062,7 +1064,9 @@
   <a href="#about" onclick="toggleMobileMenu()"><span class="en-text">About</span><span class="ar-text">عننا</span></a>
   <a href="community.html" onclick="toggleMobileMenu()"><span class="en-text">Community</span><span class="ar-text">المجتمع</span></a>
   <a href="#contact" onclick="toggleMobileMenu()"><span class="en-text">Contact</span><span class="ar-text">تواصل معنا</span></a>
-  <a href="login.html" class="mobile-menu-signin"><span class="en-text">Sign In</span><span class="ar-text">تسجيل الدخول</span></a>
+  <div id="mobile-nav-auth">
+    <a href="login.html" class="mobile-menu-signin"><span class="en-text">Sign In</span><span class="ar-text">تسجيل الدخول</span></a>
+  </div>
 </div>
 
 
@@ -1708,6 +1712,23 @@
   const CATALOG_URL  = 'https://mizkuzwfjvvulkiyotle.supabase.co';
   const CATALOG_KEY  = 'sb_publishable_6ebgjsAV5DH3u_h-iKC3jw_WagYY6Mv';
   const catalogDb    = window.supabase.createClient(CATALOG_URL, CATALOG_KEY);
+
+  // ── Nav: show user avatar + dashboard link when logged in ────────────
+  catalogDb.auth.getSession().then(async ({ data: { session } }) => {
+    if (!session) return;
+    const { data: profile } = await catalogDb.from('profiles').select('full_name, role').eq('id', session.user.id).single();
+    const name = profile?.full_name || session.user.email;
+    const role = profile?.role || 'student';
+    const dashUrl = role === 'admin' ? 'admin.html' : role === 'instructor' ? 'instructor.html' : 'dashboard.html';
+    const initial = name[0].toUpperCase();
+    const avatarHtml = `
+      <a href="${dashUrl}" style="display:flex;align-items:center;gap:8px;text-decoration:none;color:inherit">
+        <div style="width:34px;height:34px;border-radius:50%;background:#3b5bdb;color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0">${initial}</div>
+        <span style="font-size:14px;font-weight:600;color:#1a1f5e;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${name.split(' ')[0]}</span>
+      </a>`;
+    document.getElementById('nav-auth').innerHTML = avatarHtml;
+    document.getElementById('mobile-nav-auth').innerHTML = `<a href="${dashUrl}" class="mobile-menu-signin" style="display:flex;align-items:center;gap:8px"><div style="width:28px;height:28px;border-radius:50%;background:#3b5bdb;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700">${initial}</div><span>My Dashboard</span></a>`;
+  });
 
   const LEVEL_COLORS = {
     beginner:     { bg: 'rgba(47,158,68,0.1)',  color: '#2f9e44' },
