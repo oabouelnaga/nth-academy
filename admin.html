@@ -159,6 +159,46 @@
     @keyframes spin { to { transform: rotate(360deg); } }
     .empty { text-align: center; padding: 40px; color: var(--gray-400); font-size: 14px; }
     .empty .icon { font-size: 36px; display: block; margin-bottom: 8px; }
+
+    /* ── MOBILE CONTENT ── */
+    @media (max-width: 680px) {
+      /* Stats: 2 columns instead of 4 */
+      .stats-row { grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+      .stat-card { padding: 14px 14px; }
+      .stat-label { font-size: 11px; }
+      .stat-value { font-size: 22px; }
+
+      /* Page header */
+      .page-header { margin-bottom: 16px; }
+      .page-header h1 { font-size: 17px; }
+      .page-header p { font-size: 13px; }
+
+      /* Toolbar: stack search above button */
+      .toolbar { flex-wrap: wrap; gap: 8px; }
+      .search-box { max-width: 100%; width: 100%; }
+      .toolbar .btn-primary { width: 100%; justify-content: center; }
+
+      /* Tables: horizontal scroll so columns don't crush */
+      .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      table { min-width: 480px; }
+      th, td { padding: 10px 12px; font-size: 13px; }
+
+      /* Hide lower-priority table columns on mobile */
+      .col-hide-mobile { display: none; }
+
+      /* Modal: full-width, less padding */
+      .modal { padding: 20px 16px; border-radius: 12px; }
+      .modal h2 { font-size: 16px; margin-bottom: 14px; }
+      .form-row { grid-template-columns: 1fr; gap: 0; }
+      .modal-footer { flex-direction: column-reverse; }
+      .modal-footer button { width: 100%; }
+
+      /* Buttons */
+      .btn-primary { font-size: 14px; padding: 10px 16px; }
+
+      /* Cards and sections */
+      .card { padding: 14px; }
+    }
   </style>
   <!-- PWA -->
   <link rel="manifest" href="/manifest.json" />
@@ -284,7 +324,7 @@
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Name</th><th>Email</th><th>Subject</th><th>Students</th><th>Actions</th></tr></thead>
+          <thead><tr><th>Name</th><th>Email</th><th class="col-hide-mobile">Subject</th><th class="col-hide-mobile">Students</th><th>Actions</th></tr></thead>
           <tbody id="instructors-tbody"><tr><td colspan="5" class="loading"><span class="spinner"></span>Loading...</td></tr></tbody>
         </table>
       </div>
@@ -302,7 +342,7 @@
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Name</th><th>Email</th><th>Level</th><th>Course</th><th>Instructor</th><th>Payment</th><th>Actions</th></tr></thead>
+          <thead><tr><th>Name</th><th>Email</th><th class="col-hide-mobile">Level</th><th>Course</th><th class="col-hide-mobile">Instructor</th><th>Payment</th><th>Actions</th></tr></thead>
           <tbody id="students-tbody"><tr><td colspan="7" class="loading"><span class="spinner"></span>Loading...</td></tr></tbody>
         </table>
       </div>
@@ -320,7 +360,7 @@
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Date & Time</th><th>Title</th><th>Student</th><th>Instructor</th><th>Duration</th><th>Status</th></tr></thead>
+          <thead><tr><th>Date & Time</th><th>Title</th><th class="col-hide-mobile">Student</th><th class="col-hide-mobile">Instructor</th><th class="col-hide-mobile">Duration</th><th>Status</th></tr></thead>
           <tbody id="sessions-tbody"><tr><td colspan="6" class="loading"><span class="spinner"></span>Loading...</td></tr></tbody>
         </table>
       </div>
@@ -334,7 +374,7 @@
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Title</th><th>Student</th><th>Due Date</th><th>Status</th><th>Grade</th></tr></thead>
+          <thead><tr><th>Title</th><th>Student</th><th class="col-hide-mobile">Due Date</th><th>Status</th><th class="col-hide-mobile">Grade</th></tr></thead>
           <tbody id="homework-tbody"><tr><td colspan="5" class="loading"><span class="spinner"></span>Loading...</td></tr></tbody>
         </table>
       </div>
@@ -351,7 +391,7 @@
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Name</th><th>Level</th><th>Price</th><th>Instructors</th><th>Enrollments</th><th>Published</th><th>Actions</th></tr></thead>
+          <thead><tr><th>Name</th><th class="col-hide-mobile">Level</th><th class="col-hide-mobile">Price</th><th class="col-hide-mobile">Instructors</th><th class="col-hide-mobile">Enrollments</th><th>Published</th><th>Actions</th></tr></thead>
           <tbody id="courses-tbody"><tr><td colspan="7" class="loading"><span class="spinner"></span>Loading...</td></tr></tbody>
         </table>
       </div>
@@ -391,7 +431,7 @@
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Title</th><th>Type</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead>
+          <thead><tr><th>Title</th><th>Type</th><th>Status</th><th class="col-hide-mobile">Date</th><th>Actions</th></tr></thead>
           <tbody id="community-tbody"><tr><td colspan="5" class="loading"><span class="spinner"></span>Loading...</td></tr></tbody>
         </table>
       </div>
@@ -407,7 +447,7 @@
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Name</th><th>Phone</th><th>Course</th><th>Message</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead>
+          <thead><tr><th>Name</th><th class="col-hide-mobile">Phone</th><th>Course</th><th class="col-hide-mobile">Message</th><th class="col-hide-mobile">Date</th><th>Status</th><th>Actions</th></tr></thead>
           <tbody id="inquiries-tbody"><tr><td colspan="7" class="loading"><span class="spinner"></span>Loading...</td></tr></tbody>
         </table>
       </div>
@@ -1300,6 +1340,29 @@
     alertEl.textContent = 'Session scheduled!';
     setTimeout(() => { closeModal('session-modal'); loadSessions(); }, 1000);
   }
+
+  // Sync td visibility to match hidden th.col-hide-mobile columns
+  function syncColVisibility() {
+    document.querySelectorAll('table').forEach(table => {
+      const ths = Array.from(table.querySelectorAll('thead th'));
+      const hiddenIndices = ths.reduce((acc, th, i) => {
+        if (th.classList.contains('col-hide-mobile')) acc.push(i);
+        return acc;
+      }, []);
+      table.querySelectorAll('tbody tr').forEach(row => {
+        Array.from(row.children).forEach((td, i) => {
+          if (hiddenIndices.includes(i)) {
+            td.classList.add('col-hide-mobile');
+          } else {
+            td.classList.remove('col-hide-mobile');
+          }
+        });
+      });
+    });
+  }
+
+  // Re-sync whenever any tbody changes (data loads)
+  new MutationObserver(syncColVisibility).observe(document.body, { childList: true, subtree: true });
 
   // NAV
   function toggleSidebar() {
