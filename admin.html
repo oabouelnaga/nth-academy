@@ -881,7 +881,7 @@
   }
 
   async function reassignInstructor(studentId, enrollmentId) {
-    const sel = document.getElementById('inst-sel-' + studentId);
+    const sel = document.getElementById('inst-sel-' + enrollmentId);
     const instructorId = sel.value;
     const btn = sel.nextElementSibling;
     btn.textContent = 'Saving...';
