@@ -1386,11 +1386,12 @@
         bookingCountMap[row.id] = row.booked_by ? 1 : 0;
       });
 
-      // Filter to only truly open slots (not fully booked) plus already-booked-by-me slots
+      // Show only slots the student hasn't already booked
       const openSlots = slots.filter(slot => {
+        if (slot.booked_by === currentUser.id) return false;
         const capacity = slot.capacity || 1;
         const booked = bookingCountMap[slot.id] || 0;
-        return booked < capacity || slot.booked_by === currentUser.id;
+        return booked < capacity;
       });
 
       document.getElementById('avail-count').textContent = openSlots.length;
@@ -1402,26 +1403,9 @@
         const capacity = slot.capacity || 1;
         const bookedCount = bookingCountMap[slot.id] || 0;
         const spotsLeft = capacity - bookedCount;
-        const alreadyBooked = slot.booked_by === currentUser.id;
-        const isFull = spotsLeft <= 0 && !alreadyBooked;
 
-        let spotsLabel = '';
-        if (alreadyBooked) {
-          spotsLabel = `<span style="font-size:11px;color:var(--green);font-weight:600">Booked ✓</span>`;
-        } else if (isFull) {
-          spotsLabel = `<span style="font-size:11px;color:var(--red)">Full</span>`;
-        } else {
-          spotsLabel = `<span style="font-size:11px;color:var(--gray-400)">${spotsLeft} spot${spotsLeft !== 1 ? 's' : ''} left</span>`;
-        }
-
-        let actionBtn = '';
-        if (alreadyBooked) {
-          actionBtn = `<button onclick="cancelSlot('${slot.id}')" style="background:var(--red-bg);color:var(--red);border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer">Cancel</button>`;
-        } else if (isFull) {
-          actionBtn = `<button disabled style="background:var(--gray-100);color:var(--gray-400);border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;cursor:not-allowed">Full</button>`;
-        } else {
-          actionBtn = `<button onclick="bookSlot('${slot.id}')" style="background:var(--blue);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer">Book</button>`;
-        }
+        const spotsLabel = `<span style="font-size:11px;color:var(--gray-400)">${spotsLeft} spot${spotsLeft !== 1 ? 's' : ''} left</span>`;
+        const actionBtn = `<button onclick="bookSlot('${slot.id}')" style="background:var(--blue);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer">Book</button>`;
 
         return `
           <div class="session-item" style="display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--gray-100)">
