@@ -743,14 +743,22 @@
   <div class="main">
 
     <!-- COURSE SWITCHER -->
-    <div id="course-switcher" style="display:none;margin-bottom:20px;">
-      <div style="display:flex;gap:8px;flex-wrap:wrap;" id="course-pills"></div>
+    <div id="course-switcher" style="display:none;margin-bottom:20px;background:var(--white);border-radius:12px;padding:16px 20px;box-shadow:0 1px 3px rgba(0,0,0,0.06);display:none;align-items:center;gap:12px;">
+      <label style="font-size:14px;font-weight:600;color:var(--navy);white-space:nowrap;">
+        <span class="en-text">My Course</span><span class="ar-text">كورسي</span>
+      </label>
+      <select id="course-select" onchange="switchCourse(this.value)" style="flex:1;padding:9px 14px;border:1.5px solid var(--gray-200);border-radius:10px;font-size:14px;font-family:inherit;color:var(--gray-800);background:var(--white);outline:none;cursor:pointer;"></select>
     </div>
     <div id="no-enrollment-state" style="display:none;text-align:center;padding:48px 24px;background:var(--white);border-radius:16px;box-shadow:0 1px 3px rgba(0,0,0,0.06);margin-bottom:20px;">
       <div style="font-size:40px;margin-bottom:12px;">📚</div>
-      <h2 style="font-size:18px;font-weight:700;color:var(--navy);margin-bottom:8px;">No courses yet</h2>
-      <p style="font-size:14px;color:var(--gray-600);margin-bottom:20px;">Browse available courses and enroll to get started.</p>
-      <a href="index.html#courses" style="background:var(--blue);color:#fff;padding:10px 24px;border-radius:10px;font-size:14px;font-weight:600;text-decoration:none;">Browse Courses →</a>
+      <h2 style="font-size:18px;font-weight:700;color:var(--navy);margin-bottom:8px;">
+        <span class="en-text">You're not enrolled in any courses yet</span>
+        <span class="ar-text">لم تسجل في أي كورس بعد</span>
+      </h2>
+      <p style="font-size:14px;color:var(--gray-600);margin-bottom:8px;">
+        <span class="en-text">Contact NTH Academy to get enrolled.</span>
+        <span class="ar-text">تواصل مع NTH Academy للتسجيل.</span>
+      </p>
     </div>
 
     <!-- PAYMENT BANNER (shown only when payment_status = 'pending') -->
@@ -966,20 +974,16 @@
     }
 
     function renderCoursePills(enrollments) {
-      const container = document.getElementById('course-pills');
-      document.getElementById('course-switcher').style.display = '';
-      container.innerHTML = enrollments.map(e => {
-        let dateLabel = '';
+      const select = document.getElementById('course-select');
+      const switcher = document.getElementById('course-switcher');
+      switcher.style.display = 'flex';
+      select.innerHTML = enrollments.map(e => {
+        let label = e.courses?.name || 'Course';
         if (e.cohorts?.start_date) {
           const d = new Date(e.cohorts.start_date);
-          dateLabel = `<span class="pill-date">Starts ${d.toLocaleDateString('en', { month: 'short', day: 'numeric' })}</span>`;
+          label += ` — Starts ${d.toLocaleDateString('en', { month: 'short', day: 'numeric' })}`;
         }
-        return `
-          <button class="course-pill ${e.course_id === activeCourseId ? 'active' : ''}"
-            onclick="switchCourse('${e.course_id}')">
-            <span>${e.courses?.name || 'Course'}</span>
-            ${dateLabel}
-          </button>`;
+        return `<option value="${e.course_id}" ${e.course_id === activeCourseId ? 'selected' : ''}>${label}</option>`;
       }).join('');
     }
 
@@ -1059,7 +1063,7 @@
       const [sessionsRes, hwRes, matsRes, availRes, pastSessionsRes] = await Promise.all([
         db.from('sessions').select('*').eq('student_id', currentUser.id).eq('course_id', courseId).gte('scheduled_at', now).order('scheduled_at').limit(5),
         db.from('homework').select('*').eq('student_id', currentUser.id).eq('course_id', courseId).order('due_date').limit(10),
-        db.from('materials').select('*').eq('course_id', courseId).order('created_at', { ascending: false }).limit(20),
+        db.from('materials').select('*').eq('course_id', courseId).neq('material_type', 'homework').order('created_at', { ascending: false }).limit(20),
         db.from('availability').select('*').eq('course_id', courseId).eq('instructor_id', instructorId).gte('available_at', now).order('available_at').limit(20),
         db.from('availability').select('*').eq('course_id', courseId).eq('instructor_id', instructorId).lt('available_at', now).order('available_at', { ascending: false }).limit(10)
       ]);
