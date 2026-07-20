@@ -1060,11 +1060,18 @@
       const now = new Date().toISOString();
       const instructorId = enrollment.assigned_instructor_id;
 
+      let availQ     = db.from('availability').select('*').eq('course_id', courseId).gte('available_at', now).order('available_at').limit(40);
+      let pastAvailQ = db.from('availability').select('*').eq('course_id', courseId).lt('available_at', now).order('available_at', { ascending: false }).limit(10);
+      if (instructorId) {
+        availQ     = availQ.eq('instructor_id', instructorId);
+        pastAvailQ = pastAvailQ.eq('instructor_id', instructorId);
+      }
+
       const [hwRes, matsRes, availRes, pastAvailRes] = await Promise.all([
         db.from('homework').select('*').eq('student_id', currentUser.id).eq('course_id', courseId).order('due_date').limit(10),
         db.from('materials').select('*').eq('course_id', courseId).neq('material_type', 'homework').order('created_at', { ascending: false }).limit(20),
-        db.from('availability').select('*').eq('course_id', courseId).eq('instructor_id', instructorId).gte('available_at', now).order('available_at').limit(40),
-        db.from('availability').select('*').eq('course_id', courseId).eq('instructor_id', instructorId).lt('available_at', now).order('available_at', { ascending: false }).limit(10)
+        availQ,
+        pastAvailQ
       ]);
 
       const allUpcoming = availRes.data || [];
@@ -1437,21 +1444,6 @@
         btn.textContent = 'Book';
         alert('Could not book: ' + error.message);
         return;
-      }
-
-      // Get the slot details to create a session entry
-      const { data: slot } = await db.from('availability').select('*').eq('id', slotId).single();
-      if (slot) {
-        await db.from('sessions').insert({
-          instructor_id: slot.instructor_id,
-          student_id: currentUser.id,
-          course_id: slot.course_id || null,
-          title: slot.title || 'Session',
-          scheduled_at: slot.available_at,
-          duration_mins: slot.duration_mins,
-          teams_link: slot.teams_link,
-          status: 'scheduled'
-        });
       }
 
       btn.textContent = 'Booked!';
