@@ -641,15 +641,19 @@
         el.innerHTML = '<div class="empty"><div class="icon">📚</div>No materials uploaded yet</div>';
         return;
       }
-      el.innerHTML = items.map(m => `
+      const typeIcons = { pdf: '📕', word: '📘', ppt: '📙', video: '🎬', file: '📄' };
+      el.innerHTML = items.map(m => {
+        const icon = typeIcons[m.file_type] || '📄';
+        return `
         <a class="material-item" href="${m.file_url || '#'}" target="${m.file_url ? '_blank' : '_self'}">
-          <div class="mat-icon">📄</div>
+          <div class="mat-icon">${icon}</div>
           <div class="mat-info">
             <div class="mat-title">${m.title}</div>
             <div class="mat-desc">${m.description || m.level || 'Course material'}</div>
           </div>
           ${m.file_url ? '<span class="mat-download">↓ Download</span>' : ''}
-        </a>`).join('');
+        </a>`;
+      }).join('');
     }
 
     async function signOut() {

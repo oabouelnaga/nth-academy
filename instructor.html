@@ -657,8 +657,18 @@
         <textarea id="mat-desc" placeholder="Brief description of this material..."></textarea>
       </div>
       <div class="form-group">
-        <label><span class="en-text">File URL</span><span class="ar-text">رابط الملف</span></label>
-        <input type="url" id="mat-url" placeholder="https://drive.google.com/...">
+        <label><span class="en-text">File</span><span class="ar-text">الملف</span></label>
+        <input type="file" id="mat-file" accept=".pdf,.doc,.docx,.ppt,.pptx,.mp4,.mov,.avi,.mkv,.jpg,.jpeg,.png,.zip">
+        <div style="font-size:11px;color:var(--gray-400);margin-top:4px">
+          <span class="en-text">PDF, Word, PowerPoint, video, images — max 200MB</span>
+          <span class="ar-text">PDF, Word, PowerPoint, فيديو، صور — حد أقصى 200MB</span>
+        </div>
+        <div id="upload-progress" style="display:none;margin-top:8px">
+          <div style="background:var(--gray-200);border-radius:4px;height:6px;overflow:hidden">
+            <div id="progress-bar" style="height:100%;width:0%;background:var(--blue);transition:width 0.3s"></div>
+          </div>
+          <div id="progress-label" style="font-size:11px;color:var(--gray-500);margin-top:4px">Uploading...</div>
+        </div>
       </div>
       <div class="form-group">
         <label><span class="en-text">Level</span><span class="ar-text">المستوى</span></label>
@@ -918,9 +928,12 @@
         return;
       }
       const levelIcons = { beginner: '🟢', intermediate: '🟡', advanced: '🔴' };
-      el.innerHTML = items.map(m => `
+      const typeIcons  = { pdf: '📕', word: '📘', ppt: '📙', video: '🎬', file: '📄' };
+      el.innerHTML = items.map(m => {
+        const icon = typeIcons[m.file_type] || '📄';
+        return `
         <div class="material-item">
-          <div class="mat-icon">📄</div>
+          <div class="mat-icon">${icon}</div>
           <div class="mat-info">
             <div class="mat-title">${m.title}</div>
             <div class="mat-desc">${m.description || ''} ${m.level ? '· ' + (levelIcons[m.level] || '') + ' ' + m.level : ''}</div>
@@ -928,7 +941,8 @@
           ${m.file_url
             ? `<a href="${m.file_url}" target="_blank" style="color:var(--blue);font-size:13px;font-weight:500;text-decoration:none;">↗ Open</a>`
             : ''}
-        </div>`).join('');
+        </div>`;
+      }).join('');
     }
 
     function populateStudentDropdown() {
@@ -973,49 +987,87 @@
     // ── UPLOAD MATERIAL ──────────────────────────────────────
 
     async function uploadMaterial() {
-      const btn   = document.getElementById('upload-btn');
-      const alert = document.getElementById('upload-alert');
-      const title = document.getElementById('mat-title').value.trim();
-      const desc  = document.getElementById('mat-desc').value.trim();
-      const url   = document.getElementById('mat-url').value.trim();
-      const level = document.getElementById('mat-level').value;
+      const btn      = document.getElementById('upload-btn');
+      const alertEl  = document.getElementById('upload-alert');
+      const title    = document.getElementById('mat-title').value.trim();
+      const desc     = document.getElementById('mat-desc').value.trim();
+      const level    = document.getElementById('mat-level').value;
+      const fileInput = document.getElementById('mat-file');
+      const file     = fileInput.files[0];
 
-      if (!title) {
-        alert.className = 'alert-modal error';
-        alert.textContent = 'Title is required.';
-        return;
-      }
+      if (!title) { alertEl.className = 'alert-modal error'; alertEl.textContent = 'Title is required.'; return; }
+      if (!file)  { alertEl.className = 'alert-modal error'; alertEl.textContent = 'Please select a file to upload.'; return; }
 
       btn.disabled = true;
       btn.textContent = 'Uploading...';
+      document.getElementById('upload-progress').style.display = '';
+      document.getElementById('progress-bar').style.width = '10%';
+      document.getElementById('progress-label').textContent = 'Uploading file...';
 
-      const { error } = await db.from('materials').insert({
+      // Build a unique storage path
+      const ext = file.name.split('.').pop().toLowerCase();
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const path = `${currentUser.id}/${Date.now()}_${safeName}`;
+
+      // Detect file type for icon
+      const videoExts = ['mp4','mov','avi','mkv','webm'];
+      const docExts   = ['doc','docx'];
+      const pptExts   = ['ppt','pptx'];
+      const fileType  = videoExts.includes(ext) ? 'video'
+                      : docExts.includes(ext)   ? 'word'
+                      : pptExts.includes(ext)   ? 'ppt'
+                      : ext === 'pdf'            ? 'pdf'
+                      : 'file';
+
+      document.getElementById('progress-bar').style.width = '40%';
+
+      const { error: storageError } = await db.storage.from('materials').upload(path, file, { upsert: false });
+
+      if (storageError) {
+        btn.disabled = false;
+        btn.innerHTML = '<span class="en-text">Upload</span><span class="ar-text">رفع</span>';
+        document.getElementById('upload-progress').style.display = 'none';
+        alertEl.className = 'alert-modal error';
+        alertEl.textContent = storageError.message;
+        return;
+      }
+
+      document.getElementById('progress-bar').style.width = '80%';
+      document.getElementById('progress-label').textContent = 'Saving...';
+
+      const { data: { publicUrl } } = db.storage.from('materials').getPublicUrl(path);
+
+      const { error: dbError } = await db.from('materials').insert({
         instructor_id: currentUser.id,
         title,
         description: desc || null,
-        file_url:    url  || null,
+        file_url:    publicUrl,
+        file_type:   fileType,
         level:       level || null
       });
 
       btn.disabled = false;
       btn.innerHTML = '<span class="en-text">Upload</span><span class="ar-text">رفع</span>';
+      document.getElementById('progress-bar').style.width = '100%';
 
-      if (error) {
-        alert.className = 'alert-modal error';
-        alert.textContent = error.message;
+      if (dbError) {
+        document.getElementById('upload-progress').style.display = 'none';
+        alertEl.className = 'alert-modal error';
+        alertEl.textContent = dbError.message;
         return;
       }
 
-      alert.className = 'alert-modal success';
-      alert.textContent = 'Material uploaded successfully!';
+      alertEl.className = 'alert-modal success';
+      alertEl.textContent = 'Material uploaded successfully!';
       document.getElementById('mat-title').value = '';
       document.getElementById('mat-desc').value  = '';
-      document.getElementById('mat-url').value   = '';
       document.getElementById('mat-level').value = '';
+      fileInput.value = '';
+      document.getElementById('upload-progress').style.display = 'none';
 
       setTimeout(() => {
         closeModal('upload-material-modal');
-        alert.className = 'alert-modal';
+        alertEl.className = 'alert-modal';
         loadDashboard();
       }, 1200);
     }
