@@ -772,6 +772,7 @@
 
     let currentUser = null;
     let isAr = false;
+    let homeworkItems = [];
     let submittingHomeworkId = null;
 
     // Auth guard
@@ -864,6 +865,7 @@
     }
 
     function renderHomework(items) {
+      homeworkItems = items;
       const el = document.getElementById('hw-list');
       document.getElementById('hw-count').textContent = items.length;
       if (!items.length) {
@@ -885,7 +887,7 @@
 
         let actionArea = '';
         if (h.status === 'pending') {
-          actionArea = `<button class="btn-submit-hw" onclick="openSubmitModal('${h.id}', ${JSON.stringify(h.title)})">📤 Upload Completed Work</button>`;
+          actionArea = `<button class="btn-submit-hw" onclick="openSubmitModal('${h.id}', this)">📤 Upload Completed Work</button>`;
         } else if (h.status === 'submitted') {
           actionArea = `<span class="hw-submitted-note">✓ Submitted — awaiting grade</span>`;
           if (h.submission_url) {
@@ -928,9 +930,10 @@
       document.getElementById(chevronId).classList.toggle('open');
     }
 
-    function openSubmitModal(hwId, hwTitle) {
+    function openSubmitModal(hwId, btnEl) {
       submittingHomeworkId = hwId;
-      document.getElementById('submit-hw-title').textContent = hwTitle;
+      const hw = homeworkItems ? homeworkItems.find(h => h.id === hwId) : null;
+      document.getElementById('submit-hw-title').textContent = hw ? hw.title : '';
       document.getElementById('submit-alert').className = 'alert-modal';
       document.getElementById('sub-file').value = '';
       document.getElementById('sub-upload-progress').style.display = 'none';
