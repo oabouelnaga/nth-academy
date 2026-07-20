@@ -756,7 +756,8 @@
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     document.getElementById('page-' + page).classList.add('active');
-    event.currentTarget.classList.add('active');
+    const navItem = document.querySelector(`.nav-item[onclick*="'${page}'"]`);
+    if (navItem) navItem.classList.add('active');
     currentPage = page;
   }
 
