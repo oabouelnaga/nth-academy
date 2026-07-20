@@ -163,7 +163,7 @@
     <div class="sidebar-section">
       <div class="sidebar-label">Catalog</div>
       <div class="nav-item" onclick="showPage('courses')"><span class="icon">📚</span> Courses</div>
-      <div class="nav-item" onclick="showPage('cohorts')"><span class="icon">🗓️</span> Cohorts</div>
+      <div class="nav-item" onclick="showPage('cohorts')"><span class="icon">🗓️</span> Rounds</div>
     </div>
     <div class="sidebar-section">
       <div class="sidebar-label">Content</div>
@@ -291,8 +291,8 @@
     <!-- COHORTS PAGE -->
     <div id="page-cohorts" class="page">
       <div class="page-header">
-        <h1>Cohorts</h1>
-        <p>Manage cohorts and instructor assignments per course</p>
+        <h1>Rounds</h1>
+        <p>Manage rounds and instructor assignments per course</p>
       </div>
       <div class="toolbar">
         <div class="form-group" style="margin:0;min-width:260px">
@@ -300,12 +300,12 @@
             <option value="">Select a course…</option>
           </select>
         </div>
-        <button class="btn-primary" onclick="openCohortModal()">+ Add Cohort</button>
+        <button class="btn-primary" onclick="openCohortModal()">+ Add Round</button>
       </div>
       <div class="table-wrap">
         <table>
           <thead><tr><th>Start Date</th><th>Signup Deadline</th><th>Instructors &amp; Capacity</th><th>Enrolled</th><th>Notes</th><th>Actions</th></tr></thead>
-          <tbody id="cohorts-tbody"><tr><td colspan="6"><div class="empty"><span class="icon">🗓️</span>Select a course to view its cohorts.</div></td></tr></tbody>
+          <tbody id="cohorts-tbody"><tr><td colspan="6"><div class="empty"><span class="icon">🗓️</span>Select a course to view its rounds.</div></td></tr></tbody>
         </table>
       </div>
     </div>
@@ -514,13 +514,13 @@
 <!-- COHORT MODAL -->
 <div class="modal-overlay" id="cohort-modal">
   <div class="modal" style="max-width:560px">
-    <h2 id="cohort-modal-title">Add Cohort</h2>
+    <h2 id="cohort-modal-title">Add Round</h2>
     <div class="alert" id="cohort-alert"></div>
     <div class="form-row">
       <div class="form-group"><label>Start Date</label><input type="date" id="cohort-start"></div>
       <div class="form-group"><label>Signup Deadline</label><input type="date" id="cohort-deadline"></div>
     </div>
-    <div class="form-group"><label>Notes (optional)</label><textarea id="cohort-notes" rows="2" style="width:100%;padding:10px 12px;border:1.5px solid var(--gray-200);border-radius:9px;font-size:14px;font-family:inherit;resize:vertical;outline:none" placeholder="Any details about this cohort..."></textarea></div>
+    <div class="form-group"><label>Notes (optional)</label><textarea id="cohort-notes" rows="2" style="width:100%;padding:10px 12px;border:1.5px solid var(--gray-200);border-radius:9px;font-size:14px;font-family:inherit;resize:vertical;outline:none" placeholder="Any details about this round..."></textarea></div>
     <div class="form-group">
       <label>Instructor Slots</label>
       <div id="cohort-instructor-slots" style="display:flex;flex-direction:column;gap:10px;margin-top:6px">
@@ -529,7 +529,7 @@
     </div>
     <div class="modal-footer">
       <button class="btn-ghost" onclick="closeModal('cohort-modal')">Cancel</button>
-      <button class="btn-primary" id="cohort-save-btn" onclick="saveCohort()">Create Cohort</button>
+      <button class="btn-primary" id="cohort-save-btn" onclick="saveCohort()">Create Round</button>
     </div>
   </div>
 </div>
@@ -1207,7 +1207,7 @@
     const courseId = document.getElementById('cohort-course-filter').value;
     const tbody = document.getElementById('cohorts-tbody');
     if (!courseId) {
-      tbody.innerHTML = '<tr><td colspan="6"><div class="empty"><span class="icon">🗓️</span>Select a course to view its cohorts.</div></td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6"><div class="empty"><span class="icon">🗓️</span>Select a course to view its rounds.</div></td></tr>';
       return;
     }
     tbody.innerHTML = '<tr><td colspan="6" class="loading"><span class="spinner"></span>Loading…</td></tr>';
@@ -1220,7 +1220,7 @@
     allCohorts = cohorts || [];
 
     if (!allCohorts.length) {
-      tbody.innerHTML = '<tr><td colspan="6"><div class="empty"><span class="icon">🗓️</span>No cohorts yet for this course.</div></td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6"><div class="empty"><span class="icon">🗓️</span>No rounds yet for this course.</div></td></tr>';
       return;
     }
 
@@ -1276,8 +1276,8 @@
     const courseId = document.getElementById('cohort-course-filter').value;
     if (!courseId) { alert('Select a course first.'); return; }
     editingCohortId = null;
-    document.getElementById('cohort-modal-title').textContent = 'Add Cohort';
-    document.getElementById('cohort-save-btn').textContent = 'Create Cohort';
+    document.getElementById('cohort-modal-title').textContent = 'Add Round';
+    document.getElementById('cohort-save-btn').textContent = 'Create Round';
     document.getElementById('cohort-start').value = '';
     document.getElementById('cohort-deadline').value = '';
     document.getElementById('cohort-notes').value = '';
@@ -1289,7 +1289,7 @@
     const cohort = allCohorts.find(c => c.id === cohortId);
     if (!cohort) return;
     editingCohortId = cohortId;
-    document.getElementById('cohort-modal-title').textContent = 'Edit Cohort';
+    document.getElementById('cohort-modal-title').textContent = 'Edit Round';
     document.getElementById('cohort-save-btn').textContent = 'Save Changes';
     document.getElementById('cohort-start').value = cohort.start_date || '';
     document.getElementById('cohort-deadline').value = cohort.signup_deadline || '';
@@ -1344,7 +1344,7 @@
       if (error) { alertEl.className = 'alert error'; alertEl.textContent = error.message; btn.disabled = false; btn.textContent = 'Save Changes'; return; }
     } else {
       const { data, error } = await db.from('cohorts').insert(payload).select('id').single();
-      if (error) { alertEl.className = 'alert error'; alertEl.textContent = error.message; btn.disabled = false; btn.textContent = 'Create Cohort'; return; }
+      if (error) { alertEl.className = 'alert error'; alertEl.textContent = error.message; btn.disabled = false; btn.textContent = 'Create Round'; return; }
       cohortId = data.id;
     }
 
@@ -1362,17 +1362,17 @@
     await db.from('cohort_instructors').delete().eq('cohort_id', cohortId);
     if (slots.length) {
       const { error: ciErr } = await db.from('cohort_instructors').insert(slots);
-      if (ciErr) { alertEl.className = 'alert error'; alertEl.textContent = 'Cohort saved but instructor slots failed: ' + ciErr.message; btn.disabled = false; btn.textContent = 'Save Changes'; return; }
+      if (ciErr) { alertEl.className = 'alert error'; alertEl.textContent = 'Round saved but instructor slots failed: ' + ciErr.message; btn.disabled = false; btn.textContent = 'Save Changes'; return; }
     }
 
     alertEl.className = 'alert success';
-    alertEl.textContent = editingCohortId ? 'Cohort updated!' : 'Cohort created!';
+    alertEl.textContent = editingCohortId ? 'Round updated!' : 'Round created!';
     btn.disabled = false;
     setTimeout(() => { closeModal('cohort-modal'); editingCohortId = null; loadCohorts(); }, 1000);
   }
 
   async function deleteCohort(cohortId) {
-    if (!confirm('Delete this cohort? This cannot be undone.')) return;
+    if (!confirm('Delete this round? This cannot be undone.')) return;
     await db.from('cohort_instructors').delete().eq('cohort_id', cohortId);
     const { error } = await db.from('cohorts').delete().eq('id', cohortId);
     if (error) { alert('Error: ' + error.message); return; }
