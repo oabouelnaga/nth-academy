@@ -1806,7 +1806,7 @@
       if (slot?.booked_by) {
         fetch(`${SUPABASE_URL}/functions/v1/notify`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_KEY}` },
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_KEY}`, 'apikey': SUPABASE_KEY },
           body: JSON.stringify({ type: 'cancellation_instructor', slotId, studentId: slot.booked_by, instructorId: slot.instructor_id || currentUser.id })
         }).catch(() => {});
       }

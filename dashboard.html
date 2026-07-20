@@ -1465,7 +1465,7 @@
       // Fire-and-forget notification
       fetch(`${SUPABASE_URL}/functions/v1/notify`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_KEY}` },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_KEY}`, 'apikey': SUPABASE_KEY },
         body: JSON.stringify({ type: 'booking', slotId, studentId: currentUser.id, instructorId: slot.instructor_id })
       }).catch(() => {});
 
@@ -1487,7 +1487,7 @@
       if (slot?.instructor_id) {
         fetch(`${SUPABASE_URL}/functions/v1/notify`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_KEY}` },
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_KEY}`, 'apikey': SUPABASE_KEY },
           body: JSON.stringify({ type: 'cancellation_student', slotId, studentId: currentUser.id, instructorId: slot.instructor_id })
         }).catch(() => {});
       }
