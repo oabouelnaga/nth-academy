@@ -825,7 +825,7 @@
     <div class="grid-2" id="course-content-sections">
       <div class="card">
         <div class="card-head">
-          <h2><span class="en-text">Upcoming Sessions</span><span class="ar-text">الجلسات القادمة</span></h2>
+          <h2><span class="en-text">My Booked Sessions</span><span class="ar-text">جلساتي المحجوزة</span></h2>
           <span class="count" id="sessions-count">0</span>
         </div>
         <div class="card-body" id="sessions-list">
@@ -1060,70 +1060,73 @@
       const now = new Date().toISOString();
       const instructorId = enrollment.assigned_instructor_id;
 
-      const [sessionsRes, hwRes, matsRes, availRes, pastSessionsRes] = await Promise.all([
-        db.from('sessions').select('*').eq('student_id', currentUser.id).eq('course_id', courseId).gte('scheduled_at', now).order('scheduled_at').limit(5),
+      const [hwRes, matsRes, availRes, pastAvailRes] = await Promise.all([
         db.from('homework').select('*').eq('student_id', currentUser.id).eq('course_id', courseId).order('due_date').limit(10),
         db.from('materials').select('*').eq('course_id', courseId).neq('material_type', 'homework').order('created_at', { ascending: false }).limit(20),
-        db.from('availability').select('*').eq('course_id', courseId).eq('instructor_id', instructorId).gte('available_at', now).order('available_at').limit(20),
+        db.from('availability').select('*').eq('course_id', courseId).eq('instructor_id', instructorId).gte('available_at', now).order('available_at').limit(40),
         db.from('availability').select('*').eq('course_id', courseId).eq('instructor_id', instructorId).lt('available_at', now).order('available_at', { ascending: false }).limit(10)
       ]);
 
-      renderSessions(sessionsRes.data || [], pastSessionsRes.data || []);
+      const allUpcoming = availRes.data || [];
+      const myBooked    = allUpcoming.filter(s => s.booked_by === currentUser.id);
+      const pastSlots   = pastAvailRes.data || [];
+
+      renderSessions(myBooked, pastSlots);
       renderHomework(hwRes.data || []);
       renderMaterials(matsRes.data || []);
-      renderAvailability(availRes.data || []);
+      renderAvailability(allUpcoming);
 
       const pending = (hwRes.data || []).filter(h => h.status === 'pending').length;
       const graded  = (hwRes.data || []).filter(h => h.status === 'graded').length;
-      document.getElementById('stat-sessions').textContent  = (sessionsRes.data || []).length;
+      document.getElementById('stat-sessions').textContent  = myBooked.length;
       document.getElementById('stat-hw').textContent        = pending;
       document.getElementById('stat-materials').textContent = (matsRes.data || []).length;
       document.getElementById('stat-graded').textContent    = graded;
     }
 
-    function renderSessions(sessions, pastSlots) {
+    function renderSessions(bookedSlots, pastSlots) {
       const el = document.getElementById('sessions-list');
-      document.getElementById('sessions-count').textContent = sessions.length;
+      document.getElementById('sessions-count').textContent = bookedSlots.length;
 
       let html = '';
 
-      if (sessions.length) {
-        html += sessions.map(s => {
-          const d = new Date(s.scheduled_at);
+      if (bookedSlots.length) {
+        html += bookedSlots.map(s => {
+          const d = new Date(s.available_at);
           const day = d.getDate();
           const mon = d.toLocaleString('en', { month: 'short' });
           const time = d.toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' });
-          const teamsBtn = s.teams_link
+          const joinBtn = s.teams_link
             ? `<a class="btn-join-teams" href="${s.teams_link}" target="_blank" rel="noopener">🎥 Join</a>`
-            : `<span class="status-pill status-scheduled">${s.status}</span>`;
+            : '';
           return `
             <div class="session-item">
               <div class="session-date">
                 <div class="day">${day}</div>
                 <div class="mon">${mon}</div>
               </div>
-              <div class="session-info">
+              <div class="session-info" style="flex:1">
                 <div class="title">${s.title || 'Session'}</div>
                 <div class="time">${time}${s.duration_mins ? ' · ' + s.duration_mins + ' min' : ''}</div>
               </div>
-              ${teamsBtn}
+              ${joinBtn}
+              <button onclick="cancelSlot('${s.id}')" style="background:var(--red-bg);color:var(--red);border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;margin-left:6px">Cancel</button>
             </div>`;
         }).join('');
       } else {
-        html += '<div class="empty"><div class="icon">📅</div>No upcoming sessions</div>';
+        html += '<div class="empty"><div class="icon">📅</div><span class="en-text">No sessions booked yet — use "Book a Session" below</span><span class="ar-text">لم تحجز أي جلسات بعد</span></div>';
       }
 
-      // Past sessions from availability slots
+      // Past sessions
       if (pastSlots && pastSlots.length) {
         html += `<div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--gray-400);padding:14px 0 8px;border-top:1px solid var(--gray-100);margin-top:4px">Past Sessions</div>`;
         html += pastSlots.map(slot => {
           const d = new Date(slot.available_at);
-          const day = d.getDate();
-          const mon = d.toLocaleString('en', { month: 'short' });
-          const time = d.toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' });
           const attended = slot.booked_by === currentUser.id;
           let rightEl = '';
-          if (attended) {
+          if (attended && slot.recording_url) {
+            rightEl = `<a href="${slot.recording_url}" target="_blank" rel="noopener" style="background:var(--navy);color:#fff;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;text-decoration:none;white-space:nowrap">▶ Watch Recording</a>`;
+          } else if (attended) {
             rightEl = `<span class="status-pill status-completed">Attended ✓</span>`;
           } else if (slot.recording_url) {
             rightEl = `<a href="${slot.recording_url}" target="_blank" rel="noopener" style="background:var(--navy);color:#fff;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;text-decoration:none;white-space:nowrap">▶ Watch Recording</a>`;
@@ -1131,14 +1134,14 @@
             rightEl = `<span style="font-size:12px;color:var(--gray-400);font-style:italic">Recording coming soon</span>`;
           }
           return `
-            <div class="session-item" style="opacity:${attended ? '1' : '0.8'}">
+            <div class="session-item" style="opacity:0.85">
               <div class="session-date" style="background:var(--gray-100);color:var(--gray-600)">
-                <div class="day">${day}</div>
-                <div class="mon">${mon}</div>
+                <div class="day">${d.getDate()}</div>
+                <div class="mon">${d.toLocaleString('en',{month:'short'})}</div>
               </div>
-              <div class="session-info">
+              <div class="session-info" style="flex:1">
                 <div class="title" style="color:var(--gray-600)">${slot.title || 'Session'}</div>
-                <div class="time">${time}</div>
+                <div class="time">${d.toLocaleTimeString('en',{hour:'2-digit',minute:'2-digit'})}</div>
               </div>
               ${rightEl}
             </div>`;
@@ -1413,7 +1416,7 @@
 
         let actionBtn = '';
         if (alreadyBooked) {
-          actionBtn = `<button disabled style="background:var(--green-bg);color:var(--green);border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;cursor:default">Booked ✓</button>`;
+          actionBtn = `<button onclick="cancelSlot('${slot.id}')" style="background:var(--red-bg);color:var(--red);border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer">Cancel</button>`;
         } else if (isFull) {
           actionBtn = `<button disabled style="background:var(--gray-100);color:var(--gray-400);border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;cursor:not-allowed">Full</button>`;
         } else {
@@ -1469,6 +1472,16 @@
 
       btn.textContent = 'Booked!';
       setTimeout(() => loadDashboard(), 1000);
+    }
+
+    async function cancelSlot(slotId) {
+      if (!confirm('Cancel this session booking?')) return;
+      const { error } = await db.from('availability').update({
+        is_booked: false,
+        booked_by: null
+      }).eq('id', slotId).eq('booked_by', currentUser.id);
+      if (error) { alert('Could not cancel: ' + error.message); return; }
+      loadDashboard();
     }
 
     async function signOut() {

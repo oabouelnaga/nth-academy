@@ -1768,11 +1768,11 @@
           return `
             <div class="session-item" style="background:var(--green-bg)">
               <div class="session-date"><div class="day">${day}</div><div class="mon">${mon}</div></div>
-              <div class="session-info">
+              <div class="session-info" style="flex:1">
                 <div class="title">${title}</div>
                 <div class="time">${time}${dur ? ' · ' + dur : ''} · ${capLabel} · Booked by <strong>${name}</strong></div>
               </div>
-              <span style="font-size:12px;color:var(--green);font-weight:600;padding:4px 10px;background:var(--green-bg);border-radius:20px">Booked</span>
+              <button onclick="cancelBooking('${slot.id}')" style="font-size:12px;color:var(--red);background:var(--red-bg);border:none;border-radius:20px;padding:4px 10px;cursor:pointer;font-weight:600;white-space:nowrap">Cancel Booking</button>
             </div>`;
         }
 
@@ -1845,6 +1845,16 @@
     async function deleteAvailability(slotId) {
       if (!confirm('Remove this availability slot?')) return;
       await db.from('availability').delete().eq('id', slotId);
+      loadDashboard();
+    }
+
+    async function cancelBooking(slotId) {
+      if (!confirm('Cancel this student\'s booking? The slot will reopen for others.')) return;
+      const { error } = await db.from('availability').update({
+        is_booked: false,
+        booked_by: null
+      }).eq('id', slotId);
+      if (error) { alert('Error: ' + error.message); return; }
       loadDashboard();
     }
 
