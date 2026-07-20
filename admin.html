@@ -526,6 +526,16 @@
     const profMap = Object.fromEntries((profs || []).map(p => [p.id, p]));
     const instMap = Object.fromEntries((insts || []).map(p => [p.id, p.full_name]));
 
+    // Build instructor options for reassign dropdown
+    const { data: allInsts } = await db.from('instructors').select('id');
+    const instIds = (allInsts || []).map(i => i.id);
+    const { data: instProfs } = instIds.length
+      ? await db.from('profiles').select('id, full_name').in('id', instIds)
+      : { data: [] };
+    const instOptions = (instProfs || []).map(p =>
+      `<option value="${p.id}">${p.full_name || p.id}</option>`
+    ).join('');
+
     const levelColors = { beginner: 'pill-green', intermediate: 'pill-yellow', advanced: 'pill-blue' };
     const payColors = { paid: 'pill-green', pending: 'pill-yellow', exempt: 'pill-blue' };
     const payLabels = { paid: '✅ Paid', pending: '⏳ Pending', exempt: '🎓 Exempt' };
@@ -536,6 +546,10 @@
         ? `<button class="btn-ghost" onclick="setPaymentStatus('${s.id}', 'pending')">↩ Unpay</button>`
         : `<button class="btn-primary" style="padding:4px 12px;font-size:12px" onclick="setPaymentStatus('${s.id}', 'paid')">Mark Paid</button>
            <button class="btn-ghost" onclick="setPaymentStatus('${s.id}', 'exempt')">Exempt</button>`;
+      const instDropdown = `<select style="font-size:12px;padding:3px 6px;border:1px solid var(--gray-200);border-radius:6px;background:var(--white)" onchange="reassignInstructor('${s.id}', this.value)">
+        <option value="">— unassigned —</option>
+        ${(instProfs || []).map(p => `<option value="${p.id}" ${p.id === s.instructor_id ? 'selected' : ''}>${p.full_name || p.id}</option>`).join('')}
+      </select>`;
       return `
       <tr>
         <td><div style="display:flex;align-items:center;gap:10px;">
@@ -544,7 +558,7 @@
         </div></td>
         <td style="color:var(--gray-600)">${prof.email || '—'}</td>
         <td><span class="pill ${levelColors[s.level] || 'pill-gray'}">${s.level || '—'}</span></td>
-        <td>${instMap[s.instructor_id] || '—'}</td>
+        <td>${instDropdown}</td>
         <td><span class="pill ${payColors[ps]}">${payLabels[ps]}</span></td>
         <td style="display:flex;gap:6px;flex-wrap:wrap">${actions}</td>
       </tr>`;
@@ -555,6 +569,11 @@
     const { error } = await db.from('students').update({ payment_status: status }).eq('id', studentId);
     if (error) { alert('Error: ' + error.message); return; }
     await loadStudents();
+  }
+
+  async function reassignInstructor(studentId, instructorId) {
+    const { error } = await db.from('students').update({ instructor_id: instructorId || null }).eq('id', studentId);
+    if (error) { alert('Error: ' + error.message); await loadStudents(); }
   }
 
   async function loadSessions() {
