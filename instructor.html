@@ -1165,9 +1165,12 @@
       const el = document.getElementById('students-list');
       document.getElementById('students-count').textContent = students.length;
       if (!students.length) {
-        el.innerHTML = '<div class="empty"><div class="icon">👥</div>No students assigned yet</div>';
+        el.innerHTML = '<div class="empty"><div class="icon">👥</div>No students in this course yet</div>';
         return;
       }
+      const courseOpts = coursesList.length
+        ? coursesList.map(c => `<option value="${c.id}">${c.name}</option>`).join('')
+        : '<option value="">No courses</option>';
       el.innerHTML = students.map(s => {
         const name  = s._prof?.full_name || s._prof?.email?.split('@')[0] || 'Student';
         const email = s._prof?.email || '';
@@ -1181,9 +1184,35 @@
               <div class="student-name">${name}</div>
               <div class="student-email">${email}</div>
             </div>
-            <span class="level-pill level-${level}">${levelLabel}</span>
+            <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+              <select id="course-sel-${s.id}" style="font-size:12px;padding:3px 6px;border:1px solid var(--gray-200);border-radius:6px;background:var(--white);max-width:160px">
+                <option value="">— no course —</option>
+                ${courseOpts}
+              </select>
+              <button onclick="enrollStudentCourse('${s.id}')" style="font-size:12px;background:var(--blue);color:#fff;border:none;border-radius:6px;padding:3px 10px;cursor:pointer">Save</button>
+            </div>
           </div>`;
       }).join('');
+      // Set current course selection for each student
+      students.forEach(s => {
+        const sel = document.getElementById('course-sel-' + s.id);
+        if (sel && s.course_id) sel.value = s.course_id;
+      });
+    }
+
+    async function enrollStudentCourse(studentId) {
+      const sel = document.getElementById('course-sel-' + studentId);
+      const courseId = sel.value || null;
+      const btn = sel.nextElementSibling;
+      btn.textContent = 'Saving...'; btn.disabled = true;
+      const { error } = await db.from('students').update({ course_id: courseId }).eq('id', studentId);
+      if (error) {
+        alert('Error: ' + error.message);
+        btn.textContent = 'Save'; btn.disabled = false;
+      } else {
+        btn.textContent = '✓'; btn.style.background = 'var(--green)';
+        setTimeout(() => { btn.textContent = 'Save'; btn.disabled = false; btn.style.background = ''; }, 2000);
+      }
     }
 
     function renderSessions(sessions) {

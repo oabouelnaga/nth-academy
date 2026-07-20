@@ -228,8 +228,8 @@
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Name</th><th>Email</th><th>Level</th><th>Instructor</th><th>Payment</th><th>Actions</th></tr></thead>
-          <tbody id="students-tbody"><tr><td colspan="6" class="loading"><span class="spinner"></span>Loading...</td></tr></tbody>
+          <thead><tr><th>Name</th><th>Email</th><th>Level</th><th>Course</th><th>Instructor</th><th>Payment</th><th>Actions</th></tr></thead>
+          <tbody id="students-tbody"><tr><td colspan="7" class="loading"><span class="spinner"></span>Loading...</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -436,6 +436,7 @@
 
   let allInstructors = [];
   let allStudents = [];
+  let allCourses = [];
   let currentPage = 'dashboard';
 
   // Auth guard — admin only
@@ -448,7 +449,12 @@
   });
 
   async function loadAll() {
-    await Promise.all([loadStats(), loadInstructors(), loadStudents(), loadSessions(), loadHomework(), loadCommunity(), loadInquiries()]);
+    await Promise.all([loadStats(), loadInstructors(), loadCourses(), loadStudents(), loadSessions(), loadHomework(), loadCommunity(), loadInquiries()]);
+  }
+
+  async function loadCourses() {
+    const { data } = await db.from('courses').select('id, name, instructor_id').order('created_at');
+    allCourses = data || [];
   }
 
   async function loadStats() {
@@ -512,7 +518,7 @@
 
     const tbody = document.getElementById('students-tbody');
     if (!allStudents.length) {
-      tbody.innerHTML = '<tr><td colspan="6"><div class="empty"><span class="icon">🎓</span>No students yet. Add one above.</div></td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7"><div class="empty"><span class="icon">🎓</span>No students yet. Add one above.</div></td></tr>';
       return;
     }
 
@@ -536,6 +542,8 @@
       `<option value="${p.id}">${p.full_name || p.id}</option>`
     ).join('');
 
+    const courseOpts = allCourses.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+
     const levelColors = { beginner: 'pill-green', intermediate: 'pill-yellow', advanced: 'pill-blue' };
     const payColors = { paid: 'pill-green', pending: 'pill-yellow', exempt: 'pill-blue' };
     const payLabels = { paid: '✅ Paid', pending: '⏳ Pending', exempt: '🎓 Exempt' };
@@ -554,6 +562,13 @@
         </select>
         <button class="btn-primary" style="padding:3px 10px;font-size:12px" onclick="reassignInstructor('${s.id}')">Save</button>
       </div>`;
+      const courseDropdown = `<div style="display:flex;align-items:center;gap:6px">
+        <select id="course-sel-${s.id}" style="font-size:12px;padding:3px 6px;border:1px solid var(--gray-200);border-radius:6px;background:var(--white);max-width:160px">
+          <option value="">— none —</option>
+          ${courseOpts}
+        </select>
+        <button id="course-btn-${s.id}" class="btn-primary" style="padding:3px 10px;font-size:12px" onclick="adminEnrollCourse('${s.id}')">Save</button>
+      </div>`;
       return `
       <tr>
         <td><div style="display:flex;align-items:center;gap:10px;">
@@ -562,11 +577,33 @@
         </div></td>
         <td style="color:var(--gray-600)">${prof.email || '—'}</td>
         <td><span class="pill ${levelColors[s.level] || 'pill-gray'}">${s.level || '—'}</span></td>
+        <td>${courseDropdown}</td>
         <td>${instDropdown}</td>
         <td><span class="pill ${payColors[ps]}">${payLabels[ps]}</span></td>
         <td style="display:flex;gap:6px;flex-wrap:wrap">${actions} ${promoteBtn}</td>
       </tr>`;
     }).join('');
+
+    // Set current course selection after render
+    allStudents.forEach(s => {
+      const sel = document.getElementById('course-sel-' + s.id);
+      if (sel && s.course_id) sel.value = s.course_id;
+    });
+  }
+
+  async function adminEnrollCourse(studentId) {
+    const sel = document.getElementById('course-sel-' + studentId);
+    const btn = document.getElementById('course-btn-' + studentId);
+    const courseId = sel.value || null;
+    btn.textContent = 'Saving...'; btn.disabled = true;
+    const { error } = await db.from('students').update({ course_id: courseId }).eq('id', studentId);
+    if (error) {
+      alert('Error: ' + error.message);
+      btn.textContent = 'Save'; btn.disabled = false;
+    } else {
+      btn.textContent = '✓'; btn.style.background = 'var(--green)';
+      setTimeout(() => { btn.textContent = 'Save'; btn.disabled = false; btn.style.background = ''; }, 2000);
+    }
   }
 
   async function setPaymentStatus(studentId, status) {
