@@ -496,6 +496,42 @@
     .alert-modal.error   { background: var(--red-bg);   color: var(--red);   border: 1px solid #ffc9c9; display: block; }
     .alert-modal.success { background: var(--green-bg); color: var(--green); border: 1px solid #b2f2bb; display: block; }
 
+    /* COURSE SELECTOR */
+    .course-bar {
+      background: var(--white);
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+      padding: 14px 20px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .course-bar label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--navy);
+      white-space: nowrap;
+    }
+
+    .course-bar select {
+      flex: 1;
+      min-width: 200px;
+      padding: 8px 12px;
+      border: 1.5px solid var(--gray-200);
+      border-radius: 10px;
+      font-size: 14px;
+      font-family: inherit;
+      color: var(--gray-800);
+      background: var(--white);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .course-bar select:focus { border-color: var(--blue); }
+
     /* EN/AR */
     .en-text { display: inline; }
     .ar-text { display: none; }
@@ -545,6 +581,15 @@
         <span class="en-text">Instructor</span>
         <span class="ar-text">مدرّس</span>
       </div>
+    </div>
+
+    <!-- COURSE SELECTOR -->
+    <div class="course-bar">
+      <label>Course:</label>
+      <select id="course-select" onchange="onCourseChange()">
+        <option value="">Loading courses...</option>
+      </select>
+      <button class="btn-action" onclick="openModal('new-course-modal')">+ New Course</button>
     </div>
 
     <!-- STATS -->
@@ -668,6 +713,10 @@
       <h3>Post Available Slot</h3>
       <div class="alert-modal" id="avail-alert"></div>
       <div class="form-group">
+        <label>Course</label>
+        <select id="avail-course"><option value="">Select a course...</option></select>
+      </div>
+      <div class="form-group">
         <label>Session Title</label>
         <input type="text" id="avail-title" placeholder="e.g. English Speaking Practice">
       </div>
@@ -698,6 +747,10 @@
         <span class="ar-text">رفع مادة تعليمية</span>
       </h3>
       <div class="alert-modal" id="upload-alert"></div>
+      <div class="form-group">
+        <label>Course</label>
+        <select id="mat-course"><option value="">Select a course...</option></select>
+      </div>
       <div class="form-group">
         <label><span class="en-text">Title</span><span class="ar-text">العنوان</span></label>
         <input type="text" id="mat-title" placeholder="e.g. Chapter 3 — Algebra">
@@ -748,6 +801,10 @@
         <span class="ar-text">إسناد واجب منزلي</span>
       </h3>
       <div class="alert-modal" id="hw-alert"></div>
+      <div class="form-group">
+        <label>Course</label>
+        <select id="hw-course"><option value="">Select a course...</option></select>
+      </div>
       <div class="form-group">
         <label><span class="en-text">Title</span><span class="ar-text">العنوان</span></label>
         <input type="text" id="hw-title" placeholder="e.g. Practice Problems — Week 3">
@@ -804,6 +861,10 @@
       </h3>
       <div class="alert-modal" id="session-alert"></div>
       <div class="form-group">
+        <label>Course</label>
+        <select id="sess-course"><option value="">Select a course...</option></select>
+      </div>
+      <div class="form-group">
         <label><span class="en-text">Title</span><span class="ar-text">العنوان</span></label>
         <input type="text" id="sess-title" placeholder="e.g. Week 3 — Grammar Review">
       </div>
@@ -840,6 +901,26 @@
         <button class="btn-primary" id="schedule-btn" onclick="scheduleSession()">
           <span class="en-text">Schedule</span><span class="ar-text">جدولة</span>
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: NEW COURSE -->
+  <div class="modal-overlay" id="new-course-modal">
+    <div class="modal">
+      <h3>New Course</h3>
+      <div class="alert-modal" id="course-alert"></div>
+      <div class="form-group">
+        <label>Course Name</label>
+        <input type="text" id="course-name" placeholder="e.g. English Speaking — Intermediate">
+      </div>
+      <div class="form-group">
+        <label>Description (optional)</label>
+        <textarea id="course-desc" placeholder="What this course covers..."></textarea>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-secondary" onclick="closeModal('new-course-modal')">Cancel</button>
+        <button class="btn-primary" id="create-course-btn" onclick="createCourse()">Create Course</button>
       </div>
     </div>
   </div>
@@ -899,6 +980,8 @@
 
     let currentUser = null;
     let studentsList = [];
+    let coursesList = [];
+    let selectedCourseId = null;
     let gradingHomeworkId = null;
     let isAr = false;
 
@@ -922,8 +1005,83 @@
         document.getElementById('admin-back-link').style.display = '';
       }
 
+      await loadCourses();
       loadDashboard();
     });
+
+    async function loadCourses() {
+      const { data } = await db.from('courses').select('*')
+        .eq('instructor_id', currentUser.id).order('created_at');
+      coursesList = data || [];
+
+      const sel = document.getElementById('course-select');
+      if (!coursesList.length) {
+        sel.innerHTML = '<option value="">No courses yet — create one</option>';
+        selectedCourseId = null;
+      } else {
+        sel.innerHTML = coursesList.map(c =>
+          `<option value="${c.id}">${c.name}</option>`
+        ).join('');
+        // Keep existing selection if still valid, else pick first
+        if (!selectedCourseId || !coursesList.find(c => c.id === selectedCourseId)) {
+          selectedCourseId = coursesList[0].id;
+        }
+        sel.value = selectedCourseId;
+      }
+      populateCourseDropdowns();
+    }
+
+    function populateCourseDropdowns() {
+      const opts = coursesList.length
+        ? coursesList.map(c => `<option value="${c.id}">${c.name}</option>`).join('')
+        : '<option value="">No courses yet</option>';
+      ['avail-course','mat-course','hw-course','sess-course'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.innerHTML = '<option value="">Select a course...</option>' + opts;
+          if (selectedCourseId) el.value = selectedCourseId;
+        }
+      });
+    }
+
+    function onCourseChange() {
+      selectedCourseId = document.getElementById('course-select').value || null;
+      populateCourseDropdowns();
+      loadDashboard();
+    }
+
+    async function createCourse() {
+      const btn = document.getElementById('create-course-btn');
+      const alertEl = document.getElementById('course-alert');
+      const name = document.getElementById('course-name').value.trim();
+      const desc = document.getElementById('course-desc').value.trim();
+      if (!name) {
+        alertEl.className = 'alert-modal error';
+        alertEl.textContent = 'Course name is required.';
+        return;
+      }
+      btn.disabled = true; btn.textContent = 'Creating...';
+      const { data, error } = await db.from('courses').insert({
+        instructor_id: currentUser.id, name, description: desc || null
+      }).select().single();
+      btn.disabled = false; btn.textContent = 'Create Course';
+      if (error) {
+        alertEl.className = 'alert-modal error';
+        alertEl.textContent = error.message;
+        return;
+      }
+      selectedCourseId = data.id;
+      alertEl.className = 'alert-modal success';
+      alertEl.textContent = 'Course created!';
+      document.getElementById('course-name').value = '';
+      document.getElementById('course-desc').value = '';
+      setTimeout(async () => {
+        closeModal('new-course-modal');
+        alertEl.className = 'alert-modal';
+        await loadCourses();
+        loadDashboard();
+      }, 900);
+    }
 
     async function loadDashboard() {
       const { data: profile } = await db
@@ -938,17 +1096,27 @@
         ? `أهلاً بك، ${name}!`
         : `Welcome back, ${name}!`;
 
-      // Load all data in parallel (flat queries — no nested joins)
+      // Build queries — filter by course if one is selected
+      let studentsQ  = db.from('students').select('*').eq('instructor_id', currentUser.id);
+      let sessionsQ  = db.from('sessions').select('*').eq('instructor_id', currentUser.id)
+                        .gte('scheduled_at', new Date().toISOString()).order('scheduled_at').limit(8);
+      let matsQ      = db.from('materials').select('*').eq('instructor_id', currentUser.id)
+                        .order('created_at', { ascending: false });
+      let subsQ      = db.from('homework').select('*').eq('instructor_id', currentUser.id)
+                        .eq('status', 'submitted').order('created_at');
+      let availQ     = db.from('availability').select('*').eq('instructor_id', currentUser.id)
+                        .gte('available_at', new Date().toISOString()).order('available_at');
+
+      if (selectedCourseId) {
+        studentsQ = studentsQ.eq('course_id', selectedCourseId);
+        sessionsQ = sessionsQ.eq('course_id', selectedCourseId);
+        matsQ     = matsQ.eq('course_id', selectedCourseId);
+        subsQ     = subsQ.eq('course_id', selectedCourseId);
+        availQ    = availQ.eq('course_id', selectedCourseId);
+      }
+
       const [studentsRes, sessionsRes, materialsRes, submissionsRes, availRes] = await Promise.all([
-        db.from('students').select('*').eq('instructor_id', currentUser.id),
-        db.from('sessions').select('*').eq('instructor_id', currentUser.id)
-          .gte('scheduled_at', new Date().toISOString()).order('scheduled_at').limit(8),
-        db.from('materials').select('*').eq('instructor_id', currentUser.id)
-          .order('created_at', { ascending: false }),
-        db.from('homework').select('*').eq('instructor_id', currentUser.id)
-          .eq('status', 'submitted').order('created_at'),
-        db.from('availability').select('*').eq('instructor_id', currentUser.id)
-          .gte('available_at', new Date().toISOString()).order('available_at')
+        studentsQ, sessionsQ, matsQ, subsQ, availQ
       ]);
 
       studentsList = studentsRes.data || [];
@@ -1227,8 +1395,10 @@
 
       const { data: { publicUrl } } = db.storage.from('materials').getPublicUrl(path);
 
+      const matCourseId = document.getElementById('mat-course').value || null;
       const { error: dbError } = await db.from('materials').insert({
         instructor_id: currentUser.id,
+        course_id:    matCourseId,
         title,
         description: desc || null,
         file_url:    publicUrl,
@@ -1315,9 +1485,11 @@
         return;
       }
 
+      const hwCourseId = document.getElementById('hw-course').value || null;
       const rows = targets.map(sid => ({
         instructor_id:  currentUser.id,
         student_id:     sid,
+        course_id:      hwCourseId,
         title,
         description:    desc        || null,
         due_date:       due         || null,
@@ -1455,9 +1627,11 @@
       btn.disabled = true;
       btn.textContent = 'Scheduling...';
 
+      const sessCourseId = document.getElementById('sess-course').value || null;
       const { error } = await db.from('sessions').insert({
         instructor_id: currentUser.id,
         student_id: studentId,
+        course_id: sessCourseId,
         title,
         scheduled_at: new Date(datetime).toISOString(),
         duration_mins: duration ? parseInt(duration) : null,
@@ -1548,8 +1722,10 @@
       btn.disabled = true;
       btn.textContent = 'Posting...';
 
+      const courseId = document.getElementById('avail-course').value || null;
       const { error } = await db.from('availability').insert({
         instructor_id: currentUser.id,
+        course_id: courseId,
         title: title || null,
         available_at: new Date(datetime).toISOString(),
         duration_mins: duration ? parseInt(duration) : 60,

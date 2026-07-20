@@ -812,12 +812,7 @@
       const level = student?.level || 'student';
       const levelLabels = { beginner: 'Beginner', intermediate: 'Intermediate', advanced: 'Advanced' };
       document.getElementById('level-badge').textContent = levelLabels[level] || 'Enrolled';
-      let welcomeSub = "Here's what's happening with your courses today.";
-      if (student?.instructor_id) {
-        const { data: instProf } = await db.from('profiles').select('full_name').eq('id', student.instructor_id).single();
-        if (instProf?.full_name) welcomeSub = `Instructor: ${instProf.full_name}`;
-      }
-      document.getElementById('welcome-sub').textContent = welcomeSub;
+      document.getElementById('welcome-sub').textContent = "Here's what's happening with your courses today.";
 
       // Payment banner — show only if pending
       if (student?.payment_status === 'pending') {
@@ -827,14 +822,32 @@
         document.getElementById('pay-vodafone').textContent = 'coming soon';
       }
 
-      // Load data in parallel
+      // Load course name if enrolled
+      if (student?.course_id) {
+        const { data: course } = await db.from('courses').select('name').eq('id', student.course_id).single();
+        if (course?.name) {
+          document.getElementById('welcome-sub').textContent = `Course: ${course.name}`;
+        }
+      }
+
+      // Load data in parallel — filter by course_id when available
+      const courseId = student?.course_id;
+      let sessQ = db.from('sessions').select('*').eq('student_id', currentUser.id).gte('scheduled_at', new Date().toISOString()).order('scheduled_at').limit(5);
+      let hwQ   = db.from('homework').select('*').eq('student_id', currentUser.id).order('due_date').limit(10);
+      let matsQ = db.from('materials').select('*').eq('instructor_id', student?.instructor_id).order('created_at', { ascending: false }).limit(10);
+      let availQ = student?.instructor_id
+        ? db.from('availability').select('*').eq('instructor_id', student.instructor_id).eq('is_booked', false).gte('available_at', new Date().toISOString()).order('available_at').limit(10)
+        : null;
+
+      if (courseId) {
+        sessQ  = sessQ.eq('course_id', courseId);
+        hwQ    = hwQ.eq('course_id', courseId);
+        matsQ  = matsQ.eq('course_id', courseId);
+        if (availQ) availQ = availQ.eq('course_id', courseId);
+      }
+
       const [sessionsRes, hwRes, matsRes, availRes] = await Promise.all([
-        db.from('sessions').select('*').eq('student_id', currentUser.id).gte('scheduled_at', new Date().toISOString()).order('scheduled_at').limit(5),
-        db.from('homework').select('*').eq('student_id', currentUser.id).order('due_date').limit(10),
-        db.from('materials').select('*').eq('instructor_id', student?.instructor_id).order('created_at', { ascending: false }).limit(10),
-        student?.instructor_id
-          ? db.from('availability').select('*').eq('instructor_id', student.instructor_id).eq('is_booked', false).gte('available_at', new Date().toISOString()).order('available_at').limit(10)
-          : { data: [] }
+        sessQ, hwQ, matsQ, availQ || Promise.resolve({ data: [] })
       ]);
 
       renderSessions(sessionsRes.data || []);
@@ -1096,6 +1109,7 @@
         await db.from('sessions').insert({
           instructor_id: slot.instructor_id,
           student_id: currentUser.id,
+          course_id: slot.course_id || null,
           title: slot.title || 'Session',
           scheduled_at: slot.available_at,
           duration_mins: slot.duration_mins,
