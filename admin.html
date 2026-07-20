@@ -139,7 +139,23 @@
     </a>
     <span class="nav-tag">Admin</span>
   </div>
-  <button class="btn-nav" onclick="signOut()">Sign out</button>
+  <div style="position:relative" id="nav-user-menu">
+    <button onclick="var d=document.getElementById('nav-dropdown');d.style.display=d.style.display==='block'?'none':'block'" class="btn-nav" style="display:flex;align-items:center;gap:6px" id="nav-user-btn">
+      <span id="nav-name-display">...</span>
+      <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <div id="nav-dropdown" style="display:none;position:absolute;right:0;top:calc(100% + 8px);background:#fff;border:1px solid #e5e7eb;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.15);min-width:180px;z-index:1000;overflow:hidden">
+      <a href="index.html" style="display:flex;align-items:center;gap:10px;padding:12px 16px;text-decoration:none;color:#1a1f5e;font-size:14px;font-weight:500" onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background=''">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        Home
+      </a>
+      <div style="height:1px;background:#e5e7eb"></div>
+      <button onclick="signOut()" style="display:flex;align-items:center;gap:10px;padding:12px 16px;width:100%;background:none;border:none;cursor:pointer;color:#e03131;font-size:14px;font-weight:500;font-family:inherit;text-align:left" onmouseover="this.style.background='#fff5f5'" onmouseout="this.style.background=''">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Sign Out
+      </button>
+    </div>
+  </div>
 </nav>
 
 <div class="layout">
@@ -557,10 +573,19 @@
   // Auth guard — admin only
   db.auth.getSession().then(({ data: { session } }) => {
     if (!session) { window.location.href = 'login.html'; return; }
-    db.from('profiles').select('role').eq('id', session.user.id).single().then(({ data }) => {
+    db.from('profiles').select('role, full_name').eq('id', session.user.id).single().then(({ data }) => {
       if (!data || data.role !== 'admin') { window.location.href = 'login.html'; return; }
+      const firstName = (data.full_name || session.user.email).split(' ')[0];
+      document.getElementById('nav-name-display').textContent = firstName;
       loadAll();
     });
+  });
+
+  document.addEventListener('click', e => {
+    if (!document.getElementById('nav-user-menu')?.contains(e.target)) {
+      const d = document.getElementById('nav-dropdown');
+      if (d) d.style.display = 'none';
+    }
   });
 
   async function loadAll() {
