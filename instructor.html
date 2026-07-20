@@ -606,6 +606,22 @@
 
     </div>
 
+    <!-- AVAILABILITY -->
+    <div class="grid-full">
+      <div class="card">
+        <div class="card-head">
+          <h2>My Availability</h2>
+          <div class="card-head-right">
+            <span class="count" id="avail-count">0</span>
+            <button class="btn-action" onclick="openModal('avail-modal')">+ Post Slot</button>
+          </div>
+        </div>
+        <div class="card-body" id="avail-list">
+          <div class="loading"><div class="loading-spinner"></div></div>
+        </div>
+      </div>
+    </div>
+
     <!-- SUBMISSIONS TO GRADE -->
     <div class="grid-full">
       <div class="card">
@@ -644,6 +660,34 @@
       </div>
     </div>
 
+  </div>
+
+  <!-- MODAL: POST AVAILABILITY -->
+  <div class="modal-overlay" id="avail-modal">
+    <div class="modal">
+      <h3>Post Available Slot</h3>
+      <div class="alert-modal" id="avail-alert"></div>
+      <div class="form-group">
+        <label>Session Title</label>
+        <input type="text" id="avail-title" placeholder="e.g. English Speaking Practice">
+      </div>
+      <div class="form-group">
+        <label>Date &amp; Time</label>
+        <input type="datetime-local" id="avail-datetime">
+      </div>
+      <div class="form-group">
+        <label>Duration (minutes)</label>
+        <input type="number" id="avail-duration" placeholder="60" min="15" max="240" value="60">
+      </div>
+      <div class="form-group">
+        <label>Microsoft Teams Link (optional)</label>
+        <input type="url" id="avail-teams" placeholder="https://teams.microsoft.com/l/meetup-join/...">
+      </div>
+      <div class="modal-actions">
+        <button class="btn-secondary" onclick="closeModal('avail-modal')">Cancel</button>
+        <button class="btn-primary" id="avail-btn" onclick="postAvailability()">Post Slot</button>
+      </div>
+    </div>
   </div>
 
   <!-- MODAL: UPLOAD MATERIAL -->
@@ -895,14 +939,16 @@
         : `Welcome back, ${name}!`;
 
       // Load all data in parallel (flat queries — no nested joins)
-      const [studentsRes, sessionsRes, materialsRes, submissionsRes] = await Promise.all([
+      const [studentsRes, sessionsRes, materialsRes, submissionsRes, availRes] = await Promise.all([
         db.from('students').select('*').eq('instructor_id', currentUser.id),
         db.from('sessions').select('*').eq('instructor_id', currentUser.id)
           .gte('scheduled_at', new Date().toISOString()).order('scheduled_at').limit(8),
         db.from('materials').select('*').eq('instructor_id', currentUser.id)
           .order('created_at', { ascending: false }),
         db.from('homework').select('*').eq('instructor_id', currentUser.id)
-          .eq('status', 'submitted').order('created_at')
+          .eq('status', 'submitted').order('created_at'),
+        db.from('availability').select('*').eq('instructor_id', currentUser.id)
+          .gte('available_at', new Date().toISOString()).order('available_at')
       ]);
 
       studentsList = studentsRes.data || [];
@@ -923,10 +969,18 @@
       const sessionsWithProf  = (sessionsRes.data  || []).map(s => ({ ...s, _prof: profMap[s.student_id] || {} }));
       const submissionsWithProf = (submissionsRes.data || []).map(h => ({ ...h, _prof: profMap[h.student_id] || {} }));
 
+      // Fetch names for booked availability slots
+      const bookedIds = (availRes.data || []).filter(a => a.booked_by).map(a => a.booked_by);
+      const bookedProfs = bookedIds.length
+        ? (await db.from('profiles').select('id, full_name, email').in('id', bookedIds)).data || []
+        : [];
+      const bookedProfMap = Object.fromEntries(bookedProfs.map(p => [p.id, p]));
+
       renderStudents(studentsList);
       renderSessions(sessionsWithProf);
       renderMaterials(materialsRes.data || []);
       renderSubmissions(submissionsWithProf);
+      renderAvailability(availRes.data || [], bookedProfMap);
 
       // Stats
       document.getElementById('stat-students').textContent  = studentsList.length;
@@ -1435,6 +1489,95 @@
         alertEl.className = 'alert-modal';
         loadDashboard();
       }, 1200);
+    }
+
+    // ── AVAILABILITY ─────────────────────────────────────────
+
+    function renderAvailability(slots, bookedProfMap) {
+      const el = document.getElementById('avail-list');
+      document.getElementById('avail-count').textContent = slots.length;
+      if (!slots.length) {
+        el.innerHTML = '<div class="empty"><div class="icon">📅</div>No upcoming slots posted yet</div>';
+        return;
+      }
+      el.innerHTML = slots.map(slot => {
+        const d = new Date(slot.available_at);
+        const day = d.getDate();
+        const mon = d.toLocaleString('en', { month: 'short' });
+        const time = d.toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' });
+        const dur = slot.duration_mins ? `${slot.duration_mins} min` : '';
+        if (slot.is_booked) {
+          const prof = bookedProfMap[slot.booked_by] || {};
+          const name = prof.full_name || prof.email?.split('@')[0] || 'Student';
+          return `
+            <div class="session-item" style="background:var(--green-bg)">
+              <div class="session-date"><div class="day">${day}</div><div class="mon">${mon}</div></div>
+              <div class="session-info">
+                <div class="title">${slot.title || 'Session'}</div>
+                <div class="time">${time}${dur ? ' · ' + dur : ''} · Booked by <strong>${name}</strong></div>
+              </div>
+              <span style="font-size:12px;color:var(--green);font-weight:600;padding:4px 10px;background:var(--green-bg);border-radius:20px">Booked</span>
+            </div>`;
+        }
+        return `
+          <div class="session-item">
+            <div class="session-date"><div class="day">${day}</div><div class="mon">${mon}</div></div>
+            <div class="session-info">
+              <div class="title">${slot.title || 'Open Slot'}</div>
+              <div class="time">${time}${dur ? ' · ' + dur : ''} · Open for booking</div>
+            </div>
+            <button onclick="deleteAvailability('${slot.id}')" style="font-size:12px;color:var(--red);background:var(--red-bg);border:none;border-radius:20px;padding:4px 10px;cursor:pointer">Remove</button>
+          </div>`;
+      }).join('');
+    }
+
+    async function postAvailability() {
+      const btn = document.getElementById('avail-btn');
+      const alertEl = document.getElementById('avail-alert');
+      const title = document.getElementById('avail-title').value.trim();
+      const datetime = document.getElementById('avail-datetime').value;
+      const duration = document.getElementById('avail-duration').value;
+      const teamsLink = document.getElementById('avail-teams').value.trim();
+
+      if (!datetime) {
+        alertEl.className = 'alert-modal error';
+        alertEl.textContent = 'Date and time are required.';
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Posting...';
+
+      const { error } = await db.from('availability').insert({
+        instructor_id: currentUser.id,
+        title: title || null,
+        available_at: new Date(datetime).toISOString(),
+        duration_mins: duration ? parseInt(duration) : 60,
+        teams_link: teamsLink || null
+      });
+
+      btn.disabled = false;
+      btn.textContent = 'Post Slot';
+
+      if (error) {
+        alertEl.className = 'alert-modal error';
+        alertEl.textContent = error.message;
+        return;
+      }
+
+      alertEl.className = 'alert-modal success';
+      alertEl.textContent = 'Slot posted!';
+      document.getElementById('avail-title').value = '';
+      document.getElementById('avail-datetime').value = '';
+      document.getElementById('avail-duration').value = '60';
+      document.getElementById('avail-teams').value = '';
+      setTimeout(() => { closeModal('avail-modal'); alertEl.className = 'alert-modal'; loadDashboard(); }, 1000);
+    }
+
+    async function deleteAvailability(slotId) {
+      if (!confirm('Remove this availability slot?')) return;
+      await db.from('availability').delete().eq('id', slotId);
+      loadDashboard();
     }
 
     // ── UTILS ────────────────────────────────────────────────

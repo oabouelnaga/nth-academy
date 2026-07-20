@@ -728,6 +728,19 @@
       </div>
     </div>
 
+    <!-- BOOK A SESSION -->
+    <div class="grid-full">
+      <div class="card">
+        <div class="card-head">
+          <h2><span class="en-text">Book a Session</span><span class="ar-text">احجز جلسة</span></h2>
+          <span class="count" id="avail-count">0</span>
+        </div>
+        <div class="card-body" id="avail-list">
+          <div class="loading"><div class="loading-spinner"></div></div>
+        </div>
+      </div>
+    </div>
+
     <!-- MATERIALS -->
     <div class="grid-full">
       <div class="card">
@@ -815,15 +828,19 @@
       }
 
       // Load data in parallel
-      const [sessionsRes, hwRes, matsRes] = await Promise.all([
+      const [sessionsRes, hwRes, matsRes, availRes] = await Promise.all([
         db.from('sessions').select('*').eq('student_id', currentUser.id).gte('scheduled_at', new Date().toISOString()).order('scheduled_at').limit(5),
         db.from('homework').select('*').eq('student_id', currentUser.id).order('due_date').limit(10),
-        db.from('materials').select('*').eq('instructor_id', student?.instructor_id).order('created_at', { ascending: false }).limit(10)
+        db.from('materials').select('*').eq('instructor_id', student?.instructor_id).order('created_at', { ascending: false }).limit(10),
+        student?.instructor_id
+          ? db.from('availability').select('*').eq('instructor_id', student.instructor_id).eq('is_booked', false).gte('available_at', new Date().toISOString()).order('available_at').limit(10)
+          : { data: [] }
       ]);
 
       renderSessions(sessionsRes.data || []);
       renderHomework(hwRes.data || []);
       renderMaterials(matsRes.data || []);
+      renderAvailability(availRes.data || []);
 
       // Stats
       const pending = (hwRes.data || []).filter(h => h.status === 'pending').length;
@@ -1025,6 +1042,70 @@
           ${m.file_url ? '<span class="mat-download">↓ Download</span>' : ''}
         </a>`;
       }).join('');
+    }
+
+    // ── AVAILABILITY BOOKING ─────────────────────────────────
+
+    function renderAvailability(slots) {
+      const el = document.getElementById('avail-list');
+      document.getElementById('avail-count').textContent = slots.length;
+      if (!slots.length) {
+        el.innerHTML = '<div class="empty"><div class="icon">📅</div>No open slots — check back soon</div>';
+        return;
+      }
+      el.innerHTML = slots.map(slot => {
+        const d = new Date(slot.available_at);
+        const date = d.toLocaleDateString('en', { weekday: 'short', month: 'short', day: 'numeric' });
+        const time = d.toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' });
+        const dur = slot.duration_mins ? `${slot.duration_mins} min` : '';
+        return `
+          <div class="session-item" style="display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--gray-100)">
+            <div class="session-date">
+              <div class="day">${d.getDate()}</div>
+              <div class="mon">${d.toLocaleString('en',{month:'short'})}</div>
+            </div>
+            <div class="session-info" style="flex:1">
+              <div class="title">${slot.title || 'Open Session Slot'}</div>
+              <div class="time">${time}${dur ? ' · ' + dur : ''}</div>
+            </div>
+            <button onclick="bookSlot('${slot.id}')" style="background:var(--blue);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer">Book</button>
+          </div>`;
+      }).join('');
+    }
+
+    async function bookSlot(slotId) {
+      const btn = event.target;
+      btn.disabled = true;
+      btn.textContent = 'Booking...';
+
+      const { error } = await db.from('availability').update({
+        is_booked: true,
+        booked_by: currentUser.id
+      }).eq('id', slotId);
+
+      if (error) {
+        btn.disabled = false;
+        btn.textContent = 'Book';
+        alert('Could not book: ' + error.message);
+        return;
+      }
+
+      // Get the slot details to create a session entry
+      const { data: slot } = await db.from('availability').select('*').eq('id', slotId).single();
+      if (slot) {
+        await db.from('sessions').insert({
+          instructor_id: slot.instructor_id,
+          student_id: currentUser.id,
+          title: slot.title || 'Session',
+          scheduled_at: slot.available_at,
+          duration_mins: slot.duration_mins,
+          teams_link: slot.teams_link,
+          status: 'scheduled'
+        });
+      }
+
+      btn.textContent = 'Booked!';
+      setTimeout(() => loadDashboard(), 1000);
     }
 
     async function signOut() {
