@@ -1211,7 +1211,7 @@
       <div id="enroll-modal-meta" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px;font-size:13px;color:#495057;"></div>
       <p id="enroll-modal-desc" style="font-size:14px;color:#495057;line-height:1.6;margin-bottom:16px;"></p>
       <div id="enroll-modal-instructors" style="margin-bottom:16px;font-size:14px;color:#212529;"></div>
-      <!-- Payment placeholder -->
+      <!-- Payment instructions -->
       <div style="background:#f8f9fa;border:1.5px dashed #dee2e6;border-radius:12px;padding:16px 18px;margin-bottom:20px;">
         <div style="font-weight:600;font-size:14px;color:#1a1f5e;margin-bottom:8px;">
           <span class="en-text">How to pay</span><span class="ar-text">طريقة الدفع</span>
@@ -1221,6 +1221,39 @@
           <span class="ar-text">ابعت الدفع عن طريق <strong>Instapay</strong> أو <strong>Vodafone Cash</strong>.<br>بعد التحويل، ابعت صورة من الإيصال على WhatsApp علشان نأكد تسجيلك.</span>
         </div>
         <div id="enroll-modal-price" style="margin-top:10px;font-size:22px;font-weight:700;color:#3b5bdb;"></div>
+      </div>
+      <!-- Enrollment form -->
+      <div id="enroll-form-wrap">
+        <div style="margin-bottom:14px;">
+          <label style="display:block;font-size:13px;font-weight:600;color:#495057;margin-bottom:5px;">
+            <span class="en-text">Your full name</span><span class="ar-text">اسمك الكامل</span>
+          </label>
+          <input id="enroll-name" type="text" placeholder="Your full name"
+            style="width:100%;padding:10px 14px;border:1.5px solid #dee2e6;border-radius:8px;font-size:14px;font-family:inherit;outline:none;transition:border-color 0.2s;"
+            onfocus="this.style.borderColor='#3b5bdb'" onblur="this.style.borderColor='#dee2e6'" />
+        </div>
+        <div style="margin-bottom:14px;">
+          <label style="display:block;font-size:13px;font-weight:600;color:#495057;margin-bottom:5px;">
+            <span class="en-text">Email address</span><span class="ar-text">البريد الإلكتروني</span>
+          </label>
+          <input id="enroll-email" type="email" placeholder="your@email.com"
+            style="width:100%;padding:10px 14px;border:1.5px solid #dee2e6;border-radius:8px;font-size:14px;font-family:inherit;outline:none;transition:border-color 0.2s;"
+            onfocus="this.style.borderColor='#3b5bdb'" onblur="this.style.borderColor='#dee2e6'" />
+        </div>
+        <div id="enroll-cohort-wrap" style="margin-bottom:20px;">
+          <label style="display:block;font-size:13px;font-weight:600;color:#495057;margin-bottom:5px;">
+            <span class="en-text">Start date</span><span class="ar-text">تاريخ البداية</span>
+          </label>
+          <div id="enroll-cohort-loading" style="font-size:13px;color:#adb5bd;padding:8px 0;">
+            <span class="en-text">Loading available dates…</span><span class="ar-text">جارٍ تحميل المواعيد…</span>
+          </div>
+          <select id="enroll-cohort-select" style="display:none;width:100%;padding:10px 14px;border:1.5px solid #dee2e6;border-radius:8px;font-size:14px;font-family:inherit;outline:none;background:#fff;cursor:pointer;transition:border-color 0.2s;"
+            onfocus="this.style.borderColor='#3b5bdb'" onblur="this.style.borderColor='#dee2e6'">
+          </select>
+          <div id="enroll-no-cohorts" style="display:none;font-size:13px;color:#868e96;padding:8px 12px;background:#f8f9fa;border-radius:8px;">
+            <span class="en-text">No upcoming dates — check back soon</span><span class="ar-text">لا توجد مواعيد قادمة — تابع معنا قريباً</span>
+          </div>
+        </div>
       </div>
       <div id="enroll-modal-feedback" style="display:none;padding:10px 14px;border-radius:8px;font-size:14px;margin-bottom:14px;"></div>
       <div style="display:flex;gap:10px;">
@@ -1783,7 +1816,7 @@
     renderCatalog();
   }
 
-  function openEnrollModal(courseId) {
+  async function openEnrollModal(courseId) {
     const c = allCatalogCourses.find(x => x.id === courseId);
     if (!c) return;
     enrollingCourseId = courseId;
@@ -1815,16 +1848,101 @@
     const price = c.price ? `${Number(c.price).toLocaleString()} EGP` : (isAr ? 'تواصل للسعر' : 'Contact for price');
     document.getElementById('enroll-modal-price').textContent = price;
 
+    // Reset form fields
+    document.getElementById('enroll-name').value = '';
+    document.getElementById('enroll-email').value = '';
+
+    // Reset feedback and button
     const fb = document.getElementById('enroll-modal-feedback');
     fb.style.display = 'none';
     fb.className = '';
     const btn = document.getElementById('enroll-confirm-btn');
     btn.disabled = false;
+    btn.style.display = '';
     btn.innerHTML = '<span class="en-text">Confirm Enrollment</span><span class="ar-text">تأكيد التسجيل</span>';
 
+    // Show modal first so user sees it while cohorts load
     const modal = document.getElementById('enroll-modal');
     modal.style.display = 'flex';
     document.body.style.overflow = 'hidden';
+
+    // Load cohorts
+    await loadCohorts(courseId);
+  }
+
+  async function loadCohorts(courseId) {
+    const cohortLoading = document.getElementById('enroll-cohort-loading');
+    const cohortSelect  = document.getElementById('enroll-cohort-select');
+    const noCohorts     = document.getElementById('enroll-no-cohorts');
+    const btn           = document.getElementById('enroll-confirm-btn');
+    const isAr          = document.body.classList.contains('ar');
+
+    cohortLoading.style.display = 'block';
+    cohortSelect.style.display  = 'none';
+    noCohorts.style.display     = 'none';
+
+    const today = new Date().toISOString().slice(0, 10);
+
+    try {
+      // Fetch cohorts with open signup deadline
+      const { data: cohorts, error } = await catalogDb
+        .from('cohorts')
+        .select('id, start_date, signup_deadline')
+        .eq('course_id', courseId)
+        .gte('signup_deadline', today)
+        .order('start_date');
+
+      if (error || !cohorts || cohorts.length === 0) {
+        cohortLoading.style.display = 'none';
+        noCohorts.style.display = 'block';
+        btn.style.display = 'none';
+        return;
+      }
+
+      // For each cohort check capacity
+      const openCohorts = [];
+      for (const cohort of cohorts) {
+        // Total capacity = sum of cohort_instructors.capacity for this cohort
+        const { data: ciRows } = await catalogDb
+          .from('cohort_instructors')
+          .select('capacity')
+          .eq('cohort_id', cohort.id);
+        const totalCapacity = (ciRows || []).reduce((sum, r) => sum + (r.capacity || 0), 0);
+
+        // Enrolled count
+        const { count: enrolled } = await catalogDb
+          .from('enrollments')
+          .select('id', { count: 'exact', head: true })
+          .eq('cohort_id', cohort.id);
+
+        const spotsLeft = totalCapacity > 0 ? totalCapacity - (enrolled || 0) : null;
+        if (spotsLeft === null || spotsLeft > 0) {
+          openCohorts.push({ ...cohort, spotsLeft });
+        }
+      }
+
+      cohortLoading.style.display = 'none';
+
+      if (openCohorts.length === 0) {
+        noCohorts.style.display = 'block';
+        btn.style.display = 'none';
+        return;
+      }
+
+      cohortSelect.innerHTML = openCohorts.map(cohort => {
+        const dateLabel = new Date(cohort.start_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+        const spotsLabel = cohort.spotsLeft !== null ? ` — ${cohort.spotsLeft} spot${cohort.spotsLeft === 1 ? '' : 's'} left` : '';
+        return `<option value="${cohort.id}">${dateLabel}${spotsLabel}</option>`;
+      }).join('');
+
+      cohortSelect.style.display = 'block';
+      btn.style.display = '';
+
+    } catch (e) {
+      cohortLoading.style.display = 'none';
+      noCohorts.style.display = 'block';
+      btn.style.display = 'none';
+    }
   }
 
   function closeEnrollModal() {
@@ -1836,41 +1954,75 @@
   async function confirmEnroll() {
     if (!enrollingCourseId) return;
     const isAr = document.body.classList.contains('ar');
-    const btn = document.getElementById('enroll-confirm-btn');
-    const fb = document.getElementById('enroll-modal-feedback');
+    const btn   = document.getElementById('enroll-confirm-btn');
+    const fb    = document.getElementById('enroll-modal-feedback');
 
-    // Check if logged in
-    const { data: { session } } = await catalogDb.auth.getSession();
-    if (!session) {
-      sessionStorage.setItem('enroll_after_login', enrollingCourseId);
-      window.location.href = 'login.html';
-      return;
-    }
+    const name    = document.getElementById('enroll-name').value.trim();
+    const email   = document.getElementById('enroll-email').value.trim();
+    const cohortSelect = document.getElementById('enroll-cohort-select');
+    const cohortId = cohortSelect.style.display !== 'none' ? cohortSelect.value : null;
 
-    btn.disabled = true;
-    btn.textContent = isAr ? 'جارٍ التسجيل…' : 'Enrolling…';
-
-    const { error } = await catalogDb.from('enrollments').upsert(
-      { student_id: session.user.id, course_id: enrollingCourseId, payment_status: 'pending' },
-      { onConflict: 'student_id,course_id' }
-    );
-
-    if (error) {
+    // Validate
+    if (!name) {
       fb.style.display = 'block';
       fb.style.background = '#fff5f5';
       fb.style.color = '#e03131';
-      fb.textContent = isAr ? 'حدث خطأ. حاول مرة أخرى.' : 'Something went wrong. Please try again.';
-      btn.disabled = false;
-      btn.innerHTML = '<span class="en-text">Confirm Enrollment</span><span class="ar-text">تأكيد التسجيل</span>';
+      fb.textContent = isAr ? 'يرجى إدخال اسمك.' : 'Please enter your full name.';
+      return;
+    }
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      fb.style.display = 'block';
+      fb.style.background = '#fff5f5';
+      fb.style.color = '#e03131';
+      fb.textContent = isAr ? 'يرجى إدخال بريد إلكتروني صحيح.' : 'Please enter a valid email address.';
+      return;
+    }
+    if (!cohortId) {
+      fb.style.display = 'block';
+      fb.style.background = '#fff5f5';
+      fb.style.color = '#e03131';
+      fb.textContent = isAr ? 'يرجى اختيار موعد البداية.' : 'Please select a start date.';
       return;
     }
 
-    fb.style.display = 'block';
-    fb.style.background = '#ebfbee';
-    fb.style.color = '#2f9e44';
-    fb.textContent = isAr ? '🎉 تم تسجيلك! تحقق من لوحة التحكم.' : '🎉 Enrolled! Check your dashboard.';
-    btn.textContent = isAr ? 'تم ✓' : 'Done ✓';
-    setTimeout(() => { closeEnrollModal(); window.location.href = 'dashboard.html'; }, 1800);
+    fb.style.display = 'none';
+    btn.disabled = true;
+    btn.textContent = isAr ? 'جارٍ التسجيل…' : 'Sending…';
+
+    try {
+      const resp = await fetch('https://mizkuzwfjvvulkiyotle.supabase.co/functions/v1/send-invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${CATALOG_KEY}` },
+        body: JSON.stringify({ email, name, courseId: enrollingCourseId, cohortId }),
+      });
+
+      if (!resp.ok) {
+        let errMsg = isAr ? 'حدث خطأ. حاول مرة أخرى.' : 'Something went wrong. Please try again.';
+        try { const j = await resp.json(); if (j.error || j.message) errMsg = j.error || j.message; } catch {}
+        fb.style.display = 'block';
+        fb.style.background = '#fff5f5';
+        fb.style.color = '#e03131';
+        fb.textContent = errMsg;
+        btn.disabled = false;
+        btn.innerHTML = '<span class="en-text">Confirm Enrollment</span><span class="ar-text">تأكيد التسجيل</span>';
+        return;
+      }
+
+      fb.style.display = 'block';
+      fb.style.background = '#ebfbee';
+      fb.style.color = '#2f9e44';
+      fb.textContent = '🎉 ' + (isAr ? 'تحقق من بريدك الإلكتروني للدعوة!' : 'Check your email for your invite!');
+      btn.textContent = isAr ? 'تم ✓' : 'Done ✓';
+      setTimeout(() => closeEnrollModal(), 2500);
+
+    } catch (e) {
+      fb.style.display = 'block';
+      fb.style.background = '#fff5f5';
+      fb.style.color = '#e03131';
+      fb.textContent = isAr ? 'حدث خطأ في الاتصال. حاول مرة أخرى.' : 'Connection error. Please try again.';
+      btn.disabled = false;
+      btn.innerHTML = '<span class="en-text">Confirm Enrollment</span><span class="ar-text">تأكيد التسجيل</span>';
+    }
   }
 
   // Close modal on backdrop click

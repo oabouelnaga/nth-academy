@@ -163,6 +163,7 @@
     <div class="sidebar-section">
       <div class="sidebar-label">Catalog</div>
       <div class="nav-item" onclick="showPage('courses')"><span class="icon">📚</span> Courses</div>
+      <div class="nav-item" onclick="showPage('cohorts')"><span class="icon">🗓️</span> Cohorts</div>
     </div>
     <div class="sidebar-section">
       <div class="sidebar-label">Content</div>
@@ -283,6 +284,28 @@
         <table>
           <thead><tr><th>Name</th><th>Level</th><th>Price</th><th>Instructors</th><th>Enrollments</th><th>Published</th><th>Actions</th></tr></thead>
           <tbody id="courses-tbody"><tr><td colspan="7" class="loading"><span class="spinner"></span>Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- COHORTS PAGE -->
+    <div id="page-cohorts" class="page">
+      <div class="page-header">
+        <h1>Cohorts</h1>
+        <p>Manage cohorts and instructor assignments per course</p>
+      </div>
+      <div class="toolbar">
+        <div class="form-group" style="margin:0;min-width:260px">
+          <select id="cohort-course-filter" onchange="loadCohorts()" style="padding:9px 12px;border:1.5px solid var(--gray-200);border-radius:10px;font-size:14px;font-family:inherit;color:var(--gray-800);background:var(--white);outline:none;width:100%">
+            <option value="">Select a course…</option>
+          </select>
+        </div>
+        <button class="btn-primary" onclick="openCohortModal()">+ Add Cohort</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Start Date</th><th>Signup Deadline</th><th>Instructors &amp; Capacity</th><th>Enrolled</th><th>Notes</th><th>Actions</th></tr></thead>
+          <tbody id="cohorts-tbody"><tr><td colspan="6"><div class="empty"><span class="icon">🗓️</span>Select a course to view its cohorts.</div></td></tr></tbody>
         </table>
       </div>
     </div>
@@ -488,6 +511,29 @@
   </div>
 </div>
 
+<!-- COHORT MODAL -->
+<div class="modal-overlay" id="cohort-modal">
+  <div class="modal" style="max-width:560px">
+    <h2 id="cohort-modal-title">Add Cohort</h2>
+    <div class="alert" id="cohort-alert"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Start Date</label><input type="date" id="cohort-start"></div>
+      <div class="form-group"><label>Signup Deadline</label><input type="date" id="cohort-deadline"></div>
+    </div>
+    <div class="form-group"><label>Notes (optional)</label><textarea id="cohort-notes" rows="2" style="width:100%;padding:10px 12px;border:1.5px solid var(--gray-200);border-radius:9px;font-size:14px;font-family:inherit;resize:vertical;outline:none" placeholder="Any details about this cohort..."></textarea></div>
+    <div class="form-group">
+      <label>Instructor Slots</label>
+      <div id="cohort-instructor-slots" style="display:flex;flex-direction:column;gap:10px;margin-top:6px">
+        <div style="color:var(--gray-400);font-size:13px">Save the course first, or no instructors assigned to this course yet.</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closeModal('cohort-modal')">Cancel</button>
+      <button class="btn-primary" id="cohort-save-btn" onclick="saveCohort()">Create Cohort</button>
+    </div>
+  </div>
+</div>
+
 <script>
   const SUPABASE_URL = 'https://mizkuzwfjvvulkiyotle.supabase.co';
   const SUPABASE_KEY = 'sb_publishable_6ebgjsAV5DH3u_h-iKC3jw_WagYY6Mv';
@@ -498,7 +544,9 @@
   let allInstructors = [];
   let allStudents = [];
   let allCourses = [];
+  let allCohorts = [];
   let editingCourseId = null;
+  let editingCohortId = null;
   let currentPage = 'dashboard';
 
   // Auth guard — admin only
@@ -512,6 +560,7 @@
 
   async function loadAll() {
     await Promise.all([loadStats(), loadInstructors(), loadCourses(), loadStudents(), loadSessions(), loadHomework(), loadCommunity(), loadInquiries()]);
+    populateCohortCourseFilter();
   }
 
   async function loadCourses() {
@@ -706,46 +755,74 @@
       return;
     }
 
-    // Fetch profiles and instructor subjects separately
     const studentIds = allStudents.map(s => s.id);
-    const instructorIds = [...new Set(allStudents.map(s => s.instructor_id).filter(Boolean))];
-    const [{ data: profs }, { data: insts }] = await Promise.all([
-      db.from('profiles').select('id, full_name, email').in('id', studentIds),
-      instructorIds.length ? db.from('profiles').select('id, full_name').in('id', instructorIds) : { data: [] }
-    ]);
-    const profMap = Object.fromEntries((profs || []).map(p => [p.id, p]));
-    const instMap = Object.fromEntries((insts || []).map(p => [p.id, p.full_name]));
 
-    // Build instructor options for reassign dropdown
-    const { data: allInsts } = await db.from('instructors').select('id');
-    const instIds = (allInsts || []).map(i => i.id);
+    // Fetch profiles
+    const { data: profs } = await db.from('profiles').select('id, full_name, email').in('id', studentIds);
+    const profMap = Object.fromEntries((profs || []).map(p => [p.id, p]));
+
+    // Fetch enrollments for these students (course + cohort + assigned instructor)
+    const { data: enrollRows } = await db
+      .from('enrollments')
+      .select('id, student_id, course_id, cohort_id, assigned_instructor_id, payment_status')
+      .in('student_id', studentIds);
+    // Keyed by student_id → first enrollment (most students have one)
+    const enrollMap = {};
+    (enrollRows || []).forEach(e => { if (!enrollMap[e.student_id]) enrollMap[e.student_id] = e; });
+
+    // Fetch cohort_instructors for all referenced cohorts so we can build dropdowns
+    const cohortIds = [...new Set((enrollRows || []).map(e => e.cohort_id).filter(Boolean))];
+    const { data: ciRows } = cohortIds.length
+      ? await db.from('cohort_instructors').select('cohort_id, instructor_id, capacity').in('cohort_id', cohortIds)
+      : { data: [] };
+    // Group: cohortId → [{instructor_id, capacity}]
+    const cohortInstMap = {};
+    (ciRows || []).forEach(ci => {
+      if (!cohortInstMap[ci.cohort_id]) cohortInstMap[ci.cohort_id] = [];
+      cohortInstMap[ci.cohort_id].push(ci);
+    });
+
+    // Count how many students each instructor already has per cohort (for capacity display)
+    const assignCounts = {};
+    (enrollRows || []).forEach(e => {
+      if (e.cohort_id && e.assigned_instructor_id) {
+        const key = e.cohort_id + ':' + e.assigned_instructor_id;
+        assignCounts[key] = (assignCounts[key] || 0) + 1;
+      }
+    });
+
+    // Fetch instructor names for all cohort instructor ids
+    const allCiInstIds = [...new Set((ciRows || []).map(ci => ci.instructor_id))];
+    const { data: ciProfs } = allCiInstIds.length
+      ? await db.from('profiles').select('id, full_name').in('id', allCiInstIds)
+      : { data: [] };
+    const ciNameMap = Object.fromEntries((ciProfs || []).map(p => [p.id, p.full_name || '?']));
+
+    // Fallback: all instructors for students with no cohort
+    const instIds = allInstructors.map(i => i.id);
     const { data: instProfs } = instIds.length
       ? await db.from('profiles').select('id, full_name').in('id', instIds)
       : { data: [] };
-    const instOptions = (instProfs || []).map(p =>
-      `<option value="${p.id}">${p.full_name || p.id}</option>`
-    ).join('');
+    const instNameMap = Object.fromEntries((instProfs || []).map(p => [p.id, p.full_name || '?']));
 
     const courseOpts = allCourses.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
 
     const levelColors = { beginner: 'pill-green', intermediate: 'pill-yellow', advanced: 'pill-blue' };
     const payColors = { paid: 'pill-green', pending: 'pill-yellow', exempt: 'pill-blue' };
     const payLabels = { paid: '✅ Paid', pending: '⏳ Pending', exempt: '🎓 Exempt' };
+
     tbody.innerHTML = allStudents.map(s => {
       const prof = profMap[s.id] || {};
-      const ps = s.payment_status || 'pending';
+      const enroll = enrollMap[s.id];
+      const ps = enroll?.payment_status || s.payment_status || 'pending';
+
       const actions = ps === 'paid'
         ? `<button class="btn-ghost" onclick="setPaymentStatus('${s.id}', 'pending')">↩ Unpay</button>`
         : `<button class="btn-primary" style="padding:4px 12px;font-size:12px" onclick="setPaymentStatus('${s.id}', 'paid')">Mark Paid</button>
            <button class="btn-ghost" onclick="setPaymentStatus('${s.id}', 'exempt')">Exempt</button>`;
       const promoteBtn = `<button class="btn-ghost" style="font-size:12px" onclick="promoteToInstructor('${s.id}', '${(prof.full_name||'').replace(/'/g,"\\'")}')">→ Instructor</button>`;
-      const instDropdown = `<div style="display:flex;align-items:center;gap:6px">
-        <select id="inst-sel-${s.id}" style="font-size:12px;padding:3px 6px;border:1px solid var(--gray-200);border-radius:6px;background:var(--white)">
-          <option value="">— unassigned —</option>
-          ${(instProfs || []).map(p => `<option value="${p.id}" ${p.id === s.instructor_id ? 'selected' : ''}>${p.full_name || p.id}</option>`).join('')}
-        </select>
-        <button class="btn-primary" style="padding:3px 10px;font-size:12px" onclick="reassignInstructor('${s.id}')">Save</button>
-      </div>`;
+
+      // Course dropdown
       const courseDropdown = `<div style="display:flex;align-items:center;gap:6px">
         <select id="course-sel-${s.id}" style="font-size:12px;padding:3px 6px;border:1px solid var(--gray-200);border-radius:6px;background:var(--white);max-width:160px">
           <option value="">— none —</option>
@@ -753,6 +830,39 @@
         </select>
         <button id="course-btn-${s.id}" class="btn-primary" style="padding:3px 10px;font-size:12px" onclick="adminEnrollCourse('${s.id}')">Save</button>
       </div>`;
+
+      // Instructor dropdown: if student has a cohort, show cohort instructors with capacity; else show all instructors
+      let instDropdown;
+      if (enroll?.cohort_id && cohortInstMap[enroll.cohort_id]?.length) {
+        const slots = cohortInstMap[enroll.cohort_id];
+        const opts = slots.map(ci => {
+          const used = assignCounts[enroll.cohort_id + ':' + ci.instructor_id] || 0;
+          const label = `${ciNameMap[ci.instructor_id]} (${used} / ${ci.capacity})`;
+          const sel = enroll.assigned_instructor_id === ci.instructor_id ? 'selected' : '';
+          return `<option value="${ci.instructor_id}" ${sel}>${label}</option>`;
+        }).join('');
+        instDropdown = `<div style="display:flex;align-items:center;gap:6px">
+          <select id="inst-sel-${s.id}" style="font-size:12px;padding:3px 6px;border:1px solid var(--gray-200);border-radius:6px;background:var(--white);max-width:200px">
+            <option value="">— unassigned —</option>
+            ${opts}
+          </select>
+          <button class="btn-primary" style="padding:3px 10px;font-size:12px" onclick="reassignInstructor('${s.id}', '${enroll.id}')">Save</button>
+        </div>`;
+      } else {
+        // No cohort — fall back to all instructors
+        const opts = (instProfs || []).map(p => {
+          const sel = p.id === (enroll?.assigned_instructor_id || s.instructor_id) ? 'selected' : '';
+          return `<option value="${p.id}" ${sel}>${instNameMap[p.id]}</option>`;
+        }).join('');
+        instDropdown = `<div style="display:flex;align-items:center;gap:6px">
+          <select id="inst-sel-${s.id}" style="font-size:12px;padding:3px 6px;border:1px solid var(--gray-200);border-radius:6px;background:var(--white);max-width:200px">
+            <option value="">— unassigned —</option>
+            ${opts}
+          </select>
+          <button class="btn-primary" style="padding:3px 10px;font-size:12px" onclick="reassignInstructor('${s.id}', '${enroll?.id || ''}')">Save</button>
+        </div>`;
+      }
+
       return `
       <tr>
         <td><div style="display:flex;align-items:center;gap:10px;">
@@ -771,7 +881,9 @@
     // Set current course selection after render
     allStudents.forEach(s => {
       const sel = document.getElementById('course-sel-' + s.id);
-      if (sel && s.course_id) sel.value = s.course_id;
+      const enroll = enrollMap[s.id];
+      if (sel && enroll?.course_id) sel.value = enroll.course_id;
+      else if (sel && s.course_id) sel.value = s.course_id;
     });
   }
 
@@ -788,7 +900,7 @@
       btn.textContent = 'Save'; btn.disabled = false;
     } else {
       btn.textContent = '✓'; btn.style.background = 'var(--green,#2f9e44)';
-      setTimeout(() => { btn.textContent = 'Save'; btn.disabled = false; btn.style.background = ''; }, 2000);
+      setTimeout(() => { btn.textContent = 'Save'; btn.disabled = false; btn.style.background = ''; loadStudents(); }, 2000);
     }
   }
 
@@ -798,13 +910,26 @@
     await loadStudents();
   }
 
-  async function reassignInstructor(studentId) {
+  async function reassignInstructor(studentId, enrollmentId) {
     const sel = document.getElementById('inst-sel-' + studentId);
     const instructorId = sel.value;
     const btn = sel.nextElementSibling;
     btn.textContent = 'Saving...';
     btn.disabled = true;
-    const { error } = await db.from('students').update({ instructor_id: instructorId || null }).eq('id', studentId);
+
+    let error;
+    if (enrollmentId) {
+      // Update enrollment.assigned_instructor_id
+      ({ error } = await db.from('enrollments')
+        .update({ assigned_instructor_id: instructorId || null })
+        .eq('id', enrollmentId));
+    } else {
+      // Fallback: update students table
+      ({ error } = await db.from('students')
+        .update({ instructor_id: instructorId || null })
+        .eq('id', studentId));
+    }
+
     if (error) {
       alert('Error: ' + error.message);
       btn.textContent = 'Save';
@@ -1066,6 +1191,192 @@
     document.querySelectorAll(`#${tbodyId} tr`).forEach(row => {
       row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
     });
+  }
+
+  // ── COHORTS ─────────────────────────────────────────────────────────────────
+
+  function populateCohortCourseFilter() {
+    const sel = document.getElementById('cohort-course-filter');
+    const prev = sel.value;
+    sel.innerHTML = '<option value="">Select a course…</option>' +
+      allCourses.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+    if (prev) sel.value = prev;
+  }
+
+  async function loadCohorts() {
+    const courseId = document.getElementById('cohort-course-filter').value;
+    const tbody = document.getElementById('cohorts-tbody');
+    if (!courseId) {
+      tbody.innerHTML = '<tr><td colspan="6"><div class="empty"><span class="icon">🗓️</span>Select a course to view its cohorts.</div></td></tr>';
+      return;
+    }
+    tbody.innerHTML = '<tr><td colspan="6" class="loading"><span class="spinner"></span>Loading…</td></tr>';
+
+    const { data: cohorts } = await db
+      .from('cohorts')
+      .select('*, cohort_instructors(id, instructor_id, capacity)')
+      .eq('course_id', courseId)
+      .order('start_date');
+    allCohorts = cohorts || [];
+
+    if (!allCohorts.length) {
+      tbody.innerHTML = '<tr><td colspan="6"><div class="empty"><span class="icon">🗓️</span>No cohorts yet for this course.</div></td></tr>';
+      return;
+    }
+
+    // Collect all instructor ids referenced in cohort_instructors
+    const ciInstIds = [...new Set(allCohorts.flatMap(c => (c.cohort_instructors || []).map(ci => ci.instructor_id)))];
+    const { data: ciProfs } = ciInstIds.length
+      ? await db.from('profiles').select('id, full_name').in('id', ciInstIds)
+      : { data: [] };
+    const ciNameMap = Object.fromEntries((ciProfs || []).map(p => [p.id, p.full_name || '?']));
+
+    // Enrollment counts per cohort
+    const cohortIds = allCohorts.map(c => c.id);
+    const { data: enrollData } = cohortIds.length
+      ? await db.from('enrollments').select('cohort_id').in('cohort_id', cohortIds)
+      : { data: [] };
+    const enrollCounts = {};
+    (enrollData || []).forEach(e => { enrollCounts[e.cohort_id] = (enrollCounts[e.cohort_id] || 0) + 1; });
+
+    // Enrolled per cohort_instructor slot for capacity display
+    const { data: assignData } = cohortIds.length
+      ? await db.from('enrollments').select('cohort_id, assigned_instructor_id').in('cohort_id', cohortIds)
+      : { data: [] };
+    const assignCounts = {};
+    (assignData || []).forEach(e => {
+      if (e.assigned_instructor_id) {
+        const key = e.cohort_id + ':' + e.assigned_instructor_id;
+        assignCounts[key] = (assignCounts[key] || 0) + 1;
+      }
+    });
+
+    tbody.innerHTML = allCohorts.map(c => {
+      const start = c.start_date ? new Date(c.start_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+      const deadline = c.signup_deadline ? new Date(c.signup_deadline).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+      const instList = (c.cohort_instructors || []).map(ci => {
+        const used = assignCounts[c.id + ':' + ci.instructor_id] || 0;
+        return `<div style="font-size:13px">${ciNameMap[ci.instructor_id] || '?'} <span style="color:var(--gray-400)">(${used} / ${ci.capacity})</span></div>`;
+      }).join('') || '<span style="color:var(--gray-400);font-size:13px">—</span>';
+      return `<tr>
+        <td>${start}</td>
+        <td>${deadline}</td>
+        <td>${instList}</td>
+        <td>${enrollCounts[c.id] || 0}</td>
+        <td style="font-size:13px;color:var(--gray-600);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.notes || '—'}</td>
+        <td style="display:flex;gap:6px">
+          <button class="btn-ghost" onclick="editCohort('${c.id}')">Edit</button>
+          <button class="btn-danger" onclick="deleteCohort('${c.id}')">Delete</button>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  async function openCohortModal() {
+    const courseId = document.getElementById('cohort-course-filter').value;
+    if (!courseId) { alert('Select a course first.'); return; }
+    editingCohortId = null;
+    document.getElementById('cohort-modal-title').textContent = 'Add Cohort';
+    document.getElementById('cohort-save-btn').textContent = 'Create Cohort';
+    document.getElementById('cohort-start').value = '';
+    document.getElementById('cohort-deadline').value = '';
+    document.getElementById('cohort-notes').value = '';
+    await populateCohortInstructorSlots(courseId, []);
+    openModal('cohort-modal');
+  }
+
+  async function editCohort(cohortId) {
+    const cohort = allCohorts.find(c => c.id === cohortId);
+    if (!cohort) return;
+    editingCohortId = cohortId;
+    document.getElementById('cohort-modal-title').textContent = 'Edit Cohort';
+    document.getElementById('cohort-save-btn').textContent = 'Save Changes';
+    document.getElementById('cohort-start').value = cohort.start_date || '';
+    document.getElementById('cohort-deadline').value = cohort.signup_deadline || '';
+    document.getElementById('cohort-notes').value = cohort.notes || '';
+    const existing = (cohort.cohort_instructors || []).map(ci => ({ instructor_id: ci.instructor_id, capacity: ci.capacity }));
+    await populateCohortInstructorSlots(cohort.course_id, existing);
+    openModal('cohort-modal');
+  }
+
+  async function populateCohortInstructorSlots(courseId, existingSlots) {
+    const container = document.getElementById('cohort-instructor-slots');
+    // Get instructors assigned to this course
+    const course = allCourses.find(c => c.id === courseId);
+    const courseInstIds = (course?.course_instructors || []).map(ci => ci.instructor_id);
+    if (!courseInstIds.length) {
+      container.innerHTML = '<div style="color:var(--gray-400);font-size:13px">No instructors assigned to this course yet. Assign them in the Courses page first.</div>';
+      return;
+    }
+    const { data: profs } = await db.from('profiles').select('id, full_name').in('id', courseInstIds);
+    const nameMap = Object.fromEntries((profs || []).map(p => [p.id, p.full_name || p.id]));
+    container.innerHTML = courseInstIds.map(iid => {
+      const existing = existingSlots.find(s => s.instructor_id === iid);
+      const checked = existing ? 'checked' : '';
+      const cap = existing ? existing.capacity : 120;
+      return `<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--gray-200);border-radius:8px">
+        <input type="checkbox" id="cislot-chk-${iid}" ${checked} style="width:16px;height:16px;cursor:pointer">
+        <label for="cislot-chk-${iid}" style="flex:1;font-size:14px;cursor:pointer">${nameMap[iid]}</label>
+        <label style="font-size:12px;color:var(--gray-600)">Capacity</label>
+        <input type="number" id="cislot-cap-${iid}" value="${cap}" min="1" style="width:72px;padding:4px 8px;border:1.5px solid var(--gray-200);border-radius:7px;font-size:13px;font-family:inherit;text-align:center">
+      </div>`;
+    }).join('');
+  }
+
+  async function saveCohort() {
+    const courseId = document.getElementById('cohort-course-filter').value;
+    const start = document.getElementById('cohort-start').value;
+    const deadline = document.getElementById('cohort-deadline').value;
+    const notes = document.getElementById('cohort-notes').value.trim();
+    const alertEl = document.getElementById('cohort-alert');
+    alertEl.className = 'alert';
+
+    if (!start) { alertEl.className = 'alert error'; alertEl.textContent = 'Start date is required.'; return; }
+
+    const btn = document.getElementById('cohort-save-btn');
+    btn.disabled = true; btn.textContent = 'Saving…';
+
+    const payload = { course_id: courseId, start_date: start, signup_deadline: deadline || null, notes: notes || null };
+    let cohortId = editingCohortId;
+
+    if (editingCohortId) {
+      const { error } = await db.from('cohorts').update(payload).eq('id', editingCohortId);
+      if (error) { alertEl.className = 'alert error'; alertEl.textContent = error.message; btn.disabled = false; btn.textContent = 'Save Changes'; return; }
+    } else {
+      const { data, error } = await db.from('cohorts').insert(payload).select('id').single();
+      if (error) { alertEl.className = 'alert error'; alertEl.textContent = error.message; btn.disabled = false; btn.textContent = 'Create Cohort'; return; }
+      cohortId = data.id;
+    }
+
+    // Sync cohort_instructors — collect checked slots
+    const course = allCourses.find(c => c.id === courseId);
+    const courseInstIds = (course?.course_instructors || []).map(ci => ci.instructor_id);
+    const slots = courseInstIds
+      .filter(iid => document.getElementById('cislot-chk-' + iid)?.checked)
+      .map(iid => ({
+        cohort_id: cohortId,
+        instructor_id: iid,
+        capacity: parseInt(document.getElementById('cislot-cap-' + iid)?.value) || 120
+      }));
+
+    await db.from('cohort_instructors').delete().eq('cohort_id', cohortId);
+    if (slots.length) {
+      const { error: ciErr } = await db.from('cohort_instructors').insert(slots);
+      if (ciErr) { alertEl.className = 'alert error'; alertEl.textContent = 'Cohort saved but instructor slots failed: ' + ciErr.message; btn.disabled = false; btn.textContent = 'Save Changes'; return; }
+    }
+
+    alertEl.className = 'alert success';
+    alertEl.textContent = editingCohortId ? 'Cohort updated!' : 'Cohort created!';
+    btn.disabled = false;
+    setTimeout(() => { closeModal('cohort-modal'); editingCohortId = null; loadCohorts(); }, 1000);
+  }
+
+  async function deleteCohort(cohortId) {
+    if (!confirm('Delete this cohort? This cannot be undone.')) return;
+    await db.from('cohort_instructors').delete().eq('cohort_id', cohortId);
+    const { error } = await db.from('cohorts').delete().eq('id', cohortId);
+    if (error) { alert('Error: ' + error.message); return; }
+    loadCohorts();
   }
 
   async function signOut() { await db.auth.signOut(); window.location.href = 'login.html'; }

@@ -621,12 +621,87 @@
       cursor: pointer;
       color: var(--gray-600);
       transition: all 0.2s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
     }
     .course-pill.active {
       border-color: var(--blue);
       background: var(--blue-bg);
       color: var(--blue);
       font-weight: 600;
+    }
+    .course-pill .pill-date {
+      font-size: 11px;
+      font-weight: 400;
+      opacity: 0.7;
+    }
+
+    /* PENDING ASSIGNMENT BANNER */
+    .pending-instructor-banner {
+      background: #fff9db;
+      border: 1.5px solid #ffd43b;
+      border-radius: 14px;
+      padding: 20px 24px;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+    }
+    .pending-instructor-banner .pib-icon {
+      font-size: 24px;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .pending-instructor-banner .pib-body h3 {
+      font-size: 15px;
+      font-weight: 700;
+      color: #864d0e;
+      margin-bottom: 4px;
+    }
+    .pending-instructor-banner .pib-body p {
+      font-size: 13px;
+      color: #6b4a0b;
+      line-height: 1.5;
+    }
+
+    /* INSTRUCTOR CARD */
+    .instructor-card {
+      background: var(--white);
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+      padding: 18px 22px;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .instructor-card .ic-avatar {
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      background: var(--blue-bg);
+      color: var(--blue);
+      font-size: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-weight: 700;
+    }
+    .instructor-card .ic-info .ic-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--gray-400);
+      margin-bottom: 3px;
+    }
+    .instructor-card .ic-info .ic-name {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--navy);
     }
 
     /* EN/AR */
@@ -735,8 +810,11 @@
       </div>
     </div>
 
+    <!-- INSTRUCTOR STATE (injected by JS) -->
+    <div id="instructor-state"></div>
+
     <!-- SESSIONS + HOMEWORK -->
-    <div class="grid-2">
+    <div class="grid-2" id="course-content-sections">
       <div class="card">
         <div class="card-head">
           <h2><span class="en-text">Upcoming Sessions</span><span class="ar-text">الجلسات القادمة</span></h2>
@@ -759,7 +837,7 @@
     </div>
 
     <!-- BOOK A SESSION -->
-    <div class="grid-full">
+    <div class="grid-full" id="avail-section">
       <div class="card">
         <div class="card-head">
           <h2><span class="en-text">Book a Session</span><span class="ar-text">احجز جلسة</span></h2>
@@ -772,7 +850,7 @@
     </div>
 
     <!-- MATERIALS -->
-    <div class="grid-full">
+    <div class="grid-full" id="materials-section">
       <div class="card">
         <div class="card-head">
           <h2><span class="en-text">Course Materials</span><span class="ar-text">مواد الدورة</span></h2>
@@ -833,10 +911,10 @@
       document.getElementById('nav-name').textContent = name;
       document.getElementById('welcome-msg').textContent = isAr ? `أهلاً بك، ${name}!` : `Welcome back, ${name}!`;
 
-      // Fetch all enrollments with course names
+      // Fetch all enrollments with course, cohort, and assigned instructor
       const { data: enrollData } = await db
         .from('enrollments')
-        .select('id, course_id, payment_status, enrolled_at, courses(id, name)')
+        .select('id, course_id, payment_status, enrolled_at, cohort_id, assigned_instructor_id, courses(id, name), cohorts(start_date), profiles!enrollments_assigned_instructor_id_fkey(full_name)')
         .eq('student_id', currentUser.id)
         .order('enrolled_at');
       enrollments = enrollData || [];
@@ -890,11 +968,19 @@
     function renderCoursePills(enrollments) {
       const container = document.getElementById('course-pills');
       document.getElementById('course-switcher').style.display = '';
-      container.innerHTML = enrollments.map(e => `
-        <button class="course-pill ${e.course_id === activeCourseId ? 'active' : ''}"
-          onclick="switchCourse('${e.course_id}')">
-          ${e.courses?.name || 'Course'}
-        </button>`).join('');
+      container.innerHTML = enrollments.map(e => {
+        let dateLabel = '';
+        if (e.cohorts?.start_date) {
+          const d = new Date(e.cohorts.start_date);
+          dateLabel = `<span class="pill-date">Starts ${d.toLocaleDateString('en', { month: 'short', day: 'numeric' })}</span>`;
+        }
+        return `
+          <button class="course-pill ${e.course_id === activeCourseId ? 'active' : ''}"
+            onclick="switchCourse('${e.course_id}')">
+            <span>${e.courses?.name || 'Course'}</span>
+            ${dateLabel}
+          </button>`;
+      }).join('');
     }
 
     function switchCourse(courseId) {
@@ -904,6 +990,69 @@
     }
 
     async function loadCourseContent(courseId) {
+      const enrollment = enrollments.find(e => e.course_id === courseId);
+      const instructorStateEl = document.getElementById('instructor-state');
+      const contentSections = document.getElementById('course-content-sections');
+      const availSection = document.getElementById('avail-section');
+      const materialsSection = document.getElementById('materials-section');
+
+      // State A: no instructor assigned yet
+      if (!enrollment?.assigned_instructor_id) {
+        const startDate = enrollment?.cohorts?.start_date
+          ? new Date(enrollment.cohorts.start_date).toLocaleDateString('en', { month: 'long', day: 'numeric' })
+          : null;
+        const dateFragment = startDate
+          ? ` on ${startDate}`
+          : ' soon';
+        const dateFragmentAr = startDate
+          ? ` في ${new Date(enrollment.cohorts.start_date).toLocaleDateString('ar-EG', { month: 'long', day: 'numeric' })}`
+          : ' قريباً';
+
+        instructorStateEl.innerHTML = `
+          <div class="pending-instructor-banner">
+            <div class="pib-icon">🕐</div>
+            <div class="pib-body">
+              <h3>
+                <span class="en-text">You're enrolled! Instructor coming soon.</span>
+                <span class="ar-text">تم تسجيلك! المدرس قادم قريباً.</span>
+              </h3>
+              <p>
+                <span class="en-text">Your instructor will be assigned before your course starts${dateFragment}. We'll notify you by email.</span>
+                <span class="ar-text">سيتم تعيين مدرسك قبل بدء الدورة${dateFragmentAr}. سنُخطرك عبر البريد الإلكتروني.</span>
+              </p>
+            </div>
+          </div>`;
+
+        // Hide content sections, show zeros in stats
+        contentSections.style.display = 'none';
+        availSection.style.display = 'none';
+        materialsSection.style.display = 'none';
+        document.getElementById('stat-sessions').textContent  = '0';
+        document.getElementById('stat-hw').textContent        = '0';
+        document.getElementById('stat-materials').textContent = '0';
+        document.getElementById('stat-graded').textContent    = '0';
+        return;
+      }
+
+      // State B: instructor assigned — show instructor card + all sections
+      const instructorName = enrollment.profiles?.full_name || 'Your Instructor';
+      const initials = instructorName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+      instructorStateEl.innerHTML = `
+        <div class="instructor-card">
+          <div class="ic-avatar">${initials}</div>
+          <div class="ic-info">
+            <div class="ic-label">
+              <span class="en-text">Your Instructor</span>
+              <span class="ar-text">مدرسك</span>
+            </div>
+            <div class="ic-name">${instructorName}</div>
+          </div>
+        </div>`;
+
+      contentSections.style.display = '';
+      availSection.style.display = '';
+      materialsSection.style.display = '';
+
       const [sessionsRes, hwRes, matsRes, availRes] = await Promise.all([
         db.from('sessions').select('*').eq('student_id', currentUser.id).eq('course_id', courseId).gte('scheduled_at', new Date().toISOString()).order('scheduled_at').limit(5),
         db.from('homework').select('*').eq('student_id', currentUser.id).eq('course_id', courseId).order('due_date').limit(10),
