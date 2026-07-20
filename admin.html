@@ -546,6 +546,7 @@
         ? `<button class="btn-ghost" onclick="setPaymentStatus('${s.id}', 'pending')">↩ Unpay</button>`
         : `<button class="btn-primary" style="padding:4px 12px;font-size:12px" onclick="setPaymentStatus('${s.id}', 'paid')">Mark Paid</button>
            <button class="btn-ghost" onclick="setPaymentStatus('${s.id}', 'exempt')">Exempt</button>`;
+      const promoteBtn = `<button class="btn-ghost" style="font-size:12px" onclick="promoteToInstructor('${s.id}', '${(prof.full_name||'').replace(/'/g,"\\'")}')">→ Instructor</button>`;
       const instDropdown = `<div style="display:flex;align-items:center;gap:6px">
         <select id="inst-sel-${s.id}" style="font-size:12px;padding:3px 6px;border:1px solid var(--gray-200);border-radius:6px;background:var(--white)">
           <option value="">— unassigned —</option>
@@ -563,7 +564,7 @@
         <td><span class="pill ${levelColors[s.level] || 'pill-gray'}">${s.level || '—'}</span></td>
         <td>${instDropdown}</td>
         <td><span class="pill ${payColors[ps]}">${payLabels[ps]}</span></td>
-        <td style="display:flex;gap:6px;flex-wrap:wrap">${actions}</td>
+        <td style="display:flex;gap:6px;flex-wrap:wrap">${actions} ${promoteBtn}</td>
       </tr>`;
     }).join('');
   }
@@ -781,6 +782,15 @@
     alertEl.textContent = `Student "${name}" created! Code: ${code}`;
     btn.disabled = false; btn.textContent = 'Create Student';
     setTimeout(() => { closeModal('student-modal'); loadAll(); }, 1500);
+  }
+
+  async function promoteToInstructor(userId, name) {
+    if (!confirm(`Promote "${name}" to instructor? This will remove them from the students list and give them instructor access.`)) return;
+    const { error: roleErr } = await db.from('profiles').update({ role: 'instructor' }).eq('id', userId);
+    if (roleErr) { alert('Error updating role: ' + roleErr.message); return; }
+    await db.from('instructors').insert({ id: userId, subject: 'General', max_students: 50 }).then(() => {});
+    await db.from('students').delete().eq('id', userId);
+    loadAll();
   }
 
   async function createSession() {
