@@ -615,7 +615,7 @@
       </div>
     </div>
 
-    <!-- STUDENTS + SESSIONS -->
+    <!-- STUDENTS + CALENDAR -->
     <div class="grid-2">
 
       <!-- MY STUDENTS -->
@@ -631,6 +631,19 @@
         </div>
       </div>
 
+      <!-- MONTHLY CALENDAR -->
+      <div class="card">
+        <div class="card-head">
+          <h2 id="cal-title" style="font-size:15px">—</h2>
+          <div class="card-head-right" style="gap:6px">
+            <button class="btn-action" style="padding:4px 10px;font-size:13px" onclick="calNav(-1)">‹</button>
+            <button class="btn-action" style="padding:4px 10px;font-size:13px" onclick="calNav(1)">›</button>
+          </div>
+        </div>
+        <div class="card-body" style="padding:0 12px 12px">
+          <div id="cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center"></div>
+        </div>
+      </div>
 
     </div>
 
@@ -728,7 +741,16 @@
       </div>
       <div class="form-group">
         <label>Duration (minutes)</label>
-        <input type="number" id="avail-duration" placeholder="60" min="15" max="240" value="60">
+        <select id="avail-duration">
+          <option value="15">15 min</option>
+          <option value="30">30 min</option>
+          <option value="45">45 min</option>
+          <option value="60" selected>60 min</option>
+          <option value="75">75 min</option>
+          <option value="90">90 min</option>
+          <option value="105">105 min</option>
+          <option value="120">120 min</option>
+        </select>
       </div>
       <div class="form-group">
         <label>Capacity <span style="color:var(--gray-400);font-weight:400">(max students per slot)</span></label>
@@ -1103,6 +1125,7 @@
       renderRecordings(recordingsRes.data || []);
       renderSubmissions(submissionsWithProf);
       renderAvailability(availRes.data || [], bookedProfMap);
+      initCalendar(availRes.data || []);
 
       // Stats — sessions stat now shows upcoming availability slots
       const upcomingSlots = (availRes.data || []).filter(s => new Date(s.available_at) >= new Date());
@@ -1634,6 +1657,86 @@
         html += past.map(s => renderSlot(s, true)).join('');
       }
       el.innerHTML = html;
+    }
+
+    // ── MONTHLY CALENDAR ─────────────────────────────────────
+    let calYear, calMonth, calSlots = [];
+
+    function initCalendar(slots) {
+      calSlots = slots;
+      const today = new Date();
+      calYear  = today.getFullYear();
+      calMonth = today.getMonth();
+      renderCalendar();
+    }
+
+    function calNav(dir) {
+      calMonth += dir;
+      if (calMonth > 11) { calMonth = 0; calYear++; }
+      if (calMonth < 0)  { calMonth = 11; calYear--; }
+      renderCalendar();
+    }
+
+    function renderCalendar() {
+      const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+      document.getElementById('cal-title').textContent = `${monthNames[calMonth]} ${calYear}`;
+
+      // Build a set of days that have bookings and days that have open slots
+      const bookedDays = new Set();
+      const openDays   = new Set();
+      calSlots.forEach(s => {
+        const d = new Date(s.available_at);
+        if (d.getFullYear() === calYear && d.getMonth() === calMonth) {
+          if (s.is_booked) bookedDays.add(d.getDate());
+          else openDays.add(d.getDate());
+        }
+      });
+
+      const firstDay = new Date(calYear, calMonth, 1).getDay(); // 0=Sun
+      const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+      const today = new Date();
+      const isCurrentMonth = today.getFullYear() === calYear && today.getMonth() === calMonth;
+
+      let html = '';
+      // Day-of-week headers
+      ['Su','Mo','Tu','We','Th','Fr','Sa'].forEach(d => {
+        html += `<div style="font-size:10px;font-weight:700;color:var(--gray-400);padding:6px 0">${d}</div>`;
+      });
+      // Empty cells before first day
+      for (let i = 0; i < firstDay; i++) {
+        html += `<div></div>`;
+      }
+      // Day cells
+      for (let day = 1; day <= daysInMonth; day++) {
+        const isToday   = isCurrentMonth && day === today.getDate();
+        const hasBooked = bookedDays.has(day);
+        const hasOpen   = openDays.has(day);
+        const isPast    = new Date(calYear, calMonth, day) < new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+        let bg = 'transparent', color = 'inherit', border = 'none', cursor = 'pointer';
+        if (isToday)   { bg = 'var(--blue)'; color = '#fff'; border = '2px solid var(--blue)'; }
+        else if (isPast) { color = 'var(--gray-300)'; cursor = 'default'; }
+
+        let dots = '';
+        if (hasBooked) dots += `<div style="width:5px;height:5px;border-radius:50%;background:var(--green);display:inline-block;margin:0 1px"></div>`;
+        if (hasOpen)   dots += `<div style="width:5px;height:5px;border-radius:50%;background:var(--blue);display:inline-block;margin:0 1px"></div>`;
+
+        const onclick = isPast ? '' : `onclick="calDayClick(${calYear},${calMonth},${day})"`;
+        html += `
+          <div ${onclick} style="border-radius:8px;padding:4px 2px;cursor:${cursor};background:${bg};color:${color};border:${border};font-size:13px;font-weight:${isToday?'700':'400'};transition:background 0.15s" onmouseover="if(!${isPast}&&!${isToday})this.style.background='var(--gray-100)'" onmouseout="if(!${isPast}&&!${isToday})this.style.background='transparent'">
+            <div>${day}</div>
+            <div style="display:flex;justify-content:center;min-height:7px;margin-top:2px">${dots}</div>
+          </div>`;
+      }
+      document.getElementById('cal-grid').innerHTML = html;
+    }
+
+    function calDayClick(year, month, day) {
+      // Pre-fill the modal date and open it
+      const pad = n => String(n).padStart(2, '0');
+      const dateStr = `${year}-${pad(month + 1)}-${pad(day)}T09:00`;
+      document.getElementById('avail-datetime').value = dateStr;
+      openModal('avail-modal');
     }
 
     async function postAvailability() {
