@@ -1794,11 +1794,23 @@
 
     async function cancelBooking(slotId) {
       if (!confirm('Cancel this student\'s booking? The slot will reopen for others.')) return;
+
+      const { data: slot } = await db.from('availability').select('booked_by, instructor_id').eq('id', slotId).single();
+
       const { error } = await db.from('availability').update({
         is_booked: false,
         booked_by: null
       }).eq('id', slotId);
       if (error) { alert('Error: ' + error.message); return; }
+
+      if (slot?.booked_by) {
+        fetch(`${SUPABASE_URL}/functions/v1/notify`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_KEY}` },
+          body: JSON.stringify({ type: 'cancellation_instructor', slotId, studentId: slot.booked_by, instructorId: slot.instructor_id || currentUser.id })
+        }).catch(() => {});
+      }
+
       loadDashboard();
     }
 

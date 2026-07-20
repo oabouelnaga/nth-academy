@@ -187,9 +187,18 @@
       </div>
       <div class="stats-row">
         <div class="stat-card"><div class="stat-label">Instructors</div><div class="stat-value" id="s-instructors">—</div></div>
-        <div class="stat-card"><div class="stat-label">Students</div><div class="stat-value" id="s-students">—</div></div>
-        <div class="stat-card"><div class="stat-label">Sessions (total)</div><div class="stat-value" id="s-sessions">—</div></div>
+        <div class="stat-card"><div class="stat-label">Students</div><div class="stat-value" id="s-students">—</div><div class="stat-sub" id="s-students-sub"></div></div>
+        <div class="stat-card"><div class="stat-label">Paid</div><div class="stat-value" id="s-paid">—</div><div class="stat-sub">enrollments</div></div>
+        <div class="stat-card"><div class="stat-label">Pending Payment</div><div class="stat-value" id="s-pending">—</div><div class="stat-sub">enrollments</div></div>
         <div class="stat-card"><div class="stat-label">Homework pending</div><div class="stat-value" id="s-hw">—</div></div>
+      </div>
+
+      <!-- Enrollments by course -->
+      <div style="background:var(--white);border-radius:12px;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,0.06);margin-bottom:16px">
+        <h2 style="font-size:15px;font-weight:600;color:var(--navy);margin-bottom:16px">Enrollments by Course</h2>
+        <div id="s-course-breakdown" style="display:flex;flex-direction:column;gap:10px">
+          <div style="color:var(--gray-400);font-size:14px">Loading...</div>
+        </div>
       </div>
 
       <div style="background:var(--white);border-radius:12px;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
@@ -197,7 +206,6 @@
         <div style="display:flex;gap:12px;flex-wrap:wrap;">
           <button class="btn-primary" onclick="showPage('instructors');openModal('instructor-modal')">+ Add Instructor</button>
           <button class="btn-primary" onclick="showPage('students');openModal('student-modal')">+ Add Student</button>
-          <button class="btn-primary" onclick="showPage('sessions');openModal('session-modal')">+ Schedule Session</button>
           <a href="instructor.html" class="btn-primary" style="text-decoration:none">👨‍🏫 Instructor View</a>
         </div>
       </div>
@@ -688,17 +696,49 @@
   }
 
   async function loadStats() {
-    const [i, s, sess, hw] = await Promise.all([
-      db.from('instructors').select('id', { count: 'exact' }),
-      db.from('students').select('id', { count: 'exact' }),
-      db.from('sessions').select('id', { count: 'exact' }),
+    const [instrRes, enrollRes, hwRes] = await Promise.all([
+      db.from('profiles').select('id', { count: 'exact' }).eq('role', 'instructor'),
+      db.from('enrollments').select('id, payment_status, courses(name)'),
       db.from('homework').select('id', { count: 'exact' }).eq('status', 'pending')
     ]);
-    document.getElementById('s-instructors').textContent = i.count ?? 0;
-    document.getElementById('s-students').textContent = s.count ?? 0;
-    document.getElementById('s-sessions').textContent = sess.count ?? 0;
-    document.getElementById('s-hw').textContent = hw.count ?? 0;
-    document.getElementById('students-badge').textContent = s.count ?? 0;
+
+    const enrollments = enrollRes.data || [];
+    const paid    = enrollments.filter(e => e.payment_status === 'paid').length;
+    const pending = enrollments.filter(e => e.payment_status === 'pending').length;
+
+    // Unique students
+    const { data: studentProfiles } = await db.from('profiles').select('id', { count: 'exact' }).eq('role', 'student');
+
+    document.getElementById('s-instructors').textContent = instrRes.count ?? 0;
+    document.getElementById('s-students').textContent    = studentProfiles?.length ?? enrollments.length;
+    document.getElementById('s-paid').textContent        = paid;
+    document.getElementById('s-pending').textContent     = pending;
+    document.getElementById('s-hw').textContent          = hwRes.count ?? 0;
+    document.getElementById('students-badge').textContent = studentProfiles?.length ?? enrollments.length;
+
+    // Course breakdown
+    const byCourse = {};
+    enrollments.forEach(e => {
+      const name = e.courses?.name || 'Unknown Course';
+      if (!byCourse[name]) byCourse[name] = { total: 0, paid: 0, pending: 0 };
+      byCourse[name].total++;
+      if (e.payment_status === 'paid') byCourse[name].paid++;
+      else if (e.payment_status === 'pending') byCourse[name].pending++;
+    });
+
+    const breakdownEl = document.getElementById('s-course-breakdown');
+    const entries = Object.entries(byCourse);
+    if (!entries.length) {
+      breakdownEl.innerHTML = '<div style="color:var(--gray-400);font-size:14px">No enrollments yet</div>';
+      return;
+    }
+    breakdownEl.innerHTML = entries.map(([course, counts]) => `
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--gray-100)">
+        <div style="flex:1;font-size:14px;font-weight:500;color:var(--navy)">${course}</div>
+        <span style="font-size:12px;font-weight:600;padding:3px 10px;border-radius:20px;background:var(--blue-bg,#eff6ff);color:var(--blue)">${counts.total} enrolled</span>
+        <span style="font-size:12px;font-weight:600;padding:3px 10px;border-radius:20px;background:var(--green-bg);color:var(--green)">${counts.paid} paid</span>
+        <span style="font-size:12px;font-weight:600;padding:3px 10px;border-radius:20px;background:var(--yellow-bg,#fefce8);color:var(--yellow,#ca8a04)">${counts.pending} pending</span>
+      </div>`).join('');
   }
 
   async function loadInstructors() {

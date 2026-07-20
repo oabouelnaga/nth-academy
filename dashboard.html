@@ -879,9 +879,13 @@
       <div class="alert-modal" id="submit-alert"></div>
       <p id="submit-hw-title" style="font-size:14px;color:var(--gray-600);margin-bottom:16px;font-weight:500;"></p>
       <div class="form-group">
-        <label>Upload your completed work</label>
+        <label>Upload a file <span style="color:var(--gray-400);font-weight:400">(optional)</span></label>
         <input type="file" id="sub-file" accept=".pdf,.doc,.docx,.ppt,.pptx,.mp4,.mov,.jpg,.jpeg,.png,.zip,.txt">
         <div style="font-size:11px;color:var(--gray-400);margin-top:4px">PDF, Word, images — max 100MB</div>
+      </div>
+      <div class="form-group">
+        <label>Or type your answer <span style="color:var(--gray-400);font-weight:400">(optional)</span></label>
+        <textarea id="sub-notes" rows="4" placeholder="Write your answer here..." style="width:100%;padding:10px;border:1px solid var(--gray-200);border-radius:8px;font-size:14px;resize:vertical;font-family:inherit"></textarea>
       </div>
       <div id="sub-upload-progress" style="display:none" class="upload-progress">
         <div class="progress-track"><div class="progress-fill" id="sub-progress-bar"></div></div>
@@ -922,7 +926,7 @@
       // Fetch all enrollments with course, cohort, and assigned instructor
       const { data: enrollData } = await db
         .from('enrollments')
-        .select('id, course_id, payment_status, enrolled_at, cohort_id, assigned_instructor_id, courses(id, name), cohorts(start_date), profiles!enrollments_assigned_instructor_id_fkey(full_name)')
+        .select('id, course_id, payment_status, enrolled_at, cohort_id, assigned_instructor_id, courses(id, name), cohorts(start_date), profiles!enrollments_assigned_instructor_id_fkey(full_name, email)')
         .eq('student_id', currentUser.id)
         .order('enrolled_at');
       enrollments = enrollData || [];
@@ -1039,7 +1043,8 @@
       }
 
       // State B: instructor assigned — show instructor card + all sections
-      const instructorName = enrollment.profiles?.full_name || 'Your Instructor';
+      const instructorName  = enrollment.profiles?.full_name || 'Your Instructor';
+      const instructorEmail = enrollment.profiles?.email || '';
       const initials = instructorName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
       instructorStateEl.innerHTML = `
         <div class="instructor-card">
@@ -1050,6 +1055,7 @@
               <span class="ar-text">مدرسك</span>
             </div>
             <div class="ic-name">${instructorName}</div>
+            ${instructorEmail ? `<a href="mailto:${instructorEmail}" style="font-size:12px;color:var(--blue);text-decoration:none;margin-top:2px;display:block">${instructorEmail}</a>` : ''}
           </div>
         </div>`;
 
@@ -1236,6 +1242,9 @@
 
     function closeSubmitModal() {
       document.getElementById('submit-hw-modal').classList.remove('open');
+      document.getElementById('sub-file').value = '';
+      document.getElementById('sub-notes').value = '';
+      document.getElementById('submit-alert').className = 'alert-modal';
       submittingHomeworkId = null;
     }
 
@@ -1247,43 +1256,50 @@
       const btn = document.getElementById('submit-hw-btn');
       const alertEl = document.getElementById('submit-alert');
       const file = document.getElementById('sub-file').files[0];
+      const notes = document.getElementById('sub-notes').value.trim();
 
-      if (!file) {
+      if (!file && !notes) {
         alertEl.className = 'alert-modal error';
-        alertEl.textContent = 'Please select your completed file to upload.';
+        alertEl.textContent = 'Please upload a file or type your answer.';
         return;
       }
 
       btn.disabled = true;
-      btn.textContent = 'Uploading...';
+      btn.textContent = 'Submitting...';
 
-      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-      const path = `${currentUser.id}/${submittingHomeworkId}_${Date.now()}_${safeName}`;
-      document.getElementById('sub-upload-progress').style.display = '';
-      document.getElementById('sub-progress-bar').style.width = '30%';
+      let publicUrl = null;
 
-      const { error: storageErr } = await db.storage.from('submissions').upload(path, file, { upsert: true });
-      if (storageErr) {
-        alertEl.className = 'alert-modal error';
-        alertEl.textContent = storageErr.message;
-        btn.disabled = false;
-        btn.textContent = 'Submit';
+      if (file) {
+        btn.textContent = 'Uploading...';
+        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const path = `${currentUser.id}/${submittingHomeworkId}_${Date.now()}_${safeName}`;
+        document.getElementById('sub-upload-progress').style.display = '';
+        document.getElementById('sub-progress-bar').style.width = '30%';
+
+        const { error: storageErr } = await db.storage.from('submissions').upload(path, file, { upsert: true });
+        if (storageErr) {
+          alertEl.className = 'alert-modal error';
+          alertEl.textContent = storageErr.message;
+          btn.disabled = false;
+          btn.textContent = 'Submit';
+          document.getElementById('sub-upload-progress').style.display = 'none';
+          return;
+        }
+
+        document.getElementById('sub-progress-bar').style.width = '80%';
+        publicUrl = db.storage.from('submissions').getPublicUrl(path).data.publicUrl;
         document.getElementById('sub-upload-progress').style.display = 'none';
-        return;
       }
-
-      document.getElementById('sub-progress-bar').style.width = '80%';
-      const { data: { publicUrl } } = db.storage.from('submissions').getPublicUrl(path);
 
       const { error } = await db.from('homework').update({
         status: 'submitted',
-        submission_url: publicUrl,
+        submission_url: publicUrl || null,
+        submission_notes: notes || null,
         submitted_at: new Date().toISOString()
       }).eq('id', submittingHomeworkId);
 
       btn.disabled = false;
       btn.textContent = 'Submit';
-      document.getElementById('sub-upload-progress').style.display = 'none';
 
       if (error) {
         alertEl.className = 'alert-modal error';
@@ -1293,10 +1309,7 @@
 
       alertEl.className = 'alert-modal success';
       alertEl.textContent = 'Homework submitted!';
-      setTimeout(() => {
-        closeSubmitModal();
-        loadDashboard();
-      }, 1200);
+      setTimeout(() => { closeSubmitModal(); loadDashboard(); }, 1200);
     }
 
     function renderMaterials(items) {
@@ -1434,6 +1447,9 @@
       btn.disabled = true;
       btn.textContent = 'Booking...';
 
+      const { data: slot, error: slotErr } = await db.from('availability').select('instructor_id').eq('id', slotId).single();
+      if (slotErr) { btn.disabled = false; btn.textContent = 'Book'; alert('Could not load slot.'); return; }
+
       const { error } = await db.from('availability').update({
         is_booked: true,
         booked_by: currentUser.id
@@ -1446,17 +1462,36 @@
         return;
       }
 
+      // Fire-and-forget notification
+      fetch(`${SUPABASE_URL}/functions/v1/notify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_KEY}` },
+        body: JSON.stringify({ type: 'booking', slotId, studentId: currentUser.id, instructorId: slot.instructor_id })
+      }).catch(() => {});
+
       btn.textContent = 'Booked!';
       setTimeout(() => loadDashboard(), 1000);
     }
 
     async function cancelSlot(slotId) {
       if (!confirm('Cancel this session booking?')) return;
+
+      const { data: slot } = await db.from('availability').select('instructor_id').eq('id', slotId).single();
+
       const { error } = await db.from('availability').update({
         is_booked: false,
         booked_by: null
       }).eq('id', slotId).eq('booked_by', currentUser.id);
-      if (error) { alert('Could not cancel: ' + error.message); return; }
+      if (error) { console.error('cancelSlot error:', error); alert('Could not cancel: ' + error.message); return; }
+
+      if (slot?.instructor_id) {
+        fetch(`${SUPABASE_URL}/functions/v1/notify`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_KEY}` },
+          body: JSON.stringify({ type: 'cancellation_student', slotId, studentId: currentUser.id, instructorId: slot.instructor_id })
+        }).catch(() => {});
+      }
+
       loadDashboard();
     }
 
