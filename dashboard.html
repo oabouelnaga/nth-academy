@@ -1053,14 +1053,18 @@
       availSection.style.display = '';
       materialsSection.style.display = '';
 
-      const [sessionsRes, hwRes, matsRes, availRes] = await Promise.all([
-        db.from('sessions').select('*').eq('student_id', currentUser.id).eq('course_id', courseId).gte('scheduled_at', new Date().toISOString()).order('scheduled_at').limit(5),
+      const now = new Date().toISOString();
+      const instructorId = enrollment.assigned_instructor_id;
+
+      const [sessionsRes, hwRes, matsRes, availRes, pastSessionsRes] = await Promise.all([
+        db.from('sessions').select('*').eq('student_id', currentUser.id).eq('course_id', courseId).gte('scheduled_at', now).order('scheduled_at').limit(5),
         db.from('homework').select('*').eq('student_id', currentUser.id).eq('course_id', courseId).order('due_date').limit(10),
-        db.from('materials').select('*').eq('course_id', courseId).order('created_at', { ascending: false }).limit(10),
-        db.from('availability').select('*').eq('course_id', courseId).eq('is_booked', false).gte('available_at', new Date().toISOString()).order('available_at').limit(10)
+        db.from('materials').select('*').eq('course_id', courseId).order('created_at', { ascending: false }).limit(20),
+        db.from('availability').select('*').eq('course_id', courseId).eq('instructor_id', instructorId).gte('available_at', now).order('available_at').limit(20),
+        db.from('availability').select('*').eq('course_id', courseId).eq('instructor_id', instructorId).lt('available_at', now).order('available_at', { ascending: false }).limit(10)
       ]);
 
-      renderSessions(sessionsRes.data || []);
+      renderSessions(sessionsRes.data || [], pastSessionsRes.data || []);
       renderHomework(hwRes.data || []);
       renderMaterials(matsRes.data || []);
       renderAvailability(availRes.data || []);
@@ -1073,34 +1077,71 @@
       document.getElementById('stat-graded').textContent    = graded;
     }
 
-    function renderSessions(sessions) {
+    function renderSessions(sessions, pastSlots) {
       const el = document.getElementById('sessions-list');
       document.getElementById('sessions-count').textContent = sessions.length;
-      if (!sessions.length) {
-        el.innerHTML = '<div class="empty"><div class="icon">📅</div>No upcoming sessions</div>';
-        return;
+
+      let html = '';
+
+      if (sessions.length) {
+        html += sessions.map(s => {
+          const d = new Date(s.scheduled_at);
+          const day = d.getDate();
+          const mon = d.toLocaleString('en', { month: 'short' });
+          const time = d.toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' });
+          const teamsBtn = s.teams_link
+            ? `<a class="btn-join-teams" href="${s.teams_link}" target="_blank" rel="noopener">🎥 Join</a>`
+            : `<span class="status-pill status-scheduled">${s.status}</span>`;
+          return `
+            <div class="session-item">
+              <div class="session-date">
+                <div class="day">${day}</div>
+                <div class="mon">${mon}</div>
+              </div>
+              <div class="session-info">
+                <div class="title">${s.title || 'Session'}</div>
+                <div class="time">${time}${s.duration_mins ? ' · ' + s.duration_mins + ' min' : ''}</div>
+              </div>
+              ${teamsBtn}
+            </div>`;
+        }).join('');
+      } else {
+        html += '<div class="empty"><div class="icon">📅</div>No upcoming sessions</div>';
       }
-      el.innerHTML = sessions.map(s => {
-        const d = new Date(s.scheduled_at);
-        const day = d.getDate();
-        const mon = d.toLocaleString('en', { month: 'short' });
-        const time = d.toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' });
-        const teamsBtn = s.teams_link
-          ? `<a class="btn-join-teams" href="${s.teams_link}" target="_blank" rel="noopener">🎥 Join</a>`
-          : `<span class="status-pill status-${s.status}">${s.status}</span>`;
-        return `
-          <div class="session-item">
-            <div class="session-date">
-              <div class="day">${day}</div>
-              <div class="mon">${mon}</div>
-            </div>
-            <div class="session-info">
-              <div class="title">${s.title || 'Session'}</div>
-              <div class="time">${time}${s.duration_mins ? ' · ' + s.duration_mins + ' min' : ''}</div>
-            </div>
-            ${teamsBtn}
-          </div>`;
-      }).join('');
+
+      // Past sessions from availability slots
+      if (pastSlots && pastSlots.length) {
+        html += `<div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--gray-400);padding:14px 0 8px;border-top:1px solid var(--gray-100);margin-top:4px">Past Sessions</div>`;
+        html += pastSlots.map(slot => {
+          const d = new Date(slot.available_at);
+          const day = d.getDate();
+          const mon = d.toLocaleString('en', { month: 'short' });
+          const time = d.toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' });
+          const attended = slot.booked_by === currentUser.id;
+          let rightEl = '';
+          if (attended) {
+            rightEl = `<span class="status-pill status-completed">Attended ✓</span>`;
+          } else if (slot.recording_url) {
+            rightEl = `<a href="${slot.recording_url}" target="_blank" rel="noopener" style="background:var(--navy);color:#fff;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;text-decoration:none;white-space:nowrap">▶ Watch Recording</a>`;
+          } else {
+            rightEl = `<span style="font-size:12px;color:var(--gray-400);font-style:italic">Recording coming soon</span>`;
+          }
+          return `
+            <div class="session-item" style="opacity:${attended ? '1' : '0.8'}">
+              <div class="session-date" style="background:var(--gray-100);color:var(--gray-600)">
+                <div class="day">${day}</div>
+                <div class="mon">${mon}</div>
+              </div>
+              <div class="session-info">
+                <div class="title" style="color:var(--gray-600)">${slot.title || 'Session'}</div>
+                <div class="time">${time}</div>
+              </div>
+              ${rightEl}
+            </div>`;
+        }).join('');
+      }
+
+      el.innerHTML = html;
     }
 
     function renderHomework(items) {
@@ -1246,40 +1287,135 @@
 
     function renderMaterials(items) {
       const el = document.getElementById('materials-list');
-      document.getElementById('materials-count').textContent = items.length;
-      if (!items.length) {
+      // Separate homework files from course materials/recordings
+      const nonHomework = items.filter(m => m.material_type !== 'homework');
+      document.getElementById('materials-count').textContent = nonHomework.length;
+      if (!nonHomework.length) {
         el.innerHTML = '<div class="empty"><div class="icon">📚</div>No materials uploaded yet</div>';
         return;
       }
-      const typeIcons = { pdf: '📕', word: '📘', ppt: '📙', video: '🎬', file: '📄' };
-      el.innerHTML = items.map(m => {
-        const icon = typeIcons[m.file_type] || '📄';
+      const typeIcons = { pdf: '📕', word: '📘', ppt: '📙', video: '🎬', recording: '🎬', file: '📄', material: '📄' };
+
+      el.innerHTML = nonHomework.map(m => {
+        const icon = typeIcons[m.material_type] || typeIcons[m.file_type] || '📄';
+        const isRecording = m.material_type === 'recording';
+        const url = m.file_url || '';
+
+        // Detect YouTube or Drive embed URLs
+        const isYouTube = url.includes('youtube.com') || url.includes('youtu.be');
+        const isDrive = url.includes('drive.google.com');
+
+        let mediaBlock = '';
+        if (isRecording && url) {
+          if (isYouTube) {
+            const ytId = url.match(/(?:v=|youtu\.be\/)([^&?/]+)/)?.[1];
+            if (ytId) {
+              mediaBlock = `<div style="margin-top:10px;border-radius:8px;overflow:hidden;aspect-ratio:16/9;max-width:560px">
+                <iframe width="100%" height="100%" src="https://www.youtube.com/embed/${ytId}" frameborder="0" allowfullscreen style="display:block"></iframe>
+              </div>`;
+            }
+          } else if (isDrive) {
+            const fileId = url.match(/\/d\/([^/]+)/)?.[1];
+            if (fileId) {
+              mediaBlock = `<div style="margin-top:10px;border-radius:8px;overflow:hidden;aspect-ratio:16/9;max-width:560px">
+                <iframe width="100%" height="100%" src="https://drive.google.com/file/d/${fileId}/preview" frameborder="0" allowfullscreen style="display:block"></iframe>
+              </div>`;
+            }
+          } else if (url) {
+            mediaBlock = `<div style="margin-top:10px"><video controls controlsList="nodownload" style="width:100%;max-width:560px;border-radius:8px" src="${url}"></video></div>`;
+          }
+        }
+
+        let actionEl = '';
+        if (!url) {
+          actionEl = '';
+        } else if (m.is_downloadable) {
+          actionEl = `<a href="${url}" download target="_blank" rel="noopener" style="color:var(--blue);font-size:13px;font-weight:500;white-space:nowrap">↓ Download</a>`;
+        } else {
+          actionEl = `<a href="${url}" target="_blank" rel="noopener" style="color:var(--blue);font-size:13px;font-weight:500;white-space:nowrap">↗ View</a>`;
+        }
+
         return `
-        <a class="material-item" href="${m.file_url || '#'}" target="${m.file_url ? '_blank' : '_self'}">
-          <div class="mat-icon">${icon}</div>
-          <div class="mat-info">
-            <div class="mat-title">${m.title}</div>
-            <div class="mat-desc">${m.description || m.level || 'Course material'}</div>
+        <div class="material-item" style="cursor:default;flex-wrap:wrap;align-items:flex-start">
+          <div style="display:flex;align-items:center;gap:14px;width:100%">
+            <div class="mat-icon">${icon}</div>
+            <div class="mat-info">
+              <div class="mat-title">${m.title}</div>
+              <div class="mat-desc">${m.description || m.level || (isRecording ? 'Recording' : 'Course material')}</div>
+            </div>
+            ${actionEl}
           </div>
-          ${m.file_url ? '<span class="mat-download">↓ Download</span>' : ''}
-        </a>`;
+          ${mediaBlock}
+        </div>`;
       }).join('');
     }
 
     // ── AVAILABILITY BOOKING ─────────────────────────────────
 
-    function renderAvailability(slots) {
+    async function renderAvailability(slots) {
       const el = document.getElementById('avail-list');
-      document.getElementById('avail-count').textContent = slots.length;
+
       if (!slots.length) {
+        document.getElementById('avail-count').textContent = '0';
         el.innerHTML = '<div class="empty"><div class="icon">📅</div>No open slots — check back soon</div>';
         return;
       }
-      el.innerHTML = slots.map(slot => {
+
+      // Count bookings per slot
+      const slotIds = slots.map(s => s.id);
+      const { data: bookingCounts } = await db
+        .from('availability')
+        .select('id, booked_by')
+        .in('id', slotIds);
+
+      // Build a map: slotId -> count of non-null booked_by (reuse slot rows to count)
+      // Since each row in availability is one slot (not one booking per row),
+      // we need a separate bookings table. Until that exists, derive from the slot row itself:
+      // capacity and booked_by indicate single-booking state. For multi-capacity slots,
+      // we count bookings from a 'bookings' table if it exists; otherwise fall back to slot fields.
+      // For now: treat each availability row as having a booking count of (booked_by ? 1 : 0).
+      const bookingCountMap = {};
+      (bookingCounts || []).forEach(row => {
+        bookingCountMap[row.id] = row.booked_by ? 1 : 0;
+      });
+
+      // Filter to only truly open slots (not fully booked) plus already-booked-by-me slots
+      const openSlots = slots.filter(slot => {
+        const capacity = slot.capacity || 1;
+        const booked = bookingCountMap[slot.id] || 0;
+        return booked < capacity || slot.booked_by === currentUser.id;
+      });
+
+      document.getElementById('avail-count').textContent = openSlots.length;
+
+      el.innerHTML = openSlots.map(slot => {
         const d = new Date(slot.available_at);
-        const date = d.toLocaleDateString('en', { weekday: 'short', month: 'short', day: 'numeric' });
         const time = d.toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' });
         const dur = slot.duration_mins ? `${slot.duration_mins} min` : '';
+        const capacity = slot.capacity || 1;
+        const bookedCount = bookingCountMap[slot.id] || 0;
+        const spotsLeft = capacity - bookedCount;
+        const alreadyBooked = slot.booked_by === currentUser.id;
+        const isFull = spotsLeft <= 0 && !alreadyBooked;
+
+        let spotsLabel = '';
+        if (alreadyBooked) {
+          spotsLabel = `<span style="font-size:11px;color:var(--green);font-weight:600">Booked ✓</span>`;
+        } else if (isFull) {
+          spotsLabel = `<span style="font-size:11px;color:var(--red)">Full</span>`;
+        } else {
+          spotsLabel = `<span style="font-size:11px;color:var(--gray-400)">${spotsLeft} spot${spotsLeft !== 1 ? 's' : ''} left</span>`;
+        }
+
+        let actionBtn = '';
+        if (alreadyBooked) {
+          actionBtn = `<button disabled style="background:var(--green-bg);color:var(--green);border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;cursor:default">Booked ✓</button>`;
+        } else if (isFull) {
+          actionBtn = `<button disabled style="background:var(--gray-100);color:var(--gray-400);border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;cursor:not-allowed">Full</button>`;
+        } else {
+          actionBtn = `<button onclick="bookSlot('${slot.id}')" style="background:var(--blue);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer">Book</button>`;
+        }
+
         return `
           <div class="session-item" style="display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--gray-100)">
             <div class="session-date">
@@ -1288,9 +1424,9 @@
             </div>
             <div class="session-info" style="flex:1">
               <div class="title">${slot.title || 'Open Session Slot'}</div>
-              <div class="time">${time}${dur ? ' · ' + dur : ''}</div>
+              <div class="time">${time}${dur ? ' · ' + dur : ''} &nbsp; ${spotsLabel}</div>
             </div>
-            <button onclick="bookSlot('${slot.id}')" style="background:var(--blue);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer">Book</button>
+            ${actionBtn}
           </div>`;
       }).join('');
     }

@@ -685,6 +685,25 @@
       </div>
     </div>
 
+    <!-- RECORDINGS -->
+    <div class="grid-full">
+      <div class="card">
+        <div class="card-head">
+          <h2><span class="en-text">Recordings</span><span class="ar-text">التسجيلات</span></h2>
+          <div class="card-head-right">
+            <span class="count count-purple" id="recordings-count">0</span>
+            <button class="btn-action purple" onclick="openModal('add-recording-modal')">
+              <span class="en-text">+ Add Recording</span>
+              <span class="ar-text">+ إضافة تسجيل</span>
+            </button>
+          </div>
+        </div>
+        <div class="card-body" id="recordings-list">
+          <div class="loading"><div class="loading-spinner"></div></div>
+        </div>
+      </div>
+    </div>
+
     <!-- MATERIALS -->
     <div class="grid-full">
       <div class="card">
@@ -717,7 +736,7 @@
       </div>
       <div class="form-group">
         <label>Session Title</label>
-        <input type="text" id="avail-title" placeholder="e.g. English Speaking Practice">
+        <input type="text" id="avail-title" placeholder="e.g. Week 1 — Introduction">
       </div>
       <div class="form-group">
         <label>Date &amp; Time</label>
@@ -726,6 +745,10 @@
       <div class="form-group">
         <label>Duration (minutes)</label>
         <input type="number" id="avail-duration" placeholder="60" min="15" max="240" value="60">
+      </div>
+      <div class="form-group">
+        <label>Capacity <span style="color:var(--gray-400);font-weight:400">(max students per slot)</span></label>
+        <input type="number" id="avail-capacity" placeholder="12" min="1" max="12" value="12">
       </div>
       <div class="form-group">
         <label>Microsoft Teams Link (optional)</label>
@@ -780,6 +803,13 @@
           <option value="intermediate">Intermediate</option>
           <option value="advanced">Advanced</option>
         </select>
+      </div>
+      <div class="form-group">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="checkbox" id="mat-downloadable" style="width:16px;height:16px;cursor:pointer">
+          <span class="en-text">Students can download this file</span>
+          <span class="ar-text">يمكن للطلاب تنزيل هذا الملف</span>
+        </label>
       </div>
       <div class="modal-actions">
         <button class="btn-secondary" onclick="closeModal('upload-material-modal')">
@@ -952,6 +982,49 @@
     </div>
   </div>
 
+  <!-- MODAL: ADD RECORDING (URL-based, inserts into materials) -->
+  <div class="modal-overlay" id="add-recording-modal">
+    <div class="modal">
+      <h3>Add Recording</h3>
+      <div class="alert-modal" id="rec-alert"></div>
+      <div class="form-group">
+        <label>Course</label>
+        <select id="rec-course"><option value="">Select a course...</option></select>
+      </div>
+      <div class="form-group">
+        <label>Title</label>
+        <input type="text" id="rec-title" placeholder="e.g. Week 1 — Introduction Recording">
+      </div>
+      <div class="form-group">
+        <label>Recording URL</label>
+        <input type="url" id="rec-url" placeholder="https://youtube.com/... or drive.google.com/...">
+        <div style="font-size:11px;color:var(--gray-400);margin-top:4px">YouTube, Google Drive, Vimeo, or any direct link</div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-secondary" onclick="closeModal('add-recording-modal')">Cancel</button>
+        <button class="btn-primary" id="rec-btn" onclick="addRecording()">Save Recording</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: ADD RECORDING URL TO AVAILABILITY SLOT -->
+  <div class="modal-overlay" id="slot-recording-modal">
+    <div class="modal">
+      <h3>Add Recording to Slot</h3>
+      <div class="alert-modal" id="slot-rec-alert"></div>
+      <p id="slot-rec-info" style="font-size:13px;color:var(--gray-600);margin-bottom:16px;"></p>
+      <div class="form-group">
+        <label>Recording URL</label>
+        <input type="url" id="slot-rec-url" placeholder="https://youtube.com/... or drive.google.com/...">
+        <div style="font-size:11px;color:var(--gray-400);margin-top:4px">YouTube, Google Drive, Vimeo, or any direct link</div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-secondary" onclick="closeModal('slot-recording-modal')">Cancel</button>
+        <button class="btn-primary" id="slot-rec-btn" onclick="saveSlotRecording()">Save</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     const SUPABASE_URL = 'https://mizkuzwfjvvulkiyotle.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_6ebgjsAV5DH3u_h-iKC3jw_WagYY6Mv';
@@ -1015,7 +1088,7 @@
       const opts = coursesList.length
         ? coursesList.map(c => `<option value="${c.id}">${c.name}</option>`).join('')
         : '<option value="">No courses yet</option>';
-      ['avail-course','mat-course','hw-course','sess-course'].forEach(id => {
+      ['avail-course','mat-course','hw-course','sess-course','rec-course'].forEach(id => {
         const el = document.getElementById(id);
         if (el) {
           el.innerHTML = '<option value="">Select a course...</option>' + opts;
@@ -1052,21 +1125,26 @@
       let sessionsQ  = db.from('sessions').select('*').eq('instructor_id', currentUser.id)
                         .gte('scheduled_at', new Date().toISOString()).order('scheduled_at').limit(8);
       let matsQ      = db.from('materials').select('*').eq('instructor_id', currentUser.id)
+                        .eq('material_type', 'material')
+                        .order('created_at', { ascending: false });
+      let recsQ      = db.from('materials').select('*').eq('instructor_id', currentUser.id)
+                        .eq('material_type', 'recording')
                         .order('created_at', { ascending: false });
       let subsQ      = db.from('homework').select('*').eq('instructor_id', currentUser.id)
                         .eq('status', 'submitted').order('created_at');
       let availQ     = db.from('availability').select('*').eq('instructor_id', currentUser.id)
-                        .gte('available_at', new Date().toISOString()).order('available_at');
+                        .order('available_at');
 
       if (selectedCourseId) {
         sessionsQ = sessionsQ.eq('course_id', selectedCourseId);
         matsQ     = matsQ.eq('course_id', selectedCourseId);
+        recsQ     = recsQ.eq('course_id', selectedCourseId);
         subsQ     = subsQ.eq('course_id', selectedCourseId);
         availQ    = availQ.eq('course_id', selectedCourseId);
       }
 
-      const [studentsRes, sessionsRes, materialsRes, submissionsRes, availRes] = await Promise.all([
-        studentsQ, sessionsQ, matsQ, subsQ, availQ
+      const [studentsRes, sessionsRes, materialsRes, recordingsRes, submissionsRes, availRes] = await Promise.all([
+        studentsQ, sessionsQ, matsQ, recsQ, subsQ, availQ
       ]);
 
       studentsList = (studentsRes.data || []).map(e => ({ id: e.student_id, _prof: {} }));
@@ -1097,12 +1175,13 @@
       renderStudents(studentsList);
       renderSessions(sessionsWithProf);
       renderMaterials(materialsRes.data || []);
+      renderRecordings(recordingsRes.data || []);
       renderSubmissions(submissionsWithProf);
       renderAvailability(availRes.data || [], bookedProfMap);
 
       // Stats
       document.getElementById('stat-students').textContent  = studentsList.length;
-      document.getElementById('stat-sessions').textContent  = (sessionsRes.data || []).length;
+      document.getElementById('stat-sessions').textContent  = (sessionsRes.data || []).filter(s => new Date(s.scheduled_at) >= new Date()).length;
       document.getElementById('stat-materials').textContent = (materialsRes.data || []).length;
       document.getElementById('stat-tograde').textContent   = (submissionsRes.data || []).length;
 
@@ -1206,11 +1285,14 @@
       const typeIcons  = { pdf: '📕', word: '📘', ppt: '📙', video: '🎬', file: '📄' };
       el.innerHTML = items.map(m => {
         const icon = typeIcons[m.file_type] || '📄';
+        const dlBadge = m.is_downloadable
+          ? `<span style="font-size:11px;color:var(--green);background:var(--green-bg);border-radius:20px;padding:2px 8px;font-weight:600;margin-left:6px">↓ Download on</span>`
+          : '';
         return `
         <div class="material-item">
           <div class="mat-icon">${icon}</div>
           <div class="mat-info">
-            <div class="mat-title">${m.title}</div>
+            <div class="mat-title">${m.title}${dlBadge}</div>
             <div class="mat-desc">${m.description || ''} ${m.level ? '· ' + (levelIcons[m.level] || '') + ' ' + m.level : ''}</div>
           </div>
           ${m.file_url
@@ -1218,6 +1300,26 @@
             : ''}
         </div>`;
       }).join('');
+    }
+
+    function renderRecordings(items) {
+      const el = document.getElementById('recordings-list');
+      document.getElementById('recordings-count').textContent = items.length;
+      if (!items.length) {
+        el.innerHTML = '<div class="empty"><div class="icon">🎬</div>No recordings added yet</div>';
+        return;
+      }
+      el.innerHTML = items.map(m => `
+        <div class="material-item">
+          <div class="mat-icon">🎬</div>
+          <div class="mat-info">
+            <div class="mat-title">${m.title}</div>
+            <div class="mat-desc">${m.description || ''}</div>
+          </div>
+          ${m.file_url
+            ? `<a href="${m.file_url}" target="_blank" style="color:var(--purple);font-size:13px;font-weight:500;text-decoration:none;">↗ Watch</a>`
+            : ''}
+        </div>`).join('');
     }
 
     function populateStudentDropdown() {
@@ -1344,14 +1446,17 @@
       const { data: { publicUrl } } = db.storage.from('materials').getPublicUrl(path);
 
       const matCourseId = document.getElementById('mat-course').value || null;
+      const isDownloadable = document.getElementById('mat-downloadable').checked;
       const { error: dbError } = await db.from('materials').insert({
-        instructor_id: currentUser.id,
-        course_id:    matCourseId,
+        instructor_id:   currentUser.id,
+        course_id:       matCourseId,
         title,
-        description: desc || null,
-        file_url:    publicUrl,
-        file_type:   fileType,
-        level:       level || null
+        description:     desc || null,
+        file_url:        publicUrl,
+        file_type:       fileType,
+        level:           level || null,
+        material_type:   'material',
+        is_downloadable: isDownloadable
       });
 
       btn.disabled = false;
@@ -1370,6 +1475,7 @@
       document.getElementById('mat-title').value = '';
       document.getElementById('mat-desc').value  = '';
       document.getElementById('mat-level').value = '';
+      document.getElementById('mat-downloadable').checked = false;
       fileInput.value = '';
       document.getElementById('upload-progress').style.display = 'none';
 
@@ -1435,14 +1541,16 @@
 
       const hwCourseId = document.getElementById('hw-course').value || null;
       const rows = targets.map(sid => ({
-        instructor_id:  currentUser.id,
-        student_id:     sid,
-        course_id:      hwCourseId,
+        instructor_id:   currentUser.id,
+        student_id:      sid,
+        course_id:       hwCourseId,
         title,
-        description:    desc        || null,
-        due_date:       due         || null,
-        assignment_url: assignmentUrl,
-        status:         'pending'
+        description:     desc        || null,
+        due_date:        due         || null,
+        assignment_url:  assignmentUrl,
+        status:          'pending',
+        material_type:   'homework',
+        is_downloadable: true
       }));
 
       const { error } = await db.from('homework').insert(rows);
@@ -1617,17 +1725,43 @@
 
     function renderAvailability(slots, bookedProfMap) {
       const el = document.getElementById('avail-list');
-      document.getElementById('avail-count').textContent = slots.length;
+      const now = new Date();
+      // Show upcoming first, then past
+      const upcoming = slots.filter(s => new Date(s.available_at) >= now);
+      const past     = slots.filter(s => new Date(s.available_at) < now);
+      document.getElementById('avail-count').textContent = upcoming.length;
       if (!slots.length) {
-        el.innerHTML = '<div class="empty"><div class="icon">📅</div>No upcoming slots posted yet</div>';
+        el.innerHTML = '<div class="empty"><div class="icon">📅</div>No slots posted yet</div>';
         return;
       }
-      el.innerHTML = slots.map(slot => {
-        const d = new Date(slot.available_at);
-        const day = d.getDate();
-        const mon = d.toLocaleString('en', { month: 'short' });
+
+      function renderSlot(slot, isPast) {
+        const d    = new Date(slot.available_at);
+        const day  = d.getDate();
+        const mon  = d.toLocaleString('en', { month: 'short' });
         const time = d.toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' });
-        const dur = slot.duration_mins ? `${slot.duration_mins} min` : '';
+        const dur  = slot.duration_mins ? `${slot.duration_mins} min` : '';
+        const cap  = slot.capacity || 12;
+        const booked = slot.booked_count || (slot.is_booked ? 1 : 0);
+        const capLabel = `${booked}/${cap} booked`;
+        const title = slot.title || (isPast ? 'Past Slot' : 'Open Slot');
+
+        if (isPast) {
+          const recAdded = slot.recording_url;
+          const recBtn = recAdded
+            ? `<span style="font-size:12px;color:var(--green);font-weight:600;padding:4px 10px;background:var(--green-bg);border-radius:20px">Recording ✓</span>`
+            : `<button onclick="openSlotRecordingModal('${slot.id}', '${title.replace(/'/g,"\\'")}')" style="font-size:12px;color:var(--purple);background:var(--purple-bg);border:none;border-radius:20px;padding:4px 10px;cursor:pointer;font-weight:600">+ Add Recording</button>`;
+          return `
+            <div class="session-item" style="opacity:0.8">
+              <div class="session-date" style="background:var(--gray-100);color:var(--gray-600)"><div class="day">${day}</div><div class="mon">${mon}</div></div>
+              <div class="session-info">
+                <div class="title">${title}</div>
+                <div class="time">${time}${dur ? ' · ' + dur : ''} · ${capLabel}</div>
+              </div>
+              ${recBtn}
+            </div>`;
+        }
+
         if (slot.is_booked) {
           const prof = bookedProfMap[slot.booked_by] || {};
           const name = prof.full_name || prof.email?.split('@')[0] || 'Student';
@@ -1635,22 +1769,30 @@
             <div class="session-item" style="background:var(--green-bg)">
               <div class="session-date"><div class="day">${day}</div><div class="mon">${mon}</div></div>
               <div class="session-info">
-                <div class="title">${slot.title || 'Session'}</div>
-                <div class="time">${time}${dur ? ' · ' + dur : ''} · Booked by <strong>${name}</strong></div>
+                <div class="title">${title}</div>
+                <div class="time">${time}${dur ? ' · ' + dur : ''} · ${capLabel} · Booked by <strong>${name}</strong></div>
               </div>
               <span style="font-size:12px;color:var(--green);font-weight:600;padding:4px 10px;background:var(--green-bg);border-radius:20px">Booked</span>
             </div>`;
         }
+
         return `
           <div class="session-item">
             <div class="session-date"><div class="day">${day}</div><div class="mon">${mon}</div></div>
             <div class="session-info">
-              <div class="title">${slot.title || 'Open Slot'}</div>
-              <div class="time">${time}${dur ? ' · ' + dur : ''} · Open for booking</div>
+              <div class="title">${title}</div>
+              <div class="time">${time}${dur ? ' · ' + dur : ''} · ${capLabel} · Open for booking</div>
             </div>
             <button onclick="deleteAvailability('${slot.id}')" style="font-size:12px;color:var(--red);background:var(--red-bg);border:none;border-radius:20px;padding:4px 10px;cursor:pointer">Remove</button>
           </div>`;
-      }).join('');
+      }
+
+      let html = upcoming.map(s => renderSlot(s, false)).join('');
+      if (past.length) {
+        html += `<div style="font-size:12px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.5px;padding:12px 0 4px">Past Slots</div>`;
+        html += past.map(s => renderSlot(s, true)).join('');
+      }
+      el.innerHTML = html;
     }
 
     async function postAvailability() {
@@ -1671,12 +1813,14 @@
       btn.textContent = 'Posting...';
 
       const courseId = document.getElementById('avail-course').value || null;
+      const capacity = parseInt(document.getElementById('avail-capacity').value) || 12;
       const { error } = await db.from('availability').insert({
         instructor_id: currentUser.id,
         course_id: courseId,
         title: title || null,
         available_at: new Date(datetime).toISOString(),
         duration_mins: duration ? parseInt(duration) : 60,
+        capacity,
         teams_link: teamsLink || null
       });
 
@@ -1702,6 +1846,87 @@
       if (!confirm('Remove this availability slot?')) return;
       await db.from('availability').delete().eq('id', slotId);
       loadDashboard();
+    }
+
+    // ── ADD RECORDING (materials table) ─────────────────────
+
+    async function addRecording() {
+      const btn     = document.getElementById('rec-btn');
+      const alertEl = document.getElementById('rec-alert');
+      const title   = document.getElementById('rec-title').value.trim();
+      const url     = document.getElementById('rec-url').value.trim();
+
+      if (!title) { alertEl.className = 'alert-modal error'; alertEl.textContent = 'Title is required.'; return; }
+      if (!url)   { alertEl.className = 'alert-modal error'; alertEl.textContent = 'Recording URL is required.'; return; }
+
+      btn.disabled = true;
+      btn.textContent = 'Saving...';
+
+      const recCourseId = document.getElementById('rec-course').value || null;
+      const { error } = await db.from('materials').insert({
+        instructor_id:   currentUser.id,
+        course_id:       recCourseId,
+        title,
+        file_url:        url,
+        file_type:       'video',
+        material_type:   'recording',
+        is_downloadable: false
+      });
+
+      btn.disabled = false;
+      btn.textContent = 'Save Recording';
+
+      if (error) {
+        alertEl.className = 'alert-modal error';
+        alertEl.textContent = error.message;
+        return;
+      }
+
+      alertEl.className = 'alert-modal success';
+      alertEl.textContent = 'Recording saved!';
+      document.getElementById('rec-title').value = '';
+      document.getElementById('rec-url').value   = '';
+      setTimeout(() => { closeModal('add-recording-modal'); alertEl.className = 'alert-modal'; loadDashboard(); }, 1000);
+    }
+
+    // ── SLOT RECORDING ───────────────────────────────────────
+
+    let slotRecordingId = null;
+
+    function openSlotRecordingModal(slotId, slotTitle) {
+      slotRecordingId = slotId;
+      document.getElementById('slot-rec-info').textContent = `Slot: ${slotTitle}`;
+      document.getElementById('slot-rec-url').value = '';
+      document.getElementById('slot-rec-alert').className = 'alert-modal';
+      openModal('slot-recording-modal');
+    }
+
+    async function saveSlotRecording() {
+      const btn     = document.getElementById('slot-rec-btn');
+      const alertEl = document.getElementById('slot-rec-alert');
+      const url     = document.getElementById('slot-rec-url').value.trim();
+
+      if (!url) { alertEl.className = 'alert-modal error'; alertEl.textContent = 'URL is required.'; return; }
+
+      btn.disabled = true;
+      btn.textContent = 'Saving...';
+
+      const { error } = await db.from('availability')
+        .update({ recording_url: url })
+        .eq('id', slotRecordingId);
+
+      btn.disabled = false;
+      btn.textContent = 'Save';
+
+      if (error) {
+        alertEl.className = 'alert-modal error';
+        alertEl.textContent = error.message;
+        return;
+      }
+
+      alertEl.className = 'alert-modal success';
+      alertEl.textContent = 'Recording URL saved!';
+      setTimeout(() => { closeModal('slot-recording-modal'); alertEl.className = 'alert-modal'; slotRecordingId = null; loadDashboard(); }, 1000);
     }
 
     // ── UTILS ────────────────────────────────────────────────
