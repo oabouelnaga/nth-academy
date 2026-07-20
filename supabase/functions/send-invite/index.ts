@@ -23,7 +23,6 @@ function corsHeaders(origin: string | null): Record<string, string> {
 Deno.serve(async (req: Request) => {
   const origin = req.headers.get("origin");
 
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders(origin) });
   }
@@ -45,7 +44,7 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  const { email, name } = body;
+  const { email, name, courseId, cohortId } = body;
 
   if (!email) {
     return new Response(JSON.stringify({ error: "email is required" }), {
@@ -58,19 +57,16 @@ Deno.serve(async (req: Request) => {
   if (!serviceRoleKey) {
     return new Response(
       JSON.stringify({ error: "Server misconfiguration: missing service role key" }),
-      {
-        status: 500,
-        headers: { ...corsHeaders(origin), "Content-Type": "application/json" },
-      }
+      { status: 500, headers: { ...corsHeaders(origin), "Content-Type": "application/json" } }
     );
   }
 
-  // Use service-role client for admin operations
   const db = createClient(SUPABASE_URL, serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
-  const { error: inviteError } = await db.auth.admin.inviteUserByEmail(email, {
+  // Invite (or re-invite) the user — inviteUserByEmail is idempotent for existing users
+  const { data: inviteData, error: inviteError } = await db.auth.admin.inviteUserByEmail(email, {
     redirectTo: INVITE_REDIRECT_URL,
     data: { full_name: name ?? "" },
   });
@@ -78,10 +74,28 @@ Deno.serve(async (req: Request) => {
   if (inviteError) {
     return new Response(
       JSON.stringify({ error: inviteError.message }),
+      { status: 400, headers: { ...corsHeaders(origin), "Content-Type": "application/json" } }
+    );
+  }
+
+  const userId = inviteData.user?.id;
+
+  // Insert enrollment immediately — we have the user id from the invite response
+  if (userId && courseId) {
+    // Ensure profiles row exists with correct name
+    await db.from("profiles").upsert(
+      { id: userId, email, full_name: name ?? "", role: "student" },
+      { onConflict: "id" }
+    );
+
+    await db.from("enrollments").upsert(
       {
-        status: 400,
-        headers: { ...corsHeaders(origin), "Content-Type": "application/json" },
-      }
+        student_id: userId,
+        course_id: courseId,
+        cohort_id: cohortId ?? null,
+        payment_status: "pending",
+      },
+      { onConflict: "student_id,course_id" }
     );
   }
 

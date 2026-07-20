@@ -378,28 +378,25 @@
     <div class="alert" id="student-alert"></div>
     <div class="form-row">
       <div class="form-group"><label>Full Name</label><input type="text" id="stu-name" placeholder="Sara Hassan"></div>
-      <div class="form-group"><label>Full Name (Arabic)</label><input type="text" id="stu-name-ar" placeholder="سارة حسن"></div>
+      <div class="form-group"><label>Email</label><input type="email" id="stu-email" placeholder="student@email.com"></div>
     </div>
-    <div class="form-group"><label>Email</label><input type="email" id="stu-email" placeholder="student@email.com"></div>
-    <div class="form-group"><label>Temporary Password</label><input type="password" id="stu-password" placeholder="Min 8 characters"></div>
     <div class="form-row">
       <div class="form-group">
-        <label>Level</label>
-        <select id="stu-level">
-          <option value="beginner">Beginner</option>
-          <option value="intermediate">Intermediate</option>
-          <option value="advanced">Advanced</option>
-        </select>
+        <label>Course</label>
+        <select id="stu-course" onchange="loadStudentModalCohorts()"><option value="">Select course...</option></select>
       </div>
       <div class="form-group">
-        <label>Assign to Instructor</label>
-        <select id="stu-instructor"><option value="">Select instructor...</option></select>
+        <label>Round (Start Date)</label>
+        <select id="stu-cohort"><option value="">Select course first...</option></select>
       </div>
     </div>
-    <div class="form-group"><label>Student Code (optional)</label><input type="text" id="stu-code" placeholder="Auto-generated if blank"></div>
+    <div class="form-group">
+      <label>Assign to Instructor (optional — can do later)</label>
+      <select id="stu-instructor"><option value="">— unassigned —</option></select>
+    </div>
     <div class="modal-footer">
       <button class="btn-ghost" onclick="closeModal('student-modal')">Cancel</button>
-      <button class="btn-primary" onclick="createStudent()">Create Student</button>
+      <button class="btn-primary" onclick="createStudent()">Send Invite & Enroll</button>
     </div>
   </div>
 </div>
@@ -1047,62 +1044,65 @@
     setTimeout(() => { closeModal('instructor-modal'); loadAll(); }, 1500);
   }
 
+  async function loadStudentModalCohorts() {
+    const courseId = document.getElementById('stu-course').value;
+    const sel = document.getElementById('stu-cohort');
+    sel.innerHTML = '<option value="">Loading...</option>';
+    if (!courseId) { sel.innerHTML = '<option value="">Select course first...</option>'; return; }
+    const { data } = await db.from('cohorts').select('id, start_date').eq('course_id', courseId).order('start_date');
+    if (!data?.length) { sel.innerHTML = '<option value="">No rounds available</option>'; return; }
+    sel.innerHTML = data.map(c => {
+      const d = new Date(c.start_date).toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' });
+      return `<option value="${c.id}">Starts ${d}</option>`;
+    }).join('');
+  }
+
   async function createStudent() {
-    const name = document.getElementById('stu-name').value.trim();
-    const nameAr = document.getElementById('stu-name-ar').value.trim();
-    const email = document.getElementById('stu-email').value.trim();
-    const password = document.getElementById('stu-password').value;
-    const level = document.getElementById('stu-level').value;
+    const name     = document.getElementById('stu-name').value.trim();
+    const email    = document.getElementById('stu-email').value.trim();
+    const courseId = document.getElementById('stu-course').value;
+    const cohortId = document.getElementById('stu-cohort').value;
     const instructorId = document.getElementById('stu-instructor').value;
-    const code = document.getElementById('stu-code').value.trim() || 'NTH-' + Math.random().toString(36).substr(2, 6).toUpperCase();
-    const alertEl = document.getElementById('student-alert');
+    const alertEl  = document.getElementById('student-alert');
     alertEl.className = 'alert';
 
-    if (!name || !email || !password) { alertEl.className = 'alert error'; alertEl.textContent = 'Name, email and password are required.'; return; }
-    if (password.length < 8) { alertEl.className = 'alert error'; alertEl.textContent = 'Password must be at least 8 characters.'; return; }
+    if (!name || !email) { alertEl.className = 'alert error'; alertEl.textContent = 'Name and email are required.'; return; }
+    if (!courseId)        { alertEl.className = 'alert error'; alertEl.textContent = 'Please select a course.'; return; }
+    if (!cohortId)        { alertEl.className = 'alert error'; alertEl.textContent = 'Please select a round.'; return; }
 
     const btn = document.querySelector('#student-modal .btn-primary');
-    btn.disabled = true; btn.textContent = 'Creating…';
+    btn.disabled = true; btn.textContent = 'Sending…';
 
-    // 1. Create auth user via isolated client so admin session is preserved
-    const { data: authData, error: authError } = await dbSignup.auth.signUp({
-      email, password,
-      options: { data: { full_name: name } }
+    // 1. Send invite email via Edge Function (creates auth user)
+    const resp = await fetch('https://mizkuzwfjvvulkiyotle.supabase.co/functions/v1/send-invite', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_KEY}` },
+      body: JSON.stringify({ email, name, courseId, cohortId })
     });
-    await dbSignup.auth.signOut();
 
-    if (authError) {
-      alertEl.className = 'alert error';
-      alertEl.textContent = authError.message;
-      btn.disabled = false; btn.textContent = 'Create Student';
+    if (!resp.ok) {
+      let msg = 'Invite failed.';
+      try { const j = await resp.json(); msg = j.error || msg; } catch {}
+      alertEl.className = 'alert error'; alertEl.textContent = msg;
+      btn.disabled = false; btn.textContent = 'Send Invite & Enroll';
       return;
     }
 
-    const userId = authData.user.id;
+    // 2. Look up the new user's id from profiles (invite may take a moment)
+    await new Promise(r => setTimeout(r, 1000));
+    const { data: prof } = await db.from('profiles').select('id').eq('email', email).maybeSingle();
 
-    // 2. Update profiles row (trigger creates it, we update the name and role)
-    await db.from('profiles').upsert({ id: userId, email, full_name: name, role: 'student' });
-
-    // 3. Insert into students table
-    const { error: stuError } = await db.from('students').insert({
-      id: userId,
-      instructor_id: instructorId || null,
-      level,
-      student_code: code,
-      payment_status: 'pending'
-    });
-
-    if (stuError) {
-      alertEl.className = 'alert error';
-      alertEl.textContent = 'Auth user created but students record failed: ' + stuError.message;
-      btn.disabled = false; btn.textContent = 'Create Student';
-      return;
+    if (prof?.id) {
+      // 3. Insert enrollment row immediately
+      const enrollPayload = { student_id: prof.id, course_id: courseId, cohort_id: cohortId, payment_status: 'pending' };
+      if (instructorId) enrollPayload.assigned_instructor_id = instructorId;
+      await db.from('enrollments').upsert(enrollPayload, { onConflict: 'student_id,course_id' });
     }
 
     alertEl.className = 'alert success';
-    alertEl.textContent = `Student "${name}" created! Code: ${code}`;
-    btn.disabled = false; btn.textContent = 'Create Student';
-    setTimeout(() => { closeModal('student-modal'); loadAll(); }, 1500);
+    alertEl.textContent = `Invite sent to ${email}! They'll appear in the students list once they set their password.`;
+    btn.disabled = false; btn.textContent = 'Send Invite & Enroll';
+    setTimeout(() => { closeModal('student-modal'); loadAll(); }, 2000);
   }
 
   async function promoteToInstructor(userId, name) {
@@ -1149,7 +1149,20 @@
   }
 
   // MODAL
-  function openModal(id) { document.getElementById(id).classList.add('open'); }
+  function openModal(id) {
+    document.getElementById(id).classList.add('open');
+    if (id === 'student-modal') {
+      // Populate course dropdown
+      const courseSel = document.getElementById('stu-course');
+      courseSel.innerHTML = '<option value="">Select course...</option>' +
+        allCourses.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+      document.getElementById('stu-cohort').innerHTML = '<option value="">Select course first...</option>';
+      // Populate instructor dropdown
+      const instSel = document.getElementById('stu-instructor');
+      instSel.innerHTML = '<option value="">— unassigned —</option>' +
+        allInstructors.map(i => `<option value="${i.id}">${i.full_name || i.email || i.id}</option>`).join('');
+    }
+  }
   function closeModal(id) {
     document.getElementById(id).classList.remove('open');
     document.querySelectorAll('#' + id + ' .alert').forEach(a => a.className = 'alert');
