@@ -742,40 +742,93 @@
   }
 
   async function loadInstructors() {
-    const { data } = await db.from('instructors').select('*').order('id');
+    // Source of truth: profiles with role instructor or admin, joined via course_instructors
+    const { data: profs } = await db.from('profiles')
+      .select('id, full_name, email, role')
+      .in('role', ['instructor', 'admin'])
+      .order('full_name');
 
-    allInstructors = data || [];
+    allInstructors = (profs || []).map(p => ({ id: p.id, full_name: p.full_name, email: p.email, role: p.role }));
     populateInstructorSelects();
 
     const tbody = document.getElementById('instructors-tbody');
     if (!allInstructors.length) {
-      tbody.innerHTML = '<tr><td colspan="5"><div class="empty"><span class="icon">👨‍🏫</span>No instructors yet. Add one above.</div></td></tr>';
+      tbody.innerHTML = '<tr><td colspan="5"><div class="empty"><span class="icon">👨‍🏫</span>No instructors yet.</div></td></tr>';
       return;
     }
 
+    // Get courses per instructor and enrollment counts
     const instIds = allInstructors.map(i => i.id);
-    const [{ data: profs }, { data: stuData }] = await Promise.all([
-      db.from('profiles').select('id, full_name, email').in('id', instIds),
-      db.from('students').select('instructor_id')
+    const [{ data: ciRows }, { data: enrollRows }] = await Promise.all([
+      db.from('course_instructors').select('instructor_id, courses(name)').in('instructor_id', instIds),
+      db.from('enrollments').select('assigned_instructor_id').in('assigned_instructor_id', instIds)
     ]);
-    const profMap = Object.fromEntries((profs || []).map(p => [p.id, p]));
-    const counts = {};
-    (stuData || []).forEach(s => { counts[s.instructor_id] = (counts[s.instructor_id] || 0) + 1; });
+
+    const courseMap = {};
+    (ciRows || []).forEach(r => {
+      if (!courseMap[r.instructor_id]) courseMap[r.instructor_id] = [];
+      if (r.courses?.name) courseMap[r.instructor_id].push(r.courses.name);
+    });
+    const enrollCounts = {};
+    (enrollRows || []).forEach(r => {
+      enrollCounts[r.assigned_instructor_id] = (enrollCounts[r.assigned_instructor_id] || 0) + 1;
+    });
 
     tbody.innerHTML = allInstructors.map(i => {
-      const prof = profMap[i.id] || {};
+      const courses = (courseMap[i.id] || []).join(', ') || '—';
+      const students = enrollCounts[i.id] || 0;
       return `
       <tr>
         <td><div style="display:flex;align-items:center;gap:10px;">
-          <div class="avatar">${(prof.full_name || '?')[0].toUpperCase()}</div>
-          <span>${prof.full_name || '—'}</span>
+          <div class="avatar">${(i.full_name || '?')[0].toUpperCase()}</div>
+          <span>${i.full_name || '—'}</span>
         </div></td>
-        <td style="color:var(--gray-600)">${prof.email || '—'}</td>
-        <td><span class="pill pill-blue">${i.subject || 'General'}</span></td>
-        <td>${counts[i.id] || 0} / ${i.max_students}</td>
-        <td><button class="btn-ghost">Edit</button></td>
+        <td style="color:var(--gray-600)">${i.email || '—'}</td>
+        <td><span class="pill pill-blue">${courses}</span></td>
+        <td>${students}</td>
+        <td><button class="btn-ghost" onclick="editInstructor('${i.id}')">Edit</button></td>
       </tr>`;
     }).join('');
+  }
+
+  async function editInstructor(id) {
+    const instr = allInstructors.find(i => i.id === id);
+    if (!instr) return;
+    const { data: allCourses } = await db.from('courses').select('id, name').order('name');
+    const { data: ciRows } = await db.from('course_instructors').select('course_id').eq('instructor_id', id);
+    const assigned = new Set((ciRows || []).map(r => r.course_id));
+
+    const courseCheckboxes = (allCourses || []).map(c => `
+      <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;cursor:pointer">
+        <input type="checkbox" value="${c.id}" ${assigned.has(c.id) ? 'checked' : ''}>
+        <span>${c.name}</span>
+      </label>`).join('');
+
+    const modal = document.createElement('div');
+    modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;padding:16px';
+    modal.innerHTML = `
+      <div style="background:#fff;border-radius:16px;padding:28px;width:100%;max-width:420px">
+        <h3 style="margin:0 0 16px;font-size:17px">Edit Instructor — ${instr.full_name}</h3>
+        <p style="font-size:13px;color:#6b7280;margin:0 0 12px">Assigned courses:</p>
+        <div id="edit-instr-courses">${courseCheckboxes}</div>
+        <div style="display:flex;gap:10px;margin-top:20px">
+          <button onclick="this.closest('[style*=fixed]').remove()" style="flex:1;padding:10px;border:1.5px solid #e5e7eb;border-radius:8px;background:#fff;cursor:pointer;font-size:14px">Cancel</button>
+          <button onclick="saveInstructorCourses('${id}',this)" style="flex:1;padding:10px;background:#3b5bdb;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600">Save</button>
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+  }
+
+  async function saveInstructorCourses(instructorId, btn) {
+    btn.disabled = true; btn.textContent = 'Saving…';
+    const modal = btn.closest('[style*=fixed]');
+    const checked = [...modal.querySelectorAll('#edit-instr-courses input:checked')].map(el => el.value);
+    await db.from('course_instructors').delete().eq('instructor_id', instructorId);
+    if (checked.length) {
+      await db.from('course_instructors').insert(checked.map(cid => ({ course_id: cid, instructor_id: instructorId })));
+    }
+    modal.remove();
+    loadInstructors();
   }
 
   async function loadStudents() {
