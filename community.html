@@ -106,13 +106,36 @@
     .section-label { display: inline-block; background: rgba(59,91,219,0.1); color: var(--blue); font-size: 12px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; padding: 5px 14px; border-radius: 100px; margin-bottom: 12px; }
     .section-header h2 { font-size: clamp(24px, 3vw, 34px); font-weight: 800; color: var(--navy); }
     .instagram-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 4px; }
-    .instagram-placeholder {
-      aspect-ratio: 1; background: var(--gray-100); border-radius: 8px;
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      gap: 8px; color: var(--gray-500); font-size: 13px; font-weight: 500;
-      text-align: center; padding: 16px;
+    .ig-reel {
+      aspect-ratio: 9/16; background: var(--navy); border-radius: 8px; overflow: hidden;
+      display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+      position: relative; cursor: pointer; text-decoration: none;
+      transition: transform 0.2s, box-shadow 0.2s;
     }
-    .instagram-placeholder .ig-icon { font-size: 28px; }
+    .ig-reel:hover { transform: scale(1.03); box-shadow: 0 8px 24px rgba(0,0,0,0.18); }
+    .ig-reel-bg {
+      position: absolute; inset: 0; background: linear-gradient(160deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    }
+    .ig-reel-overlay {
+      position: absolute; inset: 0;
+      background: linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 60%);
+    }
+    .ig-reel-play {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%,-60%);
+      width: 44px; height: 44px; background: rgba(255,255,255,0.18); border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      backdrop-filter: blur(4px); border: 1.5px solid rgba(255,255,255,0.3);
+      transition: background 0.2s;
+    }
+    .ig-reel:hover .ig-reel-play { background: rgba(255,255,255,0.32); }
+    .ig-reel-play svg { width: 18px; height: 18px; fill: white; margin-left: 3px; }
+    .ig-reel-info {
+      position: relative; z-index: 1; padding: 12px; width: 100%;
+      display: flex; flex-direction: column; gap: 3px;
+    }
+    .ig-reel-label { color: rgba(255,255,255,0.7); font-size: 10px; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase; }
+    .ig-reel-title { color: white; font-size: 12px; font-weight: 600; line-height: 1.3; }
+    .ig-reel-icon { font-size: 22px; position: absolute; top: 14px; left: 14px; }
     .instagram-cta { text-align: center; margin-top: 28px; }
     .btn-instagram { display: inline-flex; align-items: center; gap: 8px; background: linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888); color: var(--white); padding: 12px 28px; border-radius: 12px; font-weight: 700; font-size: 15px; transition: opacity 0.2s; }
     .btn-instagram:hover { opacity: 0.9; }
@@ -136,7 +159,7 @@
 
     @media (max-width: 600px) {
       .feed-grid { grid-template-columns: 1fr; }
-      .instagram-grid { grid-template-columns: repeat(2, 1fr); }
+      .instagram-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; }
     }
   </style>
 </head>
@@ -217,11 +240,66 @@
       </h2>
     </div>
     <div class="instagram-grid" id="ig-grid">
-      <div class="instagram-placeholder"><span class="ig-icon">📸</span><span class="en-text">Connect Instagram to show your reels here</span><span class="ar-text">اربط انستغرام لعرض الريلز</span></div>
-      <div class="instagram-placeholder"><span class="ig-icon">🎬</span><span class="en-text">Instructor tips & lessons</span><span class="ar-text">نصائح ودروس المدربين</span></div>
-      <div class="instagram-placeholder"><span class="ig-icon">🏆</span><span class="en-text">Student achievements</span><span class="ar-text">إنجازات الطلاب</span></div>
-      <div class="instagram-placeholder"><span class="ig-icon">💡</span><span class="en-text">Daily learning facts</span><span class="ar-text">حقائق تعليمية يومية</span></div>
-      <div class="instagram-placeholder"><span class="ig-icon">🎓</span><span class="en-text">Academy life</span><span class="ar-text">حياة الأكاديمية</span></div>
+      <a href="https://instagram.com/nth.academy.eg/reels/" target="_blank" class="ig-reel">
+        <div class="ig-reel-bg"></div>
+        <div class="ig-reel-overlay"></div>
+        <span class="ig-reel-icon">📸</span>
+        <div class="ig-reel-play"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>
+        <div class="ig-reel-info">
+          <span class="ig-reel-label en-text">Reels</span>
+          <span class="ig-reel-label ar-text">ريلز</span>
+          <span class="ig-reel-title en-text">Watch our latest reels</span>
+          <span class="ig-reel-title ar-text">شاهد أحدث ريلزنا</span>
+        </div>
+      </a>
+      <a href="https://instagram.com/nth.academy.eg/reels/" target="_blank" class="ig-reel">
+        <div class="ig-reel-bg" style="background:linear-gradient(160deg,#1a2e1a,#16390f,#1a4a1a)"></div>
+        <div class="ig-reel-overlay"></div>
+        <span class="ig-reel-icon">🎬</span>
+        <div class="ig-reel-play"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>
+        <div class="ig-reel-info">
+          <span class="ig-reel-label en-text">Tips</span>
+          <span class="ig-reel-label ar-text">نصائح</span>
+          <span class="ig-reel-title en-text">Instructor tips & lessons</span>
+          <span class="ig-reel-title ar-text">نصائح ودروس المدربين</span>
+        </div>
+      </a>
+      <a href="https://instagram.com/nth.academy.eg/reels/" target="_blank" class="ig-reel">
+        <div class="ig-reel-bg" style="background:linear-gradient(160deg,#2e1a0e,#3d2010,#4a2800)"></div>
+        <div class="ig-reel-overlay"></div>
+        <span class="ig-reel-icon">🏆</span>
+        <div class="ig-reel-play"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>
+        <div class="ig-reel-info">
+          <span class="ig-reel-label en-text">Wins</span>
+          <span class="ig-reel-label ar-text">إنجازات</span>
+          <span class="ig-reel-title en-text">Student achievements</span>
+          <span class="ig-reel-title ar-text">إنجازات الطلاب</span>
+        </div>
+      </a>
+      <a href="https://instagram.com/nth.academy.eg/reels/" target="_blank" class="ig-reel">
+        <div class="ig-reel-bg" style="background:linear-gradient(160deg,#1a1a2e,#2a1a3e,#3a0f60)"></div>
+        <div class="ig-reel-overlay"></div>
+        <span class="ig-reel-icon">💡</span>
+        <div class="ig-reel-play"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>
+        <div class="ig-reel-info">
+          <span class="ig-reel-label en-text">Facts</span>
+          <span class="ig-reel-label ar-text">حقائق</span>
+          <span class="ig-reel-title en-text">Daily learning facts</span>
+          <span class="ig-reel-title ar-text">حقائق تعليمية يومية</span>
+        </div>
+      </a>
+      <a href="https://instagram.com/nth.academy.eg/reels/" target="_blank" class="ig-reel">
+        <div class="ig-reel-bg" style="background:linear-gradient(160deg,#2e0f1a,#3d1020,#4a0028)"></div>
+        <div class="ig-reel-overlay"></div>
+        <span class="ig-reel-icon">🎓</span>
+        <div class="ig-reel-play"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>
+        <div class="ig-reel-info">
+          <span class="ig-reel-label en-text">Life</span>
+          <span class="ig-reel-label ar-text">حياة</span>
+          <span class="ig-reel-title en-text">Academy life</span>
+          <span class="ig-reel-title ar-text">حياة الأكاديمية</span>
+        </div>
+      </a>
     </div>
     <div class="instagram-cta">
       <a href="https://instagram.com/nth.academy.eg" target="_blank" class="btn-instagram">
