@@ -636,8 +636,13 @@
       </tr>`).join('');
   }
 
-  function populateInstructorSelects() {
-    const options = allInstructors.map(i => `<option value="${i.id}">${i.profiles?.full_name || i.id}</option>`).join('');
+  async function populateInstructorSelects() {
+    const ids = allInstructors.map(i => i.id);
+    const { data: profs } = ids.length
+      ? await db.from('profiles').select('id, full_name').in('id', ids)
+      : { data: [] };
+    const nameMap = Object.fromEntries((profs || []).map(p => [p.id, p.full_name]));
+    const options = allInstructors.map(i => `<option value="${i.id}">${nameMap[i.id] || i.id}</option>`).join('');
     document.getElementById('stu-instructor').innerHTML = '<option value="">Select instructor...</option>' + options;
     document.getElementById('sess-instructor').innerHTML = '<option value="">Select instructor...</option>' + options;
   }
