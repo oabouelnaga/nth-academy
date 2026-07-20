@@ -591,7 +591,13 @@
       <div class="card">
         <div class="card-head">
           <h2><span class="en-text">Upcoming Sessions</span><span class="ar-text">الجلسات القادمة</span></h2>
-          <span class="count" id="sessions-count">0</span>
+          <div class="card-head-right">
+            <span class="count" id="sessions-count">0</span>
+            <button class="btn-action" onclick="openModal('schedule-session-modal')">
+              <span class="en-text">+ Schedule</span>
+              <span class="ar-text">+ جدولة</span>
+            </button>
+          </div>
         </div>
         <div class="card-body" id="sessions-list">
           <div class="loading"><div class="loading-spinner"></div></div>
@@ -727,6 +733,55 @@
     </div>
   </div>
 
+  <!-- MODAL: SCHEDULE SESSION -->
+  <div class="modal-overlay" id="schedule-session-modal">
+    <div class="modal">
+      <h3>
+        <span class="en-text">Schedule Session</span>
+        <span class="ar-text">جدولة جلسة</span>
+      </h3>
+      <div class="alert-modal" id="session-alert"></div>
+      <div class="form-group">
+        <label><span class="en-text">Title</span><span class="ar-text">العنوان</span></label>
+        <input type="text" id="sess-title" placeholder="e.g. Week 3 — Grammar Review">
+      </div>
+      <div class="form-group">
+        <label><span class="en-text">Student</span><span class="ar-text">الطالب</span></label>
+        <select id="sess-student">
+          <option value="">Select a student...</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label><span class="en-text">Date &amp; Time</span><span class="ar-text">التاريخ والوقت</span></label>
+        <input type="datetime-local" id="sess-datetime">
+      </div>
+      <div class="form-group">
+        <label><span class="en-text">Duration (minutes)</span><span class="ar-text">المدة (دقائق)</span></label>
+        <input type="number" id="sess-duration" placeholder="60" min="15" max="240">
+      </div>
+      <div class="form-group">
+        <label><span class="en-text">Microsoft Teams Link (optional)</span><span class="ar-text">رابط Microsoft Teams (اختياري)</span></label>
+        <input type="url" id="sess-teams" placeholder="https://teams.microsoft.com/l/meetup-join/...">
+        <div style="font-size:11px;color:var(--gray-400);margin-top:4px">
+          <span class="en-text">Students will see a Join button on their dashboard</span>
+          <span class="ar-text">سيظهر للطلاب زر الانضمام في لوحة التحكم</span>
+        </div>
+      </div>
+      <div class="form-group">
+        <label><span class="en-text">Notes (optional)</span><span class="ar-text">ملاحظات (اختياري)</span></label>
+        <textarea id="sess-notes" placeholder="Any notes for this session..."></textarea>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-secondary" onclick="closeModal('schedule-session-modal')">
+          <span class="en-text">Cancel</span><span class="ar-text">إلغاء</span>
+        </button>
+        <button class="btn-primary" id="schedule-btn" onclick="scheduleSession()">
+          <span class="en-text">Schedule</span><span class="ar-text">جدولة</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL: GRADE SUBMISSION -->
   <div class="modal-overlay" id="grade-modal">
     <div class="modal">
@@ -735,7 +790,16 @@
         <span class="ar-text">تصحيح التسليم</span>
       </h3>
       <div class="alert-modal" id="grade-alert"></div>
-      <p id="grade-hw-info" style="font-size:14px; color:var(--gray-600); margin-bottom:16px;"></p>
+      <p id="grade-hw-info" style="font-size:14px; color:var(--gray-600); margin-bottom:8px;"></p>
+      <div id="grade-submission-preview" style="margin-bottom:16px;display:none;">
+        <div id="grade-submission-file" style="display:none;margin-bottom:8px;">
+          <a id="grade-file-link" href="#" target="_blank" style="color:var(--blue);font-size:13px;font-weight:500;">📎 View submitted file</a>
+        </div>
+        <div id="grade-submission-notes" style="display:none;">
+          <div style="font-size:12px;color:var(--gray-600);font-weight:500;margin-bottom:4px;">Student's answer:</div>
+          <div id="grade-notes-text" style="background:var(--gray-50);border-radius:8px;padding:10px 12px;font-size:13px;color:var(--gray-800);white-space:pre-wrap;max-height:120px;overflow-y:auto;"></div>
+        </div>
+      </div>
       <div class="form-group">
         <label><span class="en-text">Grade</span><span class="ar-text">الدرجة</span></label>
         <input type="text" id="grade-value" placeholder="e.g. 85/100 or A+">
@@ -841,8 +905,9 @@
       document.getElementById('stat-materials').textContent = (materialsRes.data || []).length;
       document.getElementById('stat-tograde').textContent   = (submissionsRes.data || []).length;
 
-      // Populate student dropdown in assign-homework modal
+      // Populate student dropdowns
       populateStudentDropdown();
+      populateSessionStudentDropdown();
     }
 
     function renderStudents(students) {
@@ -910,14 +975,20 @@
         const due = h.due_date
           ? new Date(h.due_date).toLocaleDateString('en', { month: 'short', day: 'numeric' })
           : '';
+        const subIcon = h.submission_url ? '📎' : h.submission_notes ? '✏️' : '📤';
+        const subNote = h.submission_url ? ' · File attached' : h.submission_notes ? ' · Text answer' : '';
+        const safeTitle = h.title.replace(/'/g, "\\'");
+        const safeName = studentName.replace(/'/g, "\\'");
+        const safeUrl = (h.submission_url || '').replace(/'/g, "\\'");
+        const safeNotes = (h.submission_notes || '').replace(/'/g, "\\'").replace(/\n/g, '\\n');
         return `
           <div class="submission-item">
-            <div class="sub-icon">📤</div>
+            <div class="sub-icon">${subIcon}</div>
             <div class="sub-info">
               <div class="sub-title">${h.title}</div>
-              <div class="sub-meta">${studentName}${due ? ' · Due ' + due : ''}</div>
+              <div class="sub-meta">${studentName}${due ? ' · Due ' + due : ''}${subNote}</div>
             </div>
-            <button class="btn-action" onclick="openGradeModal('${h.id}', '${h.title.replace(/'/g, "\\'")}', '${studentName}')">
+            <button class="btn-action" onclick="openGradeModal('${h.id}', '${safeTitle}', '${safeName}', '${safeUrl}', '${safeNotes}')">
               <span class="en-text">Grade</span>
               <span class="ar-text">تصحيح</span>
             </button>
@@ -980,12 +1051,29 @@
       });
     });
 
-    function openGradeModal(hwId, hwTitle, studentName) {
+    function openGradeModal(hwId, hwTitle, studentName, submissionUrl, submissionNotes) {
       gradingHomeworkId = hwId;
       document.getElementById('grade-hw-info').textContent = `"${hwTitle}" — submitted by ${studentName}`;
       document.getElementById('grade-value').value = '';
       document.getElementById('grade-feedback').value = '';
       document.getElementById('grade-alert').className = 'alert-modal';
+
+      const preview = document.getElementById('grade-submission-preview');
+      const fileDiv = document.getElementById('grade-submission-file');
+      const notesDiv = document.getElementById('grade-submission-notes');
+      fileDiv.style.display = 'none';
+      notesDiv.style.display = 'none';
+      if (submissionUrl) {
+        document.getElementById('grade-file-link').href = submissionUrl;
+        fileDiv.style.display = '';
+        preview.style.display = '';
+      } else if (submissionNotes) {
+        document.getElementById('grade-notes-text').textContent = submissionNotes;
+        notesDiv.style.display = '';
+        preview.style.display = '';
+      } else {
+        preview.style.display = 'none';
+      }
       openModal('grade-modal');
     }
 
@@ -1167,6 +1255,76 @@
         gradingHomeworkId = null;
         loadDashboard();
       }, 1000);
+    }
+
+    // ── SCHEDULE SESSION ─────────────────────────────────────
+
+    function populateSessionStudentDropdown() {
+      const sel = document.getElementById('sess-student');
+      if (!studentsList.length) {
+        sel.innerHTML = '<option value="">No students assigned</option>';
+        return;
+      }
+      sel.innerHTML = '<option value="">Select a student...</option>' +
+        studentsList.map(s => {
+          const name = s._prof?.full_name || s._prof?.email || 'Student';
+          return `<option value="${s.id}">${name}</option>`;
+        }).join('');
+    }
+
+    async function scheduleSession() {
+      const btn = document.getElementById('schedule-btn');
+      const alertEl = document.getElementById('session-alert');
+      const title = document.getElementById('sess-title').value.trim();
+      const studentId = document.getElementById('sess-student').value;
+      const datetime = document.getElementById('sess-datetime').value;
+      const duration = document.getElementById('sess-duration').value;
+      const teamsLink = document.getElementById('sess-teams').value.trim();
+      const notes = document.getElementById('sess-notes').value.trim();
+
+      if (!title || !studentId || !datetime) {
+        alertEl.className = 'alert-modal error';
+        alertEl.textContent = 'Title, student, and date/time are required.';
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Scheduling...';
+
+      const { error } = await db.from('sessions').insert({
+        instructor_id: currentUser.id,
+        student_id: studentId,
+        title,
+        scheduled_at: new Date(datetime).toISOString(),
+        duration_mins: duration ? parseInt(duration) : null,
+        teams_link: teamsLink || null,
+        notes: notes || null,
+        status: 'scheduled'
+      });
+
+      btn.disabled = false;
+      btn.innerHTML = '<span class="en-text">Schedule</span><span class="ar-text">جدولة</span>';
+
+      if (error) {
+        alertEl.className = 'alert-modal error';
+        alertEl.textContent = error.message;
+        return;
+      }
+
+      alertEl.className = 'alert-modal success';
+      alertEl.textContent = 'Session scheduled!';
+      document.getElementById('sess-title').value = '';
+      document.getElementById('sess-student').value = '';
+      document.getElementById('sess-datetime').value = '';
+      document.getElementById('sess-duration').value = '';
+      document.getElementById('sess-teams').value = '';
+      document.getElementById('sess-notes').value = '';
+
+      setTimeout(() => {
+        closeModal('schedule-session-modal');
+        alertEl.className = 'alert-modal';
+        loadDashboard();
+      }, 1200);
     }
 
     // ── UTILS ────────────────────────────────────────────────

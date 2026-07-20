@@ -269,14 +269,18 @@
 
     /* HOMEWORK LIST */
     .hw-item {
-      display: flex;
-      align-items: center;
-      gap: 14px;
       padding: 12px 0;
       border-bottom: 1px solid var(--gray-100);
     }
 
     .hw-item:last-child { border-bottom: none; }
+
+    .hw-item-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      cursor: pointer;
+    }
 
     .hw-icon {
       width: 38px;
@@ -296,6 +300,224 @@
     .hw-info { flex: 1; }
     .hw-info .title { font-size: 14px; font-weight: 500; color: var(--gray-800); margin-bottom: 2px; }
     .hw-info .due { font-size: 12px; color: var(--gray-400); }
+
+    .hw-expand { color: var(--gray-400); font-size: 12px; transition: transform 0.2s; flex-shrink: 0; }
+    .hw-expand.open { transform: rotate(180deg); }
+
+    .hw-details {
+      display: none;
+      margin-top: 10px;
+      padding: 12px 14px;
+      background: var(--gray-50);
+      border-radius: 10px;
+      font-size: 13px;
+      color: var(--gray-600);
+    }
+
+    .hw-details.open { display: block; }
+    .hw-details .desc { margin-bottom: 10px; line-height: 1.5; white-space: pre-wrap; }
+
+    .btn-submit-hw {
+      background: var(--blue);
+      color: var(--white);
+      border: none;
+      border-radius: 8px;
+      padding: 7px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-submit-hw:hover { background: var(--blue-light); }
+
+    .hw-grade-badge {
+      display: inline-block;
+      background: var(--green-bg);
+      color: var(--green);
+      border-radius: 8px;
+      padding: 4px 10px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .hw-submitted-note {
+      display: inline-block;
+      color: var(--blue);
+      font-size: 12px;
+      font-style: italic;
+    }
+
+    /* TEAMS JOIN BUTTON */
+    .btn-join-teams {
+      background: #5059c9;
+      color: var(--white);
+      border: none;
+      border-radius: 8px;
+      padding: 5px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: background 0.2s;
+    }
+
+    .btn-join-teams:hover { background: #4452c0; }
+
+    /* MODAL */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .modal-overlay.open { display: flex; }
+
+    .modal {
+      background: var(--white);
+      border-radius: 16px;
+      padding: 32px;
+      width: 100%;
+      max-width: 480px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.2);
+    }
+
+    .modal h3 { font-size: 18px; font-weight: 700; color: var(--navy); margin-bottom: 20px; }
+
+    .form-group { margin-bottom: 16px; }
+
+    .form-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--gray-800);
+      margin-bottom: 6px;
+    }
+
+    .form-group input,
+    .form-group textarea,
+    .form-group select {
+      width: 100%;
+      padding: 10px 13px;
+      border: 1.5px solid var(--gray-200);
+      border-radius: 10px;
+      font-size: 14px;
+      font-family: inherit;
+      color: var(--gray-800);
+      background: var(--white);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .form-group textarea { resize: vertical; min-height: 80px; }
+
+    .form-group input:focus,
+    .form-group textarea:focus,
+    .form-group select:focus { border-color: var(--blue); }
+
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .btn-primary {
+      flex: 1;
+      padding: 11px;
+      background: var(--blue);
+      color: var(--white);
+      border: none;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-primary:hover { background: var(--blue-light); }
+    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .btn-secondary {
+      padding: 11px 20px;
+      background: var(--gray-100);
+      color: var(--gray-600);
+      border: none;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-secondary:hover { background: var(--gray-200); }
+
+    .alert-modal {
+      padding: 10px 13px;
+      border-radius: 8px;
+      font-size: 13px;
+      margin-bottom: 14px;
+      display: none;
+    }
+
+    .alert-modal.error   { background: var(--red-bg);   color: var(--red);   border: 1px solid #ffc9c9; display: block; }
+    .alert-modal.success { background: var(--green-bg); color: var(--green); border: 1px solid #b2f2bb; display: block; }
+
+    .tab-toggle {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 8px;
+      border: 1.5px solid var(--gray-200);
+      background: var(--white);
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      color: var(--gray-600);
+      transition: all 0.2s;
+    }
+
+    .tab-btn.active {
+      border-color: var(--blue);
+      background: var(--blue-bg);
+      color: var(--blue);
+      font-weight: 600;
+    }
+
+    .upload-progress {
+      margin-top: 8px;
+    }
+
+    .progress-track {
+      background: var(--gray-200);
+      border-radius: 4px;
+      height: 6px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: var(--blue);
+      transition: width 0.3s;
+    }
 
     /* MATERIALS LIST */
     .material-item {
@@ -521,6 +743,40 @@
 
   </div>
 
+  <!-- MODAL: SUBMIT HOMEWORK -->
+  <div class="modal-overlay" id="submit-hw-modal">
+    <div class="modal">
+      <h3>Submit Homework</h3>
+      <div class="alert-modal" id="submit-alert"></div>
+      <p id="submit-hw-title" style="font-size:14px;color:var(--gray-600);margin-bottom:16px;font-weight:500;"></p>
+      <div class="tab-toggle">
+        <button class="tab-btn active" id="tab-file-btn" onclick="switchTab('file')">📎 Upload File</button>
+        <button class="tab-btn" id="tab-text-btn" onclick="switchTab('text')">✏️ Write Notes</button>
+      </div>
+      <div id="tab-file">
+        <div class="form-group">
+          <label>File</label>
+          <input type="file" id="sub-file" accept=".pdf,.doc,.docx,.ppt,.pptx,.mp4,.mov,.jpg,.jpeg,.png,.zip,.txt">
+          <div style="font-size:11px;color:var(--gray-400);margin-top:4px">PDF, Word, images, video — max 100MB</div>
+          <div id="sub-upload-progress" style="display:none" class="upload-progress">
+            <div class="progress-track"><div class="progress-fill" id="sub-progress-bar"></div></div>
+            <div id="sub-progress-label" style="font-size:11px;color:var(--gray-400);margin-top:4px">Uploading...</div>
+          </div>
+        </div>
+      </div>
+      <div id="tab-text" style="display:none">
+        <div class="form-group">
+          <label>Your answer / notes</label>
+          <textarea id="sub-notes" placeholder="Type your answer here..." style="min-height:120px"></textarea>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-secondary" onclick="closeSubmitModal()">Cancel</button>
+        <button class="btn-primary" id="submit-hw-btn" onclick="submitHomework()">Submit</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     const SUPABASE_URL = 'https://mizkuzwfjvvulkiyotle.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_6ebgjsAV5DH3u_h-iKC3jw_WagYY6Mv';
@@ -528,6 +784,8 @@
 
     let currentUser = null;
     let isAr = false;
+    let submittingHomeworkId = null;
+    let submitTab = 'file';
 
     // Auth guard
     db.auth.getSession().then(({ data: { session } }) => {
@@ -600,6 +858,9 @@
         const day = d.getDate();
         const mon = d.toLocaleString('en', { month: 'short' });
         const time = d.toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' });
+        const teamsBtn = s.teams_link
+          ? `<a class="btn-join-teams" href="${s.teams_link}" target="_blank" rel="noopener">🎥 Join</a>`
+          : `<span class="status-pill status-${s.status}">${s.status}</span>`;
         return `
           <div class="session-item">
             <div class="session-date">
@@ -608,9 +869,9 @@
             </div>
             <div class="session-info">
               <div class="title">${s.title || 'Session'}</div>
-              <div class="time">${time} · ${s.duration_mins} min</div>
+              <div class="time">${time}${s.duration_mins ? ' · ' + s.duration_mins + ' min' : ''}</div>
             </div>
-            <span class="status-pill status-${s.status}">${s.status}</span>
+            ${teamsBtn}
           </div>`;
       }).join('');
     }
@@ -623,18 +884,141 @@
         return;
       }
       const icons = { pending: '📝', submitted: '📤', graded: '⭐' };
-      el.innerHTML = items.map(h => {
+      el.innerHTML = items.map((h, i) => {
         const due = h.due_date ? new Date(h.due_date).toLocaleDateString('en', { month: 'short', day: 'numeric' }) : 'No deadline';
+        const statusClass = h.status === 'graded' ? 'completed' : 'scheduled';
+        let actionArea = '';
+        if (h.status === 'pending') {
+          actionArea = `<button class="btn-submit-hw" onclick="openSubmitModal('${h.id}', ${JSON.stringify(h.title)})">Submit</button>`;
+        } else if (h.status === 'submitted') {
+          actionArea = `<span class="hw-submitted-note">Awaiting grade</span>`;
+        } else if (h.status === 'graded' && h.grade) {
+          actionArea = `<span class="hw-grade-badge">⭐ ${h.grade}</span>`;
+        }
+        const feedbackLine = h.feedback ? `<div style="margin-top:6px;color:var(--green);font-size:12px">Feedback: ${h.feedback}</div>` : '';
+        const descLine = h.description ? `<div class="desc">${h.description}</div>` : '<div class="desc" style="color:var(--gray-400)">No additional instructions.</div>';
         return `
           <div class="hw-item">
-            <div class="hw-icon hw-${h.status}">${icons[h.status] || '📝'}</div>
-            <div class="hw-info">
-              <div class="title">${h.title}</div>
-              <div class="due">Due: ${due} ${h.grade ? '· Grade: ' + h.grade : ''}</div>
+            <div class="hw-item-row" onclick="toggleHw('hw-details-${i}', 'hw-chevron-${i}')">
+              <div class="hw-icon hw-${h.status}">${icons[h.status] || '📝'}</div>
+              <div class="hw-info">
+                <div class="title">${h.title}</div>
+                <div class="due">Due: ${due}${h.grade ? ' · Grade: ' + h.grade : ''}</div>
+              </div>
+              <span class="status-pill status-${statusClass}" style="margin-right:4px">${h.status}</span>
+              <span class="hw-expand" id="hw-chevron-${i}">▼</span>
             </div>
-            <span class="status-pill status-${h.status === 'pending' ? 'scheduled' : h.status === 'submitted' ? 'scheduled' : 'completed'}">${h.status}</span>
+            <div class="hw-details" id="hw-details-${i}">
+              ${descLine}
+              ${feedbackLine}
+              ${actionArea}
+            </div>
           </div>`;
       }).join('');
+    }
+
+    function toggleHw(detailsId, chevronId) {
+      document.getElementById(detailsId).classList.toggle('open');
+      document.getElementById(chevronId).classList.toggle('open');
+    }
+
+    function openSubmitModal(hwId, hwTitle) {
+      submittingHomeworkId = hwId;
+      document.getElementById('submit-hw-title').textContent = hwTitle;
+      document.getElementById('submit-alert').className = 'alert-modal';
+      document.getElementById('sub-file').value = '';
+      document.getElementById('sub-notes').value = '';
+      document.getElementById('sub-upload-progress').style.display = 'none';
+      switchTab('file');
+      document.getElementById('submit-hw-modal').classList.add('open');
+    }
+
+    function closeSubmitModal() {
+      document.getElementById('submit-hw-modal').classList.remove('open');
+      submittingHomeworkId = null;
+    }
+
+    function switchTab(tab) {
+      submitTab = tab;
+      document.getElementById('tab-file').style.display = tab === 'file' ? '' : 'none';
+      document.getElementById('tab-text').style.display = tab === 'text' ? '' : 'none';
+      document.getElementById('tab-file-btn').classList.toggle('active', tab === 'file');
+      document.getElementById('tab-text-btn').classList.toggle('active', tab === 'text');
+    }
+
+    document.getElementById('submit-hw-modal').addEventListener('click', e => {
+      if (e.target === document.getElementById('submit-hw-modal')) closeSubmitModal();
+    });
+
+    async function submitHomework() {
+      const btn = document.getElementById('submit-hw-btn');
+      const alertEl = document.getElementById('submit-alert');
+      btn.disabled = true;
+      btn.textContent = 'Submitting...';
+
+      let submissionUrl = null;
+      let submissionNotes = null;
+
+      if (submitTab === 'file') {
+        const file = document.getElementById('sub-file').files[0];
+        if (!file) {
+          alertEl.className = 'alert-modal error';
+          alertEl.textContent = 'Please select a file to upload.';
+          btn.disabled = false;
+          btn.textContent = 'Submit';
+          return;
+        }
+        const ext = file.name.split('.').pop().toLowerCase();
+        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const path = `${currentUser.id}/${submittingHomeworkId}_${Date.now()}_${safeName}`;
+        document.getElementById('sub-upload-progress').style.display = '';
+        document.getElementById('sub-progress-bar').style.width = '30%';
+        const { error: storageErr } = await db.storage.from('submissions').upload(path, file, { upsert: true });
+        if (storageErr) {
+          alertEl.className = 'alert-modal error';
+          alertEl.textContent = storageErr.message;
+          btn.disabled = false;
+          btn.textContent = 'Submit';
+          document.getElementById('sub-upload-progress').style.display = 'none';
+          return;
+        }
+        document.getElementById('sub-progress-bar').style.width = '80%';
+        const { data: { publicUrl } } = db.storage.from('submissions').getPublicUrl(path);
+        submissionUrl = publicUrl;
+      } else {
+        submissionNotes = document.getElementById('sub-notes').value.trim();
+        if (!submissionNotes) {
+          alertEl.className = 'alert-modal error';
+          alertEl.textContent = 'Please write your answer before submitting.';
+          btn.disabled = false;
+          btn.textContent = 'Submit';
+          return;
+        }
+      }
+
+      const { error } = await db.from('homework').update({
+        status: 'submitted',
+        submission_url: submissionUrl,
+        submission_notes: submissionNotes,
+        submitted_at: new Date().toISOString()
+      }).eq('id', submittingHomeworkId);
+
+      btn.disabled = false;
+      btn.textContent = 'Submit';
+      document.getElementById('sub-upload-progress').style.display = 'none';
+
+      if (error) {
+        alertEl.className = 'alert-modal error';
+        alertEl.textContent = error.message;
+        return;
+      }
+
+      alertEl.className = 'alert-modal success';
+      alertEl.textContent = 'Homework submitted!';
+      setTimeout(() => {
+        closeSubmitModal();
+        loadDashboard();
+      }, 1200);
     }
 
     function renderMaterials(items) {
