@@ -307,8 +307,17 @@
   function filterPosts(type, btn) {
     document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    const filtered = type === 'all' ? allPosts : allPosts.filter(p => p.type === type);
-    renderPosts(filtered);
+    const igSection = document.querySelector('.instagram-section');
+    const feedSection = document.querySelector('.feed-section');
+    if (type === 'reel') {
+      if (feedSection) feedSection.style.display = 'none';
+      if (igSection) { igSection.style.display = ''; igSection.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+    } else {
+      if (feedSection) feedSection.style.display = '';
+      if (igSection) igSection.style.display = 'none';
+      const filtered = type === 'all' ? allPosts : allPosts.filter(p => p.type === type);
+      renderPosts(filtered);
+    }
   }
 
   function setLang(lang) {
