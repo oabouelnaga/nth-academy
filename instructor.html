@@ -599,7 +599,7 @@
         <div class="stat-sub"><span class="en-text">enrolled</span><span class="ar-text">مسجّلون</span></div>
       </div>
       <div class="stat-card">
-        <div class="stat-label"><span class="en-text">Sessions</span><span class="ar-text">الجلسات</span></div>
+        <div class="stat-label"><span class="en-text">Open Slots</span><span class="ar-text">مواعيد متاحة</span></div>
         <div class="stat-value" id="stat-sessions">—</div>
         <div class="stat-sub"><span class="en-text">upcoming</span><span class="ar-text">قادمة</span></div>
       </div>
@@ -631,22 +631,6 @@
         </div>
       </div>
 
-      <!-- UPCOMING SESSIONS -->
-      <div class="card">
-        <div class="card-head">
-          <h2><span class="en-text">Upcoming Sessions</span><span class="ar-text">الجلسات القادمة</span></h2>
-          <div class="card-head-right">
-            <span class="count" id="sessions-count">0</span>
-            <button class="btn-action" onclick="openModal('schedule-session-modal')">
-              <span class="en-text">+ Schedule</span>
-              <span class="ar-text">+ جدولة</span>
-            </button>
-          </div>
-        </div>
-        <div class="card-body" id="sessions-list">
-          <div class="loading"><div class="loading-spinner"></div></div>
-        </div>
-      </div>
 
     </div>
 
@@ -882,58 +866,6 @@
   </div>
 
   <!-- MODAL: SCHEDULE SESSION -->
-  <div class="modal-overlay" id="schedule-session-modal">
-    <div class="modal">
-      <h3>
-        <span class="en-text">Schedule Session</span>
-        <span class="ar-text">جدولة جلسة</span>
-      </h3>
-      <div class="alert-modal" id="session-alert"></div>
-      <div class="form-group">
-        <label>Course</label>
-        <select id="sess-course"><option value="">Select a course...</option></select>
-      </div>
-      <div class="form-group">
-        <label><span class="en-text">Title</span><span class="ar-text">العنوان</span></label>
-        <input type="text" id="sess-title" placeholder="e.g. Week 3 — Grammar Review">
-      </div>
-      <div class="form-group">
-        <label><span class="en-text">Student</span><span class="ar-text">الطالب</span></label>
-        <select id="sess-student">
-          <option value="">Select a student...</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label><span class="en-text">Date &amp; Time</span><span class="ar-text">التاريخ والوقت</span></label>
-        <input type="datetime-local" id="sess-datetime">
-      </div>
-      <div class="form-group">
-        <label><span class="en-text">Duration (minutes)</span><span class="ar-text">المدة (دقائق)</span></label>
-        <input type="number" id="sess-duration" placeholder="60" min="15" max="240">
-      </div>
-      <div class="form-group">
-        <label><span class="en-text">Microsoft Teams Link (optional)</span><span class="ar-text">رابط Microsoft Teams (اختياري)</span></label>
-        <input type="url" id="sess-teams" placeholder="https://teams.microsoft.com/l/meetup-join/...">
-        <div style="font-size:11px;color:var(--gray-400);margin-top:4px">
-          <span class="en-text">Students will see a Join button on their dashboard</span>
-          <span class="ar-text">سيظهر للطلاب زر الانضمام في لوحة التحكم</span>
-        </div>
-      </div>
-      <div class="form-group">
-        <label><span class="en-text">Notes (optional)</span><span class="ar-text">ملاحظات (اختياري)</span></label>
-        <textarea id="sess-notes" placeholder="Any notes for this session..."></textarea>
-      </div>
-      <div class="modal-actions">
-        <button class="btn-secondary" onclick="closeModal('schedule-session-modal')">
-          <span class="en-text">Cancel</span><span class="ar-text">إلغاء</span>
-        </button>
-        <button class="btn-primary" id="schedule-btn" onclick="scheduleSession()">
-          <span class="en-text">Schedule</span><span class="ar-text">جدولة</span>
-        </button>
-      </div>
-    </div>
-  </div>
-
   <!-- MODAL: GRADE SUBMISSION -->
   <div class="modal-overlay" id="grade-modal">
     <div class="modal">
@@ -1122,8 +1054,6 @@
             .select('student_id, payment_status, courses(name)')
             .eq('course_id', selectedCourseId)
         : { data: [] };
-      let sessionsQ  = db.from('sessions').select('*').eq('instructor_id', currentUser.id)
-                        .gte('scheduled_at', new Date().toISOString()).order('scheduled_at').limit(8);
       let matsQ      = db.from('materials').select('*').eq('instructor_id', currentUser.id)
                         .eq('material_type', 'material')
                         .order('created_at', { ascending: false });
@@ -1136,15 +1066,14 @@
                         .order('available_at');
 
       if (selectedCourseId) {
-        sessionsQ = sessionsQ.eq('course_id', selectedCourseId);
         matsQ     = matsQ.eq('course_id', selectedCourseId);
         recsQ     = recsQ.eq('course_id', selectedCourseId);
         subsQ     = subsQ.eq('course_id', selectedCourseId);
         availQ    = availQ.eq('course_id', selectedCourseId);
       }
 
-      const [studentsRes, sessionsRes, materialsRes, recordingsRes, submissionsRes, availRes] = await Promise.all([
-        studentsQ, sessionsQ, matsQ, recsQ, subsQ, availQ
+      const [studentsRes, materialsRes, recordingsRes, submissionsRes, availRes] = await Promise.all([
+        studentsQ, matsQ, recsQ, subsQ, availQ
       ]);
 
       studentsList = (studentsRes.data || []).map(e => ({ id: e.student_id, _prof: {} }));
@@ -1152,7 +1081,6 @@
       // Fetch profiles for all relevant user IDs
       const allIds = [...new Set([
         ...studentsList.map(s => s.id),
-        ...(sessionsRes.data || []).map(s => s.student_id),
         ...(submissionsRes.data || []).map(h => h.student_id)
       ].filter(Boolean))];
       const { data: profData } = allIds.length
@@ -1160,9 +1088,7 @@
         : { data: [] };
       const profMap = Object.fromEntries((profData || []).map(p => [p.id, p]));
 
-      // Attach profile data to each record
       studentsList = studentsList.map(s => ({ ...s, _prof: profMap[s.id] || {} }));
-      const sessionsWithProf  = (sessionsRes.data  || []).map(s => ({ ...s, _prof: profMap[s.student_id] || {} }));
       const submissionsWithProf = (submissionsRes.data || []).map(h => ({ ...h, _prof: profMap[h.student_id] || {} }));
 
       // Fetch names for booked availability slots
@@ -1173,21 +1099,20 @@
       const bookedProfMap = Object.fromEntries(bookedProfs.map(p => [p.id, p]));
 
       renderStudents(studentsList);
-      renderSessions(sessionsWithProf);
       renderMaterials(materialsRes.data || []);
       renderRecordings(recordingsRes.data || []);
       renderSubmissions(submissionsWithProf);
       renderAvailability(availRes.data || [], bookedProfMap);
 
-      // Stats
+      // Stats — sessions stat now shows upcoming availability slots
+      const upcomingSlots = (availRes.data || []).filter(s => new Date(s.available_at) >= new Date());
       document.getElementById('stat-students').textContent  = studentsList.length;
-      document.getElementById('stat-sessions').textContent  = (sessionsRes.data || []).filter(s => new Date(s.scheduled_at) >= new Date()).length;
+      document.getElementById('stat-sessions').textContent  = upcomingSlots.length;
       document.getElementById('stat-materials').textContent = (materialsRes.data || []).length;
       document.getElementById('stat-tograde').textContent   = (submissionsRes.data || []).length;
 
-      // Populate student dropdowns
+      // Populate student dropdown
       populateStudentDropdown();
-      populateSessionStudentDropdown();
     }
 
     function renderStudents(students) {
@@ -1213,33 +1138,6 @@
       }).join('');
     }
 
-    function renderSessions(sessions) {
-      const el = document.getElementById('sessions-list');
-      document.getElementById('sessions-count').textContent = sessions.length;
-      if (!sessions.length) {
-        el.innerHTML = '<div class="empty"><div class="icon">📅</div>No upcoming sessions</div>';
-        return;
-      }
-      el.innerHTML = sessions.map(s => {
-        const d    = new Date(s.scheduled_at);
-        const day  = d.getDate();
-        const mon  = d.toLocaleString('en', { month: 'short' });
-        const time = d.toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' });
-        const studentName = s._prof?.full_name || 'Student';
-        return `
-          <div class="session-item">
-            <div class="session-date">
-              <div class="day">${day}</div>
-              <div class="mon">${mon}</div>
-            </div>
-            <div class="session-info">
-              <div class="title">${s.title || 'Session'}</div>
-              <div class="time">${time} · ${studentName}</div>
-            </div>
-            <span class="status-pill status-${s.status}">${s.status}</span>
-          </div>`;
-      }).join('');
-    }
 
     function renderSubmissions(items) {
       const el = document.getElementById('submissions-list');
@@ -1662,63 +1560,6 @@
           const name = s._prof?.full_name || s._prof?.email || 'Student';
           return `<option value="${s.id}">${name}</option>`;
         }).join('');
-    }
-
-    async function scheduleSession() {
-      const btn = document.getElementById('schedule-btn');
-      const alertEl = document.getElementById('session-alert');
-      const title = document.getElementById('sess-title').value.trim();
-      const studentId = document.getElementById('sess-student').value;
-      const datetime = document.getElementById('sess-datetime').value;
-      const duration = document.getElementById('sess-duration').value;
-      const teamsLink = document.getElementById('sess-teams').value.trim();
-      const notes = document.getElementById('sess-notes').value.trim();
-
-      if (!title || !studentId || !datetime) {
-        alertEl.className = 'alert-modal error';
-        alertEl.textContent = 'Title, student, and date/time are required.';
-        return;
-      }
-
-      btn.disabled = true;
-      btn.textContent = 'Scheduling...';
-
-      const sessCourseId = document.getElementById('sess-course').value || null;
-      const { error } = await db.from('sessions').insert({
-        instructor_id: currentUser.id,
-        student_id: studentId,
-        course_id: sessCourseId,
-        title,
-        scheduled_at: new Date(datetime).toISOString(),
-        duration_mins: duration ? parseInt(duration) : null,
-        teams_link: teamsLink || null,
-        notes: notes || null,
-        status: 'scheduled'
-      });
-
-      btn.disabled = false;
-      btn.innerHTML = '<span class="en-text">Schedule</span><span class="ar-text">جدولة</span>';
-
-      if (error) {
-        alertEl.className = 'alert-modal error';
-        alertEl.textContent = error.message;
-        return;
-      }
-
-      alertEl.className = 'alert-modal success';
-      alertEl.textContent = 'Session scheduled!';
-      document.getElementById('sess-title').value = '';
-      document.getElementById('sess-student').value = '';
-      document.getElementById('sess-datetime').value = '';
-      document.getElementById('sess-duration').value = '';
-      document.getElementById('sess-teams').value = '';
-      document.getElementById('sess-notes').value = '';
-
-      setTimeout(() => {
-        closeModal('schedule-session-modal');
-        alertEl.className = 'alert-modal';
-        loadDashboard();
-      }, 1200);
     }
 
     // ── AVAILABILITY ─────────────────────────────────────────
