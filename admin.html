@@ -546,10 +546,13 @@
         ? `<button class="btn-ghost" onclick="setPaymentStatus('${s.id}', 'pending')">↩ Unpay</button>`
         : `<button class="btn-primary" style="padding:4px 12px;font-size:12px" onclick="setPaymentStatus('${s.id}', 'paid')">Mark Paid</button>
            <button class="btn-ghost" onclick="setPaymentStatus('${s.id}', 'exempt')">Exempt</button>`;
-      const instDropdown = `<select style="font-size:12px;padding:3px 6px;border:1px solid var(--gray-200);border-radius:6px;background:var(--white)" onchange="reassignInstructor('${s.id}', this.value)">
-        <option value="">— unassigned —</option>
-        ${(instProfs || []).map(p => `<option value="${p.id}" ${p.id === s.instructor_id ? 'selected' : ''}>${p.full_name || p.id}</option>`).join('')}
-      </select>`;
+      const instDropdown = `<div style="display:flex;align-items:center;gap:6px">
+        <select id="inst-sel-${s.id}" style="font-size:12px;padding:3px 6px;border:1px solid var(--gray-200);border-radius:6px;background:var(--white)">
+          <option value="">— unassigned —</option>
+          ${(instProfs || []).map(p => `<option value="${p.id}" ${p.id === s.instructor_id ? 'selected' : ''}>${p.full_name || p.id}</option>`).join('')}
+        </select>
+        <button class="btn-primary" style="padding:3px 10px;font-size:12px" onclick="reassignInstructor('${s.id}')">Save</button>
+      </div>`;
       return `
       <tr>
         <td><div style="display:flex;align-items:center;gap:10px;">
@@ -571,9 +574,21 @@
     await loadStudents();
   }
 
-  async function reassignInstructor(studentId, instructorId) {
+  async function reassignInstructor(studentId) {
+    const sel = document.getElementById('inst-sel-' + studentId);
+    const instructorId = sel.value;
+    const btn = sel.nextElementSibling;
+    btn.textContent = 'Saving...';
+    btn.disabled = true;
     const { error } = await db.from('students').update({ instructor_id: instructorId || null }).eq('id', studentId);
-    if (error) { alert('Error: ' + error.message); await loadStudents(); }
+    if (error) {
+      alert('Error: ' + error.message);
+      btn.textContent = 'Save';
+      btn.disabled = false;
+    } else {
+      btn.textContent = '✓ Saved';
+      setTimeout(() => { btn.textContent = 'Save'; btn.disabled = false; }, 2000);
+    }
   }
 
   async function loadSessions() {

@@ -801,34 +801,39 @@
         ? `أهلاً بك، ${name}!`
         : `Welcome back, ${name}!`;
 
-      // Load all data in parallel
+      // Load all data in parallel (flat queries — no nested joins)
       const [studentsRes, sessionsRes, materialsRes, submissionsRes] = await Promise.all([
-        db.from('students')
-          .select('*, profiles(full_name, email)')
-          .eq('instructor_id', currentUser.id),
-        db.from('sessions')
-          .select('*, profiles(full_name)')
-          .eq('instructor_id', currentUser.id)
-          .gte('scheduled_at', new Date().toISOString())
-          .order('scheduled_at')
-          .limit(8),
-        db.from('materials')
-          .select('*')
-          .eq('instructor_id', currentUser.id)
+        db.from('students').select('*').eq('instructor_id', currentUser.id),
+        db.from('sessions').select('*').eq('instructor_id', currentUser.id)
+          .gte('scheduled_at', new Date().toISOString()).order('scheduled_at').limit(8),
+        db.from('materials').select('*').eq('instructor_id', currentUser.id)
           .order('created_at', { ascending: false }),
-        db.from('homework')
-          .select('*, profiles(full_name)')
-          .eq('instructor_id', currentUser.id)
-          .eq('status', 'submitted')
-          .order('created_at')
+        db.from('homework').select('*').eq('instructor_id', currentUser.id)
+          .eq('status', 'submitted').order('created_at')
       ]);
 
       studentsList = studentsRes.data || [];
 
+      // Fetch profiles for all relevant user IDs
+      const allIds = [...new Set([
+        ...studentsList.map(s => s.id),
+        ...(sessionsRes.data || []).map(s => s.student_id),
+        ...(submissionsRes.data || []).map(h => h.student_id)
+      ].filter(Boolean))];
+      const { data: profData } = allIds.length
+        ? await db.from('profiles').select('id, full_name, email').in('id', allIds)
+        : { data: [] };
+      const profMap = Object.fromEntries((profData || []).map(p => [p.id, p]));
+
+      // Attach profile data to each record
+      studentsList = studentsList.map(s => ({ ...s, _prof: profMap[s.id] || {} }));
+      const sessionsWithProf  = (sessionsRes.data  || []).map(s => ({ ...s, _prof: profMap[s.student_id] || {} }));
+      const submissionsWithProf = (submissionsRes.data || []).map(h => ({ ...h, _prof: profMap[h.student_id] || {} }));
+
       renderStudents(studentsList);
-      renderSessions(sessionsRes.data || []);
+      renderSessions(sessionsWithProf);
       renderMaterials(materialsRes.data || []);
-      renderSubmissions(submissionsRes.data || []);
+      renderSubmissions(submissionsWithProf);
 
       // Stats
       document.getElementById('stat-students').textContent  = studentsList.length;
@@ -848,8 +853,8 @@
         return;
       }
       el.innerHTML = students.map(s => {
-        const name  = s.profiles?.full_name || s.profiles?.email?.split('@')[0] || 'Student';
-        const email = s.profiles?.email || '';
+        const name  = s._prof?.full_name || s._prof?.email?.split('@')[0] || 'Student';
+        const email = s._prof?.email || '';
         const init  = name.charAt(0).toUpperCase();
         const level = s.level || 'default';
         const levelLabel = { beginner: 'Beginner', intermediate: 'Intermediate', advanced: 'Advanced' }[level] || 'Student';
@@ -877,7 +882,7 @@
         const day  = d.getDate();
         const mon  = d.toLocaleString('en', { month: 'short' });
         const time = d.toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' });
-        const studentName = s.profiles?.full_name || 'Student';
+        const studentName = s._prof?.full_name || 'Student';
         return `
           <div class="session-item">
             <div class="session-date">
@@ -901,7 +906,7 @@
         return;
       }
       el.innerHTML = items.map(h => {
-        const studentName = h.profiles?.full_name || 'Student';
+        const studentName = h._prof?.full_name || 'Student';
         const due = h.due_date
           ? new Date(h.due_date).toLocaleDateString('en', { month: 'short', day: 'numeric' })
           : '';
@@ -953,7 +958,7 @@
       }
       sel.innerHTML = '<option value="">Select a student...</option>' +
         studentsList.map(s => {
-          const name = s.profiles?.full_name || s.profiles?.email || 'Student';
+          const name = s._prof?.full_name || s._prof?.email || 'Student';
           return `<option value="${s.id}">${name}</option>`;
         }).join('');
     }
