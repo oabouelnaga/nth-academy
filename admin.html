@@ -413,6 +413,8 @@
   const SUPABASE_URL = 'https://mizkuzwfjvvulkiyotle.supabase.co';
   const SUPABASE_KEY = 'sb_publishable_6ebgjsAV5DH3u_h-iKC3jw_WagYY6Mv';
   const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  // Separate client for creating users — prevents signUp from replacing the admin session
+  const dbSignup = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { storageKey: 'nth-signup-session' } });
 
   let allInstructors = [];
   let allStudents = [];
@@ -597,26 +599,53 @@
     alertEl.className = 'alert';
 
     if (!name || !email || !password) { alertEl.className = 'alert error'; alertEl.textContent = 'Name, email and password are required.'; return; }
+    if (password.length < 8) { alertEl.className = 'alert error'; alertEl.textContent = 'Password must be at least 8 characters.'; return; }
 
-    // Create auth user with instructor role
-    const { data: authData, error: authErr } = await db.auth.admin?.createUser
-      ? await db.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { role: 'instructor', full_name: name } })
-      : { data: null, error: { message: 'Admin user creation requires service role. Use Supabase dashboard to create the auth user, then this will auto-populate.' } };
+    const btn = document.querySelector('#instructor-modal .btn-primary');
+    btn.disabled = true; btn.textContent = 'Creating…';
 
-    if (authErr) {
-      // Fallback: show instructions
+    // 1. Create auth user via isolated client so admin session is preserved
+    const { data: authData, error: authError } = await dbSignup.auth.signUp({
+      email, password,
+      options: { data: { full_name: name } }
+    });
+    await dbSignup.auth.signOut();
+
+    if (authError) {
       alertEl.className = 'alert error';
-      alertEl.textContent = 'Note: Create the auth user in Supabase Auth dashboard first, then the profile will auto-populate. Error: ' + authErr.message;
+      alertEl.textContent = authError.message;
+      btn.disabled = false; btn.textContent = 'Create Instructor';
+      return;
+    }
+
+    const userId = authData.user.id;
+
+    // 2. Update profiles row with instructor role
+    await db.from('profiles').upsert({ id: userId, email, full_name: name, role: 'instructor' });
+
+    // 3. Insert into instructors table
+    const { error: instError } = await db.from('instructors').insert({
+      id: userId,
+      subject: subject || null,
+      max_students: max
+    });
+
+    if (instError) {
+      alertEl.className = 'alert error';
+      alertEl.textContent = 'Auth user created but instructors record failed: ' + instError.message;
+      btn.disabled = false; btn.textContent = 'Create Instructor';
       return;
     }
 
     alertEl.className = 'alert success';
-    alertEl.textContent = 'Instructor created successfully!';
-    setTimeout(() => { closeModal('instructor-modal'); loadAll(); }, 1200);
+    alertEl.textContent = `Instructor "${name}" created!`;
+    btn.disabled = false; btn.textContent = 'Create Instructor';
+    setTimeout(() => { closeModal('instructor-modal'); loadAll(); }, 1500);
   }
 
   async function createStudent() {
     const name = document.getElementById('stu-name').value.trim();
+    const nameAr = document.getElementById('stu-name-ar').value.trim();
     const email = document.getElementById('stu-email').value.trim();
     const password = document.getElementById('stu-password').value;
     const level = document.getElementById('stu-level').value;
@@ -626,9 +655,50 @@
     alertEl.className = 'alert';
 
     if (!name || !email || !password) { alertEl.className = 'alert error'; alertEl.textContent = 'Name, email and password are required.'; return; }
+    if (password.length < 8) { alertEl.className = 'alert error'; alertEl.textContent = 'Password must be at least 8 characters.'; return; }
 
-    alertEl.className = 'alert error';
-    alertEl.textContent = 'Student accounts must be created via Supabase Auth dashboard (Authentication → Users → Invite user), then assign them here. This ensures secure password setup. Student code generated: ' + code;
+    const btn = document.querySelector('#student-modal .btn-primary');
+    btn.disabled = true; btn.textContent = 'Creating…';
+
+    // 1. Create auth user via isolated client so admin session is preserved
+    const { data: authData, error: authError } = await dbSignup.auth.signUp({
+      email, password,
+      options: { data: { full_name: name } }
+    });
+    await dbSignup.auth.signOut();
+
+    if (authError) {
+      alertEl.className = 'alert error';
+      alertEl.textContent = authError.message;
+      btn.disabled = false; btn.textContent = 'Create Student';
+      return;
+    }
+
+    const userId = authData.user.id;
+
+    // 2. Update profiles row (trigger creates it, we update the name and role)
+    await db.from('profiles').upsert({ id: userId, email, full_name: name, role: 'student' });
+
+    // 3. Insert into students table
+    const { error: stuError } = await db.from('students').insert({
+      id: userId,
+      instructor_id: instructorId || null,
+      level,
+      student_code: code,
+      payment_status: 'pending'
+    });
+
+    if (stuError) {
+      alertEl.className = 'alert error';
+      alertEl.textContent = 'Auth user created but students record failed: ' + stuError.message;
+      btn.disabled = false; btn.textContent = 'Create Student';
+      return;
+    }
+
+    alertEl.className = 'alert success';
+    alertEl.textContent = `Student "${name}" created! Code: ${code}`;
+    btn.disabled = false; btn.textContent = 'Create Student';
+    setTimeout(() => { closeModal('student-modal'); loadAll(); }, 1500);
   }
 
   async function createSession() {
