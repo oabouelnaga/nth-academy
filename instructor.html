@@ -585,11 +585,10 @@
 
     <!-- COURSE SELECTOR -->
     <div class="course-bar">
-      <label>Course:</label>
+      <label>Select Course:</label>
       <select id="course-select" onchange="onCourseChange()">
         <option value="">Loading courses...</option>
       </select>
-      <button class="btn-action" onclick="openModal('new-course-modal')">+ New Course</button>
     </div>
 
     <!-- STATS -->
@@ -905,26 +904,6 @@
     </div>
   </div>
 
-  <!-- MODAL: NEW COURSE -->
-  <div class="modal-overlay" id="new-course-modal">
-    <div class="modal">
-      <h3>New Course</h3>
-      <div class="alert-modal" id="course-alert"></div>
-      <div class="form-group">
-        <label>Course Name</label>
-        <input type="text" id="course-name" placeholder="e.g. English Speaking — Intermediate">
-      </div>
-      <div class="form-group">
-        <label>Description (optional)</label>
-        <textarea id="course-desc" placeholder="What this course covers..."></textarea>
-      </div>
-      <div class="modal-actions">
-        <button class="btn-secondary" onclick="closeModal('new-course-modal')">Cancel</button>
-        <button class="btn-primary" id="create-course-btn" onclick="createCourse()">Create Course</button>
-      </div>
-    </div>
-  </div>
-
   <!-- MODAL: GRADE SUBMISSION -->
   <div class="modal-overlay" id="grade-modal">
     <div class="modal">
@@ -1010,19 +989,20 @@
     });
 
     async function loadCourses() {
-      const { data } = await db.from('courses').select('*')
-        .eq('instructor_id', currentUser.id).order('created_at');
-      coursesList = data || [];
+      const { data } = await db
+        .from('course_instructors')
+        .select('course_id, courses(id, name, description, level)')
+        .eq('instructor_id', currentUser.id);
+      coursesList = (data || []).map(row => row.courses).filter(Boolean);
 
       const sel = document.getElementById('course-select');
       if (!coursesList.length) {
-        sel.innerHTML = '<option value="">No courses yet — create one</option>';
+        sel.innerHTML = '<option value="">No courses assigned yet</option>';
         selectedCourseId = null;
       } else {
         sel.innerHTML = coursesList.map(c =>
           `<option value="${c.id}">${c.name}</option>`
         ).join('');
-        // Keep existing selection if still valid, else pick first
         if (!selectedCourseId || !coursesList.find(c => c.id === selectedCourseId)) {
           selectedCourseId = coursesList[0].id;
         }
@@ -1050,39 +1030,6 @@
       loadDashboard();
     }
 
-    async function createCourse() {
-      const btn = document.getElementById('create-course-btn');
-      const alertEl = document.getElementById('course-alert');
-      const name = document.getElementById('course-name').value.trim();
-      const desc = document.getElementById('course-desc').value.trim();
-      if (!name) {
-        alertEl.className = 'alert-modal error';
-        alertEl.textContent = 'Course name is required.';
-        return;
-      }
-      btn.disabled = true; btn.textContent = 'Creating...';
-      const { data, error } = await db.from('courses').insert({
-        instructor_id: currentUser.id, name, description: desc || null
-      }).select().single();
-      btn.disabled = false; btn.textContent = 'Create Course';
-      if (error) {
-        alertEl.className = 'alert-modal error';
-        alertEl.textContent = error.message;
-        return;
-      }
-      selectedCourseId = data.id;
-      alertEl.className = 'alert-modal success';
-      alertEl.textContent = 'Course created!';
-      document.getElementById('course-name').value = '';
-      document.getElementById('course-desc').value = '';
-      setTimeout(async () => {
-        closeModal('new-course-modal');
-        alertEl.className = 'alert-modal';
-        await loadCourses();
-        loadDashboard();
-      }, 900);
-    }
-
     async function loadDashboard() {
       const { data: profile } = await db
         .from('profiles')
@@ -1097,7 +1044,11 @@
         : `Welcome back, ${name}!`;
 
       // Build queries — filter by course if one is selected
-      let studentsQ  = db.from('students').select('*').eq('instructor_id', currentUser.id);
+      let studentsQ  = selectedCourseId
+        ? db.from('enrollments')
+            .select('student_id, payment_status, courses(name)')
+            .eq('course_id', selectedCourseId)
+        : { data: [] };
       let sessionsQ  = db.from('sessions').select('*').eq('instructor_id', currentUser.id)
                         .gte('scheduled_at', new Date().toISOString()).order('scheduled_at').limit(8);
       let matsQ      = db.from('materials').select('*').eq('instructor_id', currentUser.id)
@@ -1108,7 +1059,6 @@
                         .gte('available_at', new Date().toISOString()).order('available_at');
 
       if (selectedCourseId) {
-        studentsQ = studentsQ.eq('course_id', selectedCourseId);
         sessionsQ = sessionsQ.eq('course_id', selectedCourseId);
         matsQ     = matsQ.eq('course_id', selectedCourseId);
         subsQ     = subsQ.eq('course_id', selectedCourseId);
@@ -1119,7 +1069,7 @@
         studentsQ, sessionsQ, matsQ, subsQ, availQ
       ]);
 
-      studentsList = studentsRes.data || [];
+      studentsList = (studentsRes.data || []).map(e => ({ id: e.student_id, _prof: {} }));
 
       // Fetch profiles for all relevant user IDs
       const allIds = [...new Set([
@@ -1165,54 +1115,23 @@
       const el = document.getElementById('students-list');
       document.getElementById('students-count').textContent = students.length;
       if (!students.length) {
-        el.innerHTML = '<div class="empty"><div class="icon">👥</div>No students in this course yet</div>';
+        const msg = selectedCourseId ? 'No students enrolled in this course yet' : 'Select a course to see students';
+        el.innerHTML = `<div class="empty"><div class="icon">👥</div>${msg}</div>`;
         return;
       }
-      const courseOpts = coursesList.length
-        ? coursesList.map(c => `<option value="${c.id}">${c.name}</option>`).join('')
-        : '<option value="">No courses</option>';
       el.innerHTML = students.map(s => {
         const name  = s._prof?.full_name || s._prof?.email?.split('@')[0] || 'Student';
         const email = s._prof?.email || '';
         const init  = name.charAt(0).toUpperCase();
-        const level = s.level || 'default';
-        const levelLabel = { beginner: 'Beginner', intermediate: 'Intermediate', advanced: 'Advanced' }[level] || 'Student';
         return `
-          <div class="student-item">
-            <div class="avatar">${init}</div>
-            <div class="student-info">
-              <div class="student-name">${name}</div>
-              <div class="student-email">${email}</div>
-            </div>
-            <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
-              <select id="course-sel-${s.id}" style="font-size:12px;padding:3px 6px;border:1px solid var(--gray-200);border-radius:6px;background:var(--white);max-width:160px">
-                <option value="">— no course —</option>
-                ${courseOpts}
-              </select>
-              <button onclick="enrollStudentCourse('${s.id}')" style="font-size:12px;background:var(--blue);color:#fff;border:none;border-radius:6px;padding:3px 10px;cursor:pointer">Save</button>
-            </div>
-          </div>`;
+      <div class="student-item">
+        <div class="avatar">${init}</div>
+        <div class="student-info">
+          <div class="student-name">${name}</div>
+          <div class="student-email">${email}</div>
+        </div>
+      </div>`;
       }).join('');
-      // Set current course selection for each student
-      students.forEach(s => {
-        const sel = document.getElementById('course-sel-' + s.id);
-        if (sel && s.course_id) sel.value = s.course_id;
-      });
-    }
-
-    async function enrollStudentCourse(studentId) {
-      const sel = document.getElementById('course-sel-' + studentId);
-      const courseId = sel.value || null;
-      const btn = sel.nextElementSibling;
-      btn.textContent = 'Saving...'; btn.disabled = true;
-      const { error } = await db.from('students').update({ course_id: courseId }).eq('id', studentId);
-      if (error) {
-        alert('Error: ' + error.message);
-        btn.textContent = 'Save'; btn.disabled = false;
-      } else {
-        btn.textContent = '✓'; btn.style.background = 'var(--green)';
-        setTimeout(() => { btn.textContent = 'Save'; btn.disabled = false; btn.style.background = ''; }, 2000);
-      }
     }
 
     function renderSessions(sessions) {
