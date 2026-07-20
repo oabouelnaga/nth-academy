@@ -709,8 +709,19 @@
         <input type="text" id="hw-title" placeholder="e.g. Practice Problems — Week 3">
       </div>
       <div class="form-group">
-        <label><span class="en-text">Description</span><span class="ar-text">التعليمات</span></label>
+        <label><span class="en-text">Description / Instructions</span><span class="ar-text">التعليمات</span></label>
         <textarea id="hw-desc" placeholder="Instructions for the student..."></textarea>
+      </div>
+      <div class="form-group">
+        <label><span class="en-text">Assignment file (optional)</span><span class="ar-text">ملف التكليف (اختياري)</span></label>
+        <input type="file" id="hw-file" accept=".pdf,.doc,.docx,.ppt,.pptx,.jpg,.jpeg,.png,.zip,.txt">
+        <div style="font-size:11px;color:var(--gray-400);margin-top:4px">Student will see a Download button to get this file</div>
+        <div id="hw-upload-progress" style="display:none;margin-top:8px">
+          <div style="background:var(--gray-200);border-radius:4px;height:6px;overflow:hidden">
+            <div id="hw-progress-bar" style="height:100%;width:0%;background:var(--blue);transition:width 0.3s"></div>
+          </div>
+          <div style="font-size:11px;color:var(--gray-400);margin-top:4px">Uploading...</div>
+        </div>
       </div>
       <div class="form-group">
         <label><span class="en-text">Assign to</span><span class="ar-text">للطالب</span></label>
@@ -807,6 +818,17 @@
       <div class="form-group">
         <label><span class="en-text">Feedback (optional)</span><span class="ar-text">ملاحظات (اختياري)</span></label>
         <textarea id="grade-feedback" placeholder="Well done! Consider reviewing..."></textarea>
+      </div>
+      <div class="form-group">
+        <label><span class="en-text">Return graded file (optional)</span><span class="ar-text">إرجاع الملف المصحّح (اختياري)</span></label>
+        <input type="file" id="grade-file" accept=".pdf,.doc,.docx,.ppt,.pptx,.jpg,.jpeg,.png,.zip,.txt">
+        <div style="font-size:11px;color:var(--gray-400);margin-top:4px">Student will see a download link for this file alongside their grade</div>
+        <div id="grade-upload-progress" style="display:none;margin-top:8px">
+          <div style="background:var(--gray-200);border-radius:4px;height:6px;overflow:hidden">
+            <div id="grade-progress-bar" style="height:100%;width:0%;background:var(--green);transition:width 0.3s"></div>
+          </div>
+          <div style="font-size:11px;color:var(--gray-400);margin-top:4px">Uploading graded file...</div>
+        </div>
       </div>
       <div class="modal-actions">
         <button class="btn-secondary" onclick="closeModal('grade-modal')">
@@ -1056,6 +1078,8 @@
       document.getElementById('grade-hw-info').textContent = `"${hwTitle}" — submitted by ${studentName}`;
       document.getElementById('grade-value').value = '';
       document.getElementById('grade-feedback').value = '';
+      document.getElementById('grade-file').value = '';
+      document.getElementById('grade-upload-progress').style.display = 'none';
       document.getElementById('grade-alert').className = 'alert-modal';
 
       const preview = document.getElementById('grade-submission-preview');
@@ -1169,49 +1193,74 @@
 
     async function assignHomework() {
       const btn       = document.getElementById('assign-btn');
-      const alert     = document.getElementById('hw-alert');
+      const alertEl   = document.getElementById('hw-alert');
       const title     = document.getElementById('hw-title').value.trim();
       const desc      = document.getElementById('hw-desc').value.trim();
       const studentId = document.getElementById('hw-student').value;
       const due       = document.getElementById('hw-due').value;
+      const file      = document.getElementById('hw-file').files[0];
 
       if (!title || !studentId) {
-        alert.className = 'alert-modal error';
-        alert.textContent = 'Title and student are required.';
+        alertEl.className = 'alert-modal error';
+        alertEl.textContent = 'Title and student are required.';
         return;
       }
 
       btn.disabled = true;
       btn.textContent = 'Assigning...';
 
+      let assignmentUrl = null;
+      if (file) {
+        document.getElementById('hw-upload-progress').style.display = '';
+        document.getElementById('hw-progress-bar').style.width = '30%';
+        const ext = file.name.split('.').pop().toLowerCase();
+        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const path = `assignments/${currentUser.id}/${Date.now()}_${safeName}`;
+        const { error: storageErr } = await db.storage.from('materials').upload(path, file, { upsert: false });
+        if (storageErr) {
+          alertEl.className = 'alert-modal error';
+          alertEl.textContent = 'File upload failed: ' + storageErr.message;
+          btn.disabled = false;
+          btn.innerHTML = '<span class="en-text">Assign</span><span class="ar-text">إسناد</span>';
+          document.getElementById('hw-upload-progress').style.display = 'none';
+          return;
+        }
+        document.getElementById('hw-progress-bar').style.width = '80%';
+        const { data: { publicUrl } } = db.storage.from('materials').getPublicUrl(path);
+        assignmentUrl = publicUrl;
+        document.getElementById('hw-upload-progress').style.display = 'none';
+      }
+
       const { error } = await db.from('homework').insert({
-        instructor_id: currentUser.id,
-        student_id:    studentId,
+        instructor_id:  currentUser.id,
+        student_id:     studentId,
         title,
-        description:   desc     || null,
-        due_date:      due      || null,
-        status:        'pending'
+        description:    desc           || null,
+        due_date:       due            || null,
+        assignment_url: assignmentUrl,
+        status:         'pending'
       });
 
       btn.disabled = false;
       btn.innerHTML = '<span class="en-text">Assign</span><span class="ar-text">إسناد</span>';
 
       if (error) {
-        alert.className = 'alert-modal error';
-        alert.textContent = error.message;
+        alertEl.className = 'alert-modal error';
+        alertEl.textContent = error.message;
         return;
       }
 
-      alert.className = 'alert-modal success';
-      alert.textContent = 'Homework assigned!';
+      alertEl.className = 'alert-modal success';
+      alertEl.textContent = 'Homework assigned!';
       document.getElementById('hw-title').value   = '';
       document.getElementById('hw-desc').value    = '';
       document.getElementById('hw-student').value = '';
       document.getElementById('hw-due').value     = '';
+      document.getElementById('hw-file').value    = '';
 
       setTimeout(() => {
         closeModal('assign-hw-modal');
-        alert.className = 'alert-modal';
+        alertEl.className = 'alert-modal';
         loadDashboard();
       }, 1200);
     }
@@ -1220,38 +1269,63 @@
 
     async function submitGrade() {
       const btn      = document.getElementById('grade-btn');
-      const alert    = document.getElementById('grade-alert');
+      const alertEl  = document.getElementById('grade-alert');
       const grade    = document.getElementById('grade-value').value.trim();
       const feedback = document.getElementById('grade-feedback').value.trim();
+      const file     = document.getElementById('grade-file').files[0];
 
       if (!grade) {
-        alert.className = 'alert-modal error';
-        alert.textContent = 'Please enter a grade.';
+        alertEl.className = 'alert-modal error';
+        alertEl.textContent = 'Please enter a grade.';
         return;
       }
 
       btn.disabled = true;
       btn.textContent = 'Saving...';
 
+      let gradedUrl = null;
+      if (file) {
+        document.getElementById('grade-upload-progress').style.display = '';
+        document.getElementById('grade-progress-bar').style.width = '30%';
+        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const path = `graded/${currentUser.id}/${gradingHomeworkId}_${safeName}`;
+        const { error: storageErr } = await db.storage.from('materials').upload(path, file, { upsert: true });
+        if (storageErr) {
+          alertEl.className = 'alert-modal error';
+          alertEl.textContent = 'File upload failed: ' + storageErr.message;
+          btn.disabled = false;
+          btn.innerHTML = '<span class="en-text">Save Grade</span><span class="ar-text">حفظ الدرجة</span>';
+          document.getElementById('grade-upload-progress').style.display = 'none';
+          return;
+        }
+        document.getElementById('grade-progress-bar').style.width = '80%';
+        const { data: { publicUrl } } = db.storage.from('materials').getPublicUrl(path);
+        gradedUrl = publicUrl;
+        document.getElementById('grade-upload-progress').style.display = 'none';
+      }
+
+      const updates = { status: 'graded', grade, feedback: feedback || null };
+      if (gradedUrl) updates.graded_url = gradedUrl;
+
       const { error } = await db.from('homework')
-        .update({ status: 'graded', grade, feedback: feedback || null })
+        .update(updates)
         .eq('id', gradingHomeworkId);
 
       btn.disabled = false;
       btn.innerHTML = '<span class="en-text">Save Grade</span><span class="ar-text">حفظ الدرجة</span>';
 
       if (error) {
-        alert.className = 'alert-modal error';
-        alert.textContent = error.message;
+        alertEl.className = 'alert-modal error';
+        alertEl.textContent = error.message;
         return;
       }
 
-      alert.className = 'alert-modal success';
-      alert.textContent = 'Grade saved!';
+      alertEl.className = 'alert-modal success';
+      alertEl.textContent = 'Grade saved!';
 
       setTimeout(() => {
         closeModal('grade-modal');
-        alert.className = 'alert-modal';
+        alertEl.className = 'alert-modal';
         gradingHomeworkId = null;
         loadDashboard();
       }, 1000);

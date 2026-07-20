@@ -749,26 +749,14 @@
       <h3>Submit Homework</h3>
       <div class="alert-modal" id="submit-alert"></div>
       <p id="submit-hw-title" style="font-size:14px;color:var(--gray-600);margin-bottom:16px;font-weight:500;"></p>
-      <div class="tab-toggle">
-        <button class="tab-btn active" id="tab-file-btn" onclick="switchTab('file')">📎 Upload File</button>
-        <button class="tab-btn" id="tab-text-btn" onclick="switchTab('text')">✏️ Write Notes</button>
+      <div class="form-group">
+        <label>Upload your completed work</label>
+        <input type="file" id="sub-file" accept=".pdf,.doc,.docx,.ppt,.pptx,.mp4,.mov,.jpg,.jpeg,.png,.zip,.txt">
+        <div style="font-size:11px;color:var(--gray-400);margin-top:4px">PDF, Word, images — max 100MB</div>
       </div>
-      <div id="tab-file">
-        <div class="form-group">
-          <label>File</label>
-          <input type="file" id="sub-file" accept=".pdf,.doc,.docx,.ppt,.pptx,.mp4,.mov,.jpg,.jpeg,.png,.zip,.txt">
-          <div style="font-size:11px;color:var(--gray-400);margin-top:4px">PDF, Word, images, video — max 100MB</div>
-          <div id="sub-upload-progress" style="display:none" class="upload-progress">
-            <div class="progress-track"><div class="progress-fill" id="sub-progress-bar"></div></div>
-            <div id="sub-progress-label" style="font-size:11px;color:var(--gray-400);margin-top:4px">Uploading...</div>
-          </div>
-        </div>
-      </div>
-      <div id="tab-text" style="display:none">
-        <div class="form-group">
-          <label>Your answer / notes</label>
-          <textarea id="sub-notes" placeholder="Type your answer here..." style="min-height:120px"></textarea>
-        </div>
+      <div id="sub-upload-progress" style="display:none" class="upload-progress">
+        <div class="progress-track"><div class="progress-fill" id="sub-progress-bar"></div></div>
+        <div style="font-size:11px;color:var(--gray-400);margin-top:4px">Uploading...</div>
       </div>
       <div class="modal-actions">
         <button class="btn-secondary" onclick="closeSubmitModal()">Cancel</button>
@@ -785,7 +773,6 @@
     let currentUser = null;
     let isAr = false;
     let submittingHomeworkId = null;
-    let submitTab = 'file';
 
     // Auth guard
     db.auth.getSession().then(({ data: { session } }) => {
@@ -887,16 +874,34 @@
       el.innerHTML = items.map((h, i) => {
         const due = h.due_date ? new Date(h.due_date).toLocaleDateString('en', { month: 'short', day: 'numeric' }) : 'No deadline';
         const statusClass = h.status === 'graded' ? 'completed' : 'scheduled';
+
+        const descLine = h.description
+          ? `<div class="desc">${h.description}</div>`
+          : '<div class="desc" style="color:var(--gray-400)">No additional instructions.</div>';
+
+        const assignmentBtn = h.assignment_url
+          ? `<a href="${h.assignment_url}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;background:var(--blue-bg);color:var(--blue);border-radius:8px;padding:6px 14px;font-size:13px;font-weight:600;text-decoration:none;margin-bottom:8px">📥 Download Assignment</a>`
+          : '';
+
         let actionArea = '';
         if (h.status === 'pending') {
-          actionArea = `<button class="btn-submit-hw" onclick="openSubmitModal('${h.id}', ${JSON.stringify(h.title)})">Submit</button>`;
+          actionArea = `<button class="btn-submit-hw" onclick="openSubmitModal('${h.id}', ${JSON.stringify(h.title)})">📤 Upload Completed Work</button>`;
         } else if (h.status === 'submitted') {
-          actionArea = `<span class="hw-submitted-note">Awaiting grade</span>`;
-        } else if (h.status === 'graded' && h.grade) {
-          actionArea = `<span class="hw-grade-badge">⭐ ${h.grade}</span>`;
+          actionArea = `<span class="hw-submitted-note">✓ Submitted — awaiting grade</span>`;
+          if (h.submission_url) {
+            actionArea += ` <a href="${h.submission_url}" target="_blank" style="font-size:12px;color:var(--blue);margin-left:8px">View my submission</a>`;
+          }
+        } else if (h.status === 'graded') {
+          actionArea = `<span class="hw-grade-badge">⭐ Grade: ${h.grade}</span>`;
+          if (h.graded_url) {
+            actionArea += `<a href="${h.graded_url}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;background:var(--green-bg);color:var(--green);border-radius:8px;padding:6px 14px;font-size:13px;font-weight:600;text-decoration:none;margin-left:10px">📥 Download Graded Work</a>`;
+          }
         }
-        const feedbackLine = h.feedback ? `<div style="margin-top:6px;color:var(--green);font-size:12px">Feedback: ${h.feedback}</div>` : '';
-        const descLine = h.description ? `<div class="desc">${h.description}</div>` : '<div class="desc" style="color:var(--gray-400)">No additional instructions.</div>';
+
+        const feedbackLine = h.feedback
+          ? `<div style="margin-top:8px;padding:8px 12px;background:var(--green-bg);border-radius:8px;color:var(--green);font-size:13px">💬 Feedback: ${h.feedback}</div>`
+          : '';
+
         return `
           <div class="hw-item">
             <div class="hw-item-row" onclick="toggleHw('hw-details-${i}', 'hw-chevron-${i}')">
@@ -910,8 +915,9 @@
             </div>
             <div class="hw-details" id="hw-details-${i}">
               ${descLine}
+              ${assignmentBtn}
               ${feedbackLine}
-              ${actionArea}
+              <div style="margin-top:8px">${actionArea}</div>
             </div>
           </div>`;
       }).join('');
@@ -927,23 +933,13 @@
       document.getElementById('submit-hw-title').textContent = hwTitle;
       document.getElementById('submit-alert').className = 'alert-modal';
       document.getElementById('sub-file').value = '';
-      document.getElementById('sub-notes').value = '';
       document.getElementById('sub-upload-progress').style.display = 'none';
-      switchTab('file');
       document.getElementById('submit-hw-modal').classList.add('open');
     }
 
     function closeSubmitModal() {
       document.getElementById('submit-hw-modal').classList.remove('open');
       submittingHomeworkId = null;
-    }
-
-    function switchTab(tab) {
-      submitTab = tab;
-      document.getElementById('tab-file').style.display = tab === 'file' ? '' : 'none';
-      document.getElementById('tab-text').style.display = tab === 'text' ? '' : 'none';
-      document.getElementById('tab-file-btn').classList.toggle('active', tab === 'file');
-      document.getElementById('tab-text-btn').classList.toggle('active', tab === 'text');
     }
 
     document.getElementById('submit-hw-modal').addEventListener('click', e => {
@@ -953,53 +949,38 @@
     async function submitHomework() {
       const btn = document.getElementById('submit-hw-btn');
       const alertEl = document.getElementById('submit-alert');
-      btn.disabled = true;
-      btn.textContent = 'Submitting...';
+      const file = document.getElementById('sub-file').files[0];
 
-      let submissionUrl = null;
-      let submissionNotes = null;
-
-      if (submitTab === 'file') {
-        const file = document.getElementById('sub-file').files[0];
-        if (!file) {
-          alertEl.className = 'alert-modal error';
-          alertEl.textContent = 'Please select a file to upload.';
-          btn.disabled = false;
-          btn.textContent = 'Submit';
-          return;
-        }
-        const ext = file.name.split('.').pop().toLowerCase();
-        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-        const path = `${currentUser.id}/${submittingHomeworkId}_${Date.now()}_${safeName}`;
-        document.getElementById('sub-upload-progress').style.display = '';
-        document.getElementById('sub-progress-bar').style.width = '30%';
-        const { error: storageErr } = await db.storage.from('submissions').upload(path, file, { upsert: true });
-        if (storageErr) {
-          alertEl.className = 'alert-modal error';
-          alertEl.textContent = storageErr.message;
-          btn.disabled = false;
-          btn.textContent = 'Submit';
-          document.getElementById('sub-upload-progress').style.display = 'none';
-          return;
-        }
-        document.getElementById('sub-progress-bar').style.width = '80%';
-        const { data: { publicUrl } } = db.storage.from('submissions').getPublicUrl(path);
-        submissionUrl = publicUrl;
-      } else {
-        submissionNotes = document.getElementById('sub-notes').value.trim();
-        if (!submissionNotes) {
-          alertEl.className = 'alert-modal error';
-          alertEl.textContent = 'Please write your answer before submitting.';
-          btn.disabled = false;
-          btn.textContent = 'Submit';
-          return;
-        }
+      if (!file) {
+        alertEl.className = 'alert-modal error';
+        alertEl.textContent = 'Please select your completed file to upload.';
+        return;
       }
+
+      btn.disabled = true;
+      btn.textContent = 'Uploading...';
+
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const path = `${currentUser.id}/${submittingHomeworkId}_${Date.now()}_${safeName}`;
+      document.getElementById('sub-upload-progress').style.display = '';
+      document.getElementById('sub-progress-bar').style.width = '30%';
+
+      const { error: storageErr } = await db.storage.from('submissions').upload(path, file, { upsert: true });
+      if (storageErr) {
+        alertEl.className = 'alert-modal error';
+        alertEl.textContent = storageErr.message;
+        btn.disabled = false;
+        btn.textContent = 'Submit';
+        document.getElementById('sub-upload-progress').style.display = 'none';
+        return;
+      }
+
+      document.getElementById('sub-progress-bar').style.width = '80%';
+      const { data: { publicUrl } } = db.storage.from('submissions').getPublicUrl(path);
 
       const { error } = await db.from('homework').update({
         status: 'submitted',
-        submission_url: submissionUrl,
-        submission_notes: submissionNotes,
+        submission_url: publicUrl,
         submitted_at: new Date().toISOString()
       }).eq('id', submittingHomeworkId);
 
