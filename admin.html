@@ -448,10 +448,7 @@
   }
 
   async function loadInstructors() {
-    const { data } = await db
-      .from('instructors')
-      .select('*, profiles(full_name, email)')
-      .order('id');
+    const { data } = await db.from('instructors').select('*').order('id');
 
     allInstructors = data || [];
     populateInstructorSelects();
@@ -462,27 +459,35 @@
       return;
     }
 
+    const instIds = allInstructors.map(i => i.id);
+    const [{ data: profs }, { data: stuData }] = await Promise.all([
+      db.from('profiles').select('id, full_name, email').in('id', instIds),
+      db.from('students').select('instructor_id')
+    ]);
+    const profMap = Object.fromEntries((profs || []).map(p => [p.id, p]));
     const counts = {};
-    const { data: stuData } = await db.from('students').select('instructor_id');
     (stuData || []).forEach(s => { counts[s.instructor_id] = (counts[s.instructor_id] || 0) + 1; });
 
-    tbody.innerHTML = allInstructors.map(i => `
+    tbody.innerHTML = allInstructors.map(i => {
+      const prof = profMap[i.id] || {};
+      return `
       <tr>
         <td><div style="display:flex;align-items:center;gap:10px;">
-          <div class="avatar">${(i.profiles?.full_name || '?')[0].toUpperCase()}</div>
-          <span>${i.profiles?.full_name || '—'}</span>
+          <div class="avatar">${(prof.full_name || '?')[0].toUpperCase()}</div>
+          <span>${prof.full_name || '—'}</span>
         </div></td>
-        <td style="color:var(--gray-600)">${i.profiles?.email || '—'}</td>
+        <td style="color:var(--gray-600)">${prof.email || '—'}</td>
         <td><span class="pill pill-blue">${i.subject || 'General'}</span></td>
         <td>${counts[i.id] || 0} / ${i.max_students}</td>
         <td><button class="btn-ghost">Edit</button></td>
-      </tr>`).join('');
+      </tr>`;
+    }).join('');
   }
 
   async function loadStudents() {
     const { data } = await db
       .from('students')
-      .select('*, profiles(full_name, email), instructors(subject, profiles(full_name))')
+      .select('*')
       .order('enrolled_at', { ascending: false });
 
     allStudents = data || [];
@@ -493,10 +498,21 @@
       return;
     }
 
+    // Fetch profiles and instructor subjects separately
+    const studentIds = allStudents.map(s => s.id);
+    const instructorIds = [...new Set(allStudents.map(s => s.instructor_id).filter(Boolean))];
+    const [{ data: profs }, { data: insts }] = await Promise.all([
+      db.from('profiles').select('id, full_name, email').in('id', studentIds),
+      instructorIds.length ? db.from('profiles').select('id, full_name').in('id', instructorIds) : { data: [] }
+    ]);
+    const profMap = Object.fromEntries((profs || []).map(p => [p.id, p]));
+    const instMap = Object.fromEntries((insts || []).map(p => [p.id, p.full_name]));
+
     const levelColors = { beginner: 'pill-green', intermediate: 'pill-yellow', advanced: 'pill-blue' };
     const payColors = { paid: 'pill-green', pending: 'pill-yellow', exempt: 'pill-blue' };
     const payLabels = { paid: '✅ Paid', pending: '⏳ Pending', exempt: '🎓 Exempt' };
     tbody.innerHTML = allStudents.map(s => {
+      const prof = profMap[s.id] || {};
       const ps = s.payment_status || 'pending';
       const actions = ps === 'paid'
         ? `<button class="btn-ghost" onclick="setPaymentStatus('${s.id}', 'pending')">↩ Unpay</button>`
@@ -505,12 +521,12 @@
       return `
       <tr>
         <td><div style="display:flex;align-items:center;gap:10px;">
-          <div class="avatar">${(s.profiles?.full_name || '?')[0].toUpperCase()}</div>
-          <span>${s.profiles?.full_name || '—'}</span>
+          <div class="avatar">${(prof.full_name || '?')[0].toUpperCase()}</div>
+          <span>${prof.full_name || '—'}</span>
         </div></td>
-        <td style="color:var(--gray-600)">${s.profiles?.email || '—'}</td>
+        <td style="color:var(--gray-600)">${prof.email || '—'}</td>
         <td><span class="pill ${levelColors[s.level] || 'pill-gray'}">${s.level || '—'}</span></td>
-        <td>${s.instructors?.profiles?.full_name || '—'}</td>
+        <td>${instMap[s.instructor_id] || '—'}</td>
         <td><span class="pill ${payColors[ps]}">${payLabels[ps]}</span></td>
         <td style="display:flex;gap:6px;flex-wrap:wrap">${actions}</td>
       </tr>`;
@@ -526,7 +542,7 @@
   async function loadSessions() {
     const { data } = await db
       .from('sessions')
-      .select('*, students(profiles(full_name)), instructors(profiles(full_name))')
+      .select('*')
       .order('scheduled_at', { ascending: false })
       .limit(50);
 
@@ -536,14 +552,19 @@
       return;
     }
 
+    // Fetch names for students and instructors
+    const uids = [...new Set([...data.map(s => s.student_id), ...data.map(s => s.instructor_id)].filter(Boolean))];
+    const { data: profs } = await db.from('profiles').select('id, full_name').in('id', uids);
+    const nameMap = Object.fromEntries((profs || []).map(p => [p.id, p.full_name]));
+
     const statusColors = { scheduled: 'pill-blue', completed: 'pill-green', cancelled: 'pill-gray' };
     tbody.innerHTML = data.map(s => {
       const dt = new Date(s.scheduled_at);
       return `<tr>
         <td>${dt.toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' })} ${dt.toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' })}</td>
         <td>${s.title || 'Session'}</td>
-        <td>${s.students?.profiles?.full_name || '—'}</td>
-        <td>${s.instructors?.profiles?.full_name || '—'}</td>
+        <td>${nameMap[s.student_id] || '—'}</td>
+        <td>${nameMap[s.instructor_id] || '—'}</td>
         <td>${s.duration_mins} min</td>
         <td><span class="pill ${statusColors[s.status]}">${s.status}</span></td>
       </tr>`;
@@ -553,7 +574,7 @@
   async function loadHomework() {
     const { data } = await db
       .from('homework')
-      .select('*, students(profiles(full_name))')
+      .select('*')
       .order('due_date')
       .limit(50);
 
@@ -563,11 +584,15 @@
       return;
     }
 
+    const uids = [...new Set(data.map(h => h.student_id).filter(Boolean))];
+    const { data: profs } = await db.from('profiles').select('id, full_name').in('id', uids);
+    const nameMap = Object.fromEntries((profs || []).map(p => [p.id, p.full_name]));
+
     const statusColors = { pending: 'pill-yellow', submitted: 'pill-blue', graded: 'pill-green' };
     tbody.innerHTML = data.map(h => `
       <tr>
         <td>${h.title}</td>
-        <td>${h.students?.profiles?.full_name || '—'}</td>
+        <td>${nameMap[h.student_id] || '—'}</td>
         <td>${h.due_date ? new Date(h.due_date).toLocaleDateString('en', { month: 'short', day: 'numeric' }) : '—'}</td>
         <td><span class="pill ${statusColors[h.status]}">${h.status}</span></td>
         <td>${h.grade || '—'}</td>
