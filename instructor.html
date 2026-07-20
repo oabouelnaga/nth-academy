@@ -1470,8 +1470,7 @@
         due_date:        due         || null,
         assignment_url:  assignmentUrl,
         status:          'pending',
-        material_type:   'homework',
-        is_downloadable: true
+        material_type:   'homework'
       }));
 
       const { error } = await db.from('homework').insert(rows);
