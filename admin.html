@@ -257,14 +257,10 @@
       <div class="nav-item" onclick="showPage('students')"><span class="icon">🎓</span> Students <span class="badge" id="students-badge">0</span></div>
     </div>
     <div class="sidebar-section">
-      <div class="sidebar-label">Activity</div>
-      <div class="nav-item" onclick="showPage('sessions')"><span class="icon">📅</span> Sessions</div>
-      <div class="nav-item" onclick="showPage('homework')"><span class="icon">📝</span> Homework</div>
-    </div>
-    <div class="sidebar-section">
       <div class="sidebar-label">Catalog</div>
       <div class="nav-item" onclick="showPage('courses')"><span class="icon">📚</span> Courses</div>
       <div class="nav-item" onclick="showPage('cohorts')"><span class="icon">🗓️</span> Rounds</div>
+      <div class="nav-item" onclick="showPage('teamslinks')"><span class="icon">🎥</span> Teams Links</div>
     </div>
     <div class="sidebar-section">
       <div class="sidebar-label">Content</div>
@@ -415,6 +411,23 @@
         <table>
           <thead><tr><th>Start Date</th><th>Signup Deadline</th><th>Schedule</th><th>Instructors &amp; Capacity</th><th>Enrolled</th><th>Notes</th><th>Actions</th></tr></thead>
           <tbody id="cohorts-tbody"><tr><td colspan="7"><div class="empty"><span class="icon">🗓️</span>Select a course to view its rounds.</div></td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TEAMS LINKS PAGE -->
+    <div id="page-teamslinks" class="page">
+      <div class="page-header">
+        <h1>Teams Links</h1>
+        <p>All active rounds and their Microsoft Teams meeting links — use this to brief substitutes</p>
+      </div>
+      <div class="toolbar">
+        <div class="search-box"><input type="text" placeholder="Search by course or instructor..." id="search-teamslinks" oninput="filterTeamsLinks(this.value)"></div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Course</th><th>Start Date</th><th>Schedule</th><th>Instructor(s)</th><th>Teams Link</th></tr></thead>
+          <tbody id="teamslinks-tbody"><tr><td colspan="5" class="loading"><span class="spinner"></span>Loading...</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -1443,6 +1456,7 @@
     if (navItem) navItem.classList.add('active');
     closeSidebar(); // auto-close sidebar on mobile after nav
     currentPage = page;
+    if (page === 'teamslinks') loadTeamsLinks();
   }
 
   // MODAL
@@ -1945,6 +1959,87 @@
     await db.from('contacts').update({ status: 'new' }).eq('id', id);
     loadInquiries();
   }
+
+  // ── TEAMS LINKS ──────────────────────────────────────────────────────────────
+
+  let _teamsLinksCache = [];
+
+  async function loadTeamsLinks() {
+    const tbody = document.getElementById('teamslinks-tbody');
+    tbody.innerHTML = '<tr><td colspan="5" class="loading"><span class="spinner"></span>Loading…</td></tr>';
+
+    const { data: cohorts, error } = await db
+      .from('cohorts')
+      .select('id, start_date, schedule_days, session_time, session_duration_mins, teams_link, course_id, courses(name), cohort_instructors(profiles(full_name, email))')
+      .not('teams_link', 'is', null)
+      .neq('teams_link', '')
+      .order('start_date', { ascending: false });
+
+    if (error || !cohorts || cohorts.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5"><div class="empty"><span class="icon">🎥</span>No Teams links added yet. Add one when creating or editing a round.</div></td></tr>';
+      return;
+    }
+
+    _teamsLinksCache = cohorts;
+    renderTeamsLinksRows(cohorts);
+  }
+
+  function renderTeamsLinksRows(cohorts) {
+    const tbody = document.getElementById('teamslinks-tbody');
+    const DAY_LABELS = { 0:'Sun', 1:'Mon', 2:'Tue', 3:'Wed', 4:'Thu', 5:'Fri', 6:'Sat' };
+
+    tbody.innerHTML = cohorts.map(c => {
+      const courseName = c.courses?.name || '—';
+      const startDate = c.start_date ? new Date(c.start_date).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }) : '—';
+
+      const days = (c.schedule_days || []).map(d => DAY_LABELS[d] || d).join(', ') || '—';
+      let schedule = days;
+      if (c.session_time) {
+        const [h, m] = c.session_time.split(':').map(Number);
+        const suffix = h >= 12 ? 'PM' : 'AM';
+        const h12 = ((h % 12) || 12);
+        const timeStr = `${h12}:${String(m).padStart(2,'0')} ${suffix}`;
+        schedule += ` · ${timeStr}`;
+      }
+      if (c.session_duration_mins) schedule += ` · ${c.session_duration_mins} min`;
+
+      const instructors = (c.cohort_instructors || [])
+        .map(ci => ci.profiles?.full_name || ci.profiles?.email || 'Unknown')
+        .join(', ') || '—';
+
+      const link = c.teams_link;
+      return `<tr data-search="${(courseName + ' ' + instructors).toLowerCase()}">
+        <td><strong>${courseName}</strong></td>
+        <td>${startDate}</td>
+        <td style="font-size:13px;color:var(--gray-600)">${schedule}</td>
+        <td>${instructors}</td>
+        <td>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <a href="${link}" target="_blank" rel="noopener" style="color:var(--blue);font-size:13px;font-weight:500;text-decoration:none;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block" title="${link}">Open link</a>
+            <button class="btn-ghost btn-sm" onclick="copyTeamsLink('${link.replace(/'/g,"\\'")}', this)">Copy</button>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  function copyTeamsLink(link, btn) {
+    navigator.clipboard.writeText(link).then(() => {
+      const orig = btn.textContent;
+      btn.textContent = 'Copied!';
+      btn.style.background = 'var(--green-bg)';
+      btn.style.color = 'var(--green)';
+      setTimeout(() => { btn.textContent = orig; btn.style.background = ''; btn.style.color = ''; }, 2000);
+    });
+  }
+
+  function filterTeamsLinks(query) {
+    const q = query.toLowerCase();
+    document.querySelectorAll('#teamslinks-tbody tr[data-search]').forEach(row => {
+      row.style.display = row.dataset.search.includes(q) ? '' : 'none';
+    });
+  }
+
 </script>
 
   <script>
