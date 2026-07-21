@@ -993,7 +993,7 @@
     // Source of truth: profiles with role instructor or admin, joined via course_instructors
     const { data: profs } = await db.from('profiles')
       .select('id, full_name, email, role, contract_type')
-      .in('role', ['instructor', 'admin'])
+      .eq('role', 'instructor')
       .order('full_name');
 
     allInstructors = (profs || []).map(p => ({ id: p.id, full_name: p.full_name, email: p.email, role: p.role, contract_type: p.contract_type }));
