@@ -263,6 +263,10 @@
       <div class="nav-item" onclick="showPage('teamslinks')"><span class="icon">🎥</span> Teams Links</div>
     </div>
     <div class="sidebar-section">
+      <div class="sidebar-label">Operations</div>
+      <div class="nav-item" onclick="showPage('attendance')"><span class="icon">✅</span> Attendance</div>
+    </div>
+    <div class="sidebar-section">
       <div class="sidebar-label">Content</div>
       <div class="nav-item" onclick="showPage('community')"><span class="icon">📣</span> Community</div>
       <div class="nav-item" onclick="showPage('inquiries')"><span class="icon">📬</span> Inquiries <span class="badge" id="inquiries-badge" style="display:none">0</span></div>
@@ -412,6 +416,47 @@
           <thead><tr><th>Start Date</th><th>Signup Deadline</th><th>Schedule</th><th>Instructors &amp; Capacity</th><th>Enrolled</th><th>Notes</th><th>Actions</th></tr></thead>
           <tbody id="cohorts-tbody"><tr><td colspan="7"><div class="empty"><span class="icon">🗓️</span>Select a course to view its rounds.</div></td></tr></tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- ATTENDANCE PAGE -->
+    <div id="page-attendance" class="page">
+      <div class="page-header">
+        <h1>Attendance</h1>
+        <p>Today's sessions — instructor-confirmed student counts for payroll</p>
+      </div>
+      <div class="toolbar" style="flex-wrap:wrap;gap:10px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <label style="font-size:13px;font-weight:500;color:var(--gray-600)">Date:</label>
+          <input type="date" id="attendance-date" style="padding:8px 12px;border:1.5px solid var(--gray-200);border-radius:10px;font-size:14px;font-family:inherit;outline:none" onchange="loadAttendance()">
+        </div>
+        <button class="btn-primary btn-sm" onclick="loadAttendance()">Refresh</button>
+      </div>
+      <div class="table-wrap" style="margin-top:4px">
+        <table>
+          <thead>
+            <tr>
+              <th>Instructor</th>
+              <th>Course</th>
+              <th>Session Time</th>
+              <th>Contract</th>
+              <th>Booked</th>
+              <th>Attended</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="attendance-tbody">
+            <tr><td colspan="7" class="loading"><span class="spinner"></span>Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div id="attendance-summary" style="margin-top:16px;display:none">
+        <div style="background:var(--white);border-radius:12px;padding:16px 20px;box-shadow:0 1px 3px rgba(0,0,0,0.06);display:flex;gap:24px;flex-wrap:wrap">
+          <div><span style="font-size:12px;font-weight:600;color:var(--gray-600);text-transform:uppercase;letter-spacing:0.4px">Total sessions</span><div style="font-size:22px;font-weight:700;color:var(--navy)" id="att-total-sessions">0</div></div>
+          <div><span style="font-size:12px;font-weight:600;color:var(--gray-600);text-transform:uppercase;letter-spacing:0.4px">Confirmed</span><div style="font-size:22px;font-weight:700;color:var(--green)" id="att-confirmed">0</div></div>
+          <div><span style="font-size:12px;font-weight:600;color:var(--gray-600);text-transform:uppercase;letter-spacing:0.4px">Pending confirmation</span><div style="font-size:22px;font-weight:700;color:var(--orange)" id="att-pending">0</div></div>
+          <div><span style="font-size:12px;font-weight:600;color:var(--gray-600);text-transform:uppercase;letter-spacing:0.4px">Total students attended</span><div style="font-size:22px;font-weight:700;color:var(--blue)" id="att-total-students">—</div></div>
+        </div>
       </div>
     </div>
 
@@ -1457,6 +1502,7 @@
     closeSidebar(); // auto-close sidebar on mobile after nav
     currentPage = page;
     if (page === 'teamslinks') loadTeamsLinks();
+    if (page === 'attendance') { initAttendanceDatePicker(); loadAttendance(); }
   }
 
   // MODAL
@@ -2031,6 +2077,90 @@
       btn.style.color = 'var(--green)';
       setTimeout(() => { btn.textContent = orig; btn.style.background = ''; btn.style.color = ''; }, 2000);
     });
+  }
+
+  // ── ATTENDANCE ───────────────────────────────────────────────────────────────
+
+  function initAttendanceDatePicker() {
+    const input = document.getElementById('attendance-date');
+    if (!input.value) {
+      const today = new Date();
+      input.value = today.toISOString().slice(0, 10);
+    }
+  }
+
+  async function loadAttendance() {
+    const tbody = document.getElementById('attendance-tbody');
+    const summary = document.getElementById('attendance-summary');
+    summary.style.display = 'none';
+    tbody.innerHTML = '<tr><td colspan="7" class="loading"><span class="spinner"></span>Loading…</td></tr>';
+
+    const dateInput = document.getElementById('attendance-date');
+    const date = dateInput?.value || new Date().toISOString().slice(0, 10);
+
+    // Sessions that started on the selected date (any time that day)
+    const dayStart = date + 'T00:00:00';
+    const dayEnd   = date + 'T23:59:59';
+
+    const { data: slots, error } = await db
+      .from('availability')
+      .select('id, available_at, duration_mins, title, capacity, is_booked, booked_by, attended_count, course_id, instructor_id, courses(name), profiles!availability_instructor_id_fkey(full_name, email, contract_type)')
+      .gte('available_at', dayStart)
+      .lte('available_at', dayEnd)
+      .order('available_at', { ascending: true });
+
+    if (error) {
+      tbody.innerHTML = `<tr><td colspan="7"><div class="empty"><span class="icon">⚠️</span>${error.message}</div></td></tr>`;
+      return;
+    }
+
+    if (!slots || slots.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7"><div class="empty"><span class="icon">📅</span>No sessions scheduled for this date.</div></td></tr>';
+      return;
+    }
+
+    const CONTRACT_LABELS = { hourly: 'Hourly', commission: 'Commission', '': '—' };
+    let confirmed = 0, pending = 0, totalStudents = 0;
+
+    tbody.innerHTML = slots.map(slot => {
+      const instructor = slot.profiles?.full_name || slot.profiles?.email || '—';
+      const course = slot.courses?.name || '—';
+      const sessionTime = new Date(slot.available_at).toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' });
+      const dur = slot.duration_mins ? ` · ${slot.duration_mins} min` : '';
+      const booked = slot.is_booked ? 1 : 0;
+      const contractRaw = slot.profiles?.contract_type || '';
+      const contract = CONTRACT_LABELS[contractRaw] || contractRaw || '—';
+      const contractColor = contractRaw === 'commission' ? 'var(--blue)' : contractRaw === 'hourly' ? 'var(--green)' : 'var(--gray-400)';
+
+      let attendedCell, statusCell;
+      if (slot.attended_count !== null && slot.attended_count !== undefined) {
+        confirmed++;
+        totalStudents += slot.attended_count;
+        attendedCell = `<span style="font-weight:700;color:var(--green)">${slot.attended_count}</span>`;
+        statusCell = `<span class="pill pill-green">Confirmed</span>`;
+      } else {
+        pending++;
+        attendedCell = `<span style="color:var(--gray-400);font-style:italic">Pending</span>`;
+        statusCell = `<span class="pill pill-yellow">Awaiting instructor</span>`;
+      }
+
+      return `<tr>
+        <td>${instructor}</td>
+        <td>${course}</td>
+        <td style="white-space:nowrap">${sessionTime}${dur}</td>
+        <td><span style="font-size:13px;font-weight:600;color:${contractColor}">${contract}</span></td>
+        <td style="text-align:center">${booked}</td>
+        <td style="text-align:center">${attendedCell}</td>
+        <td>${statusCell}</td>
+      </tr>`;
+    }).join('');
+
+    // Summary bar
+    document.getElementById('att-total-sessions').textContent = slots.length;
+    document.getElementById('att-confirmed').textContent = confirmed;
+    document.getElementById('att-pending').textContent = pending;
+    document.getElementById('att-total-students').textContent = confirmed > 0 ? totalStudents : '—';
+    summary.style.display = 'block';
   }
 
   function filterTeamsLinks(query) {

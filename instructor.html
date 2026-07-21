@@ -1595,12 +1595,22 @@
           const recBtn = slot.recording_url
             ? `<span style="font-size:12px;color:var(--green);font-weight:600;padding:4px 10px;background:var(--green-bg);border-radius:20px">Recording ✓</span>`
             : `<button onclick="openSlotRecordingModal('${slot.id}', '${title.replace(/'/g,"\\'")}')" style="font-size:12px;color:var(--purple);background:var(--purple-bg);border:none;border-radius:20px;padding:4px 10px;cursor:pointer;font-weight:600">+ Add Recording</button>`;
+
+          const attendanceUI = slot.attended_count !== null && slot.attended_count !== undefined
+            ? `<span style="font-size:12px;color:var(--green);font-weight:600;padding:4px 10px;background:var(--green-bg);border-radius:20px">✓ ${slot.attended_count} attended</span>`
+            : `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                <label style="font-size:12px;color:var(--gray-600)">Attended:</label>
+                <input type="number" min="0" max="${cap}" value="${booked}" id="att-${slot.id}" style="width:54px;padding:4px 6px;border:1.5px solid var(--gray-200);border-radius:7px;font-size:13px;font-family:inherit;outline:none" onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='var(--gray-200)'">
+                <button onclick="confirmAttendance('${slot.id}', ${cap})" style="font-size:12px;background:var(--blue);color:#fff;border:none;border-radius:20px;padding:4px 12px;cursor:pointer;font-weight:600">Confirm</button>
+              </div>`;
+
           return `
-            <div class="session-item" style="opacity:0.8">
+            <div class="session-item" style="opacity:0.9">
               <div class="session-date" style="background:var(--gray-100);color:var(--gray-600)"><div class="day">${day}</div><div class="mon">${mon}</div></div>
               <div class="session-info" style="flex:1">
                 <div class="title">${title}</div>
-                <div class="time">${time}${dur ? ' · ' + dur : ''} · ${booked}/${cap} attended</div>
+                <div class="time">${time}${dur ? ' · ' + dur : ''} · ${booked} booked</div>
+                <div style="margin-top:6px">${attendanceUI}</div>
               </div>
               ${recBtn}
             </div>`;
@@ -1771,6 +1781,22 @@
     // ── SLOT RECORDING ───────────────────────────────────────
 
     let slotRecordingId = null;
+
+    async function confirmAttendance(slotId, cap) {
+      const input = document.getElementById('att-' + slotId);
+      const count = parseInt(input?.value, 10);
+      if (isNaN(count) || count < 0) return;
+      const btn = input?.nextElementSibling;
+      if (btn) { btn.textContent = '…'; btn.disabled = true; }
+      const { error } = await db.from('availability').update({ attended_count: count }).eq('id', slotId);
+      if (error) {
+        if (btn) { btn.textContent = 'Confirm'; btn.disabled = false; }
+        alert('Failed to save: ' + error.message);
+        return;
+      }
+      // Refresh the session list so the confirmed badge replaces the input
+      loadAvailability();
+    }
 
     function openSlotRecordingModal(slotId, slotTitle) {
       slotRecordingId = slotId;
