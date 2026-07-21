@@ -471,6 +471,7 @@
           <div><span style="font-size:12px;font-weight:600;color:var(--gray-600);text-transform:uppercase;letter-spacing:0.4px">Confirmed</span><div style="font-size:22px;font-weight:700;color:var(--green)" id="att-confirmed">0</div></div>
           <div><span style="font-size:12px;font-weight:600;color:var(--gray-600);text-transform:uppercase;letter-spacing:0.4px">Pending confirmation</span><div style="font-size:22px;font-weight:700;color:var(--orange)" id="att-pending">0</div></div>
           <div><span style="font-size:12px;font-weight:600;color:var(--gray-600);text-transform:uppercase;letter-spacing:0.4px">Total students attended</span><div style="font-size:22px;font-weight:700;color:var(--blue)" id="att-total-students">—</div></div>
+          <div><span style="font-size:12px;font-weight:600;color:var(--gray-600);text-transform:uppercase;letter-spacing:0.4px">Confirmed revenue (EGP)</span><div style="font-size:22px;font-weight:700;color:var(--green)" id="att-revenue">—</div></div>
         </div>
       </div>
     </div>
@@ -1315,7 +1316,28 @@
   }
 
   async function setPaymentStatus(enrollmentId, status) {
-    const { error } = await db.from('enrollments').update({ payment_status: status }).eq('id', enrollmentId);
+    let amountPaid = null;
+
+    if (status === 'paid') {
+      // Look up the enrollment's cohort and course to determine price
+      const { data: enroll } = await db
+        .from('enrollments')
+        .select('cohort_id, course_id, cohorts(promo_price, promo_start, promo_end), courses(price)')
+        .eq('id', enrollmentId)
+        .single();
+
+      if (enroll) {
+        const today = new Date().toISOString().slice(0, 10);
+        const c = enroll.cohorts;
+        const promoActive = c?.promo_price && c?.promo_start && c?.promo_end
+          && today >= c.promo_start && today <= c.promo_end;
+        amountPaid = promoActive ? Number(c.promo_price) : Number(enroll.courses?.price || 0);
+      }
+    }
+
+    const { error } = await db.from('enrollments')
+      .update({ payment_status: status, amount_paid: amountPaid })
+      .eq('id', enrollmentId);
     if (error) { alert('Error: ' + error.message); return; }
     await loadStudents();
   }
@@ -2289,6 +2311,8 @@
     renderAttendanceRows(_attendanceCache);
   }
 
+  let _attendanceRevenueMap = {}; // cohortId -> { revenue, paidCount, totalCount }
+
   async function loadAttendance() {
     const tbody = document.getElementById('attendance-tbody');
     const summary = document.getElementById('attendance-summary');
@@ -2298,7 +2322,7 @@
     const date = document.getElementById('attendance-date')?.value || new Date().toISOString().slice(0, 10);
     const { data: slots, error } = await db
       .from('availability')
-      .select('id, available_at, duration_mins, title, capacity, is_booked, attended_count, course_id, instructor_id, courses(name), profiles!availability_instructor_id_fkey(full_name, email, contract_type)')
+      .select('id, available_at, duration_mins, title, capacity, is_booked, attended_count, course_id, cohort_id, instructor_id, courses(name), profiles!availability_instructor_id_fkey(full_name, email, contract_type)')
       .gte('available_at', date + 'T00:00:00')
       .lte('available_at', date + 'T23:59:59')
       .order('available_at', { ascending: true });
@@ -2310,6 +2334,24 @@
     if (!slots || slots.length === 0) {
       tbody.innerHTML = '<tr><td colspan="7"><div class="empty"><span class="icon">📅</span>No sessions scheduled for this date.</div></td></tr>';
       return;
+    }
+
+    // Fetch paid enrollments for all cohorts appearing on this date
+    const cohortIds = [...new Set(slots.map(s => s.cohort_id).filter(Boolean))];
+    _attendanceRevenueMap = {};
+    if (cohortIds.length) {
+      const { data: enrolls } = await db
+        .from('enrollments')
+        .select('cohort_id, amount_paid, payment_status')
+        .in('cohort_id', cohortIds);
+      (enrolls || []).forEach(e => {
+        if (!_attendanceRevenueMap[e.cohort_id]) _attendanceRevenueMap[e.cohort_id] = { revenue: 0, paidCount: 0, totalCount: 0 };
+        _attendanceRevenueMap[e.cohort_id].totalCount++;
+        if (e.payment_status === 'paid') {
+          _attendanceRevenueMap[e.cohort_id].revenue += Number(e.amount_paid || 0);
+          _attendanceRevenueMap[e.cohort_id].paidCount++;
+        }
+      });
     }
 
     _attendanceCache = slots;
@@ -2367,44 +2409,33 @@
       </tr>`;
     }).join('');
 
+    // Sum revenue across all cohorts represented in the filtered slots
+    const cohortsSeen = new Set(filtered.map(s => s.cohort_id).filter(Boolean));
+    let totalRevenue = 0;
+    cohortsSeen.forEach(cid => { totalRevenue += (_attendanceRevenueMap[cid]?.revenue || 0); });
+
     document.getElementById('att-total-sessions').textContent = filtered.length;
     document.getElementById('att-confirmed').textContent = confirmed;
     document.getElementById('att-pending').textContent = pending;
     document.getElementById('att-total-students').textContent = confirmed > 0 ? totalStudents : '—';
+    document.getElementById('att-revenue').textContent = cohortsSeen.size > 0 ? totalRevenue.toLocaleString('en-EG') : '—';
     summary.style.display = 'block';
     document.getElementById('btn-export-attendance').style.display = '';
   }
 
-  async function exportAttendanceCSV() {
+  function exportAttendanceCSV() {
     const date = document.getElementById('attendance-date')?.value || new Date().toISOString().slice(0, 10);
     const contract = _attendanceContractFilter;
 
-    // Fetch enrollments for all cohorts on this date to get amount_paid per student
-    const cohortIds = [...new Set(_attendanceCache.map(s => s.cohort_id).filter(Boolean))];
-    let enrollMap = {}; // cohortId -> { totalRevenue, studentCount }
-    if (cohortIds.length) {
-      const { data: enrolls } = await db
-        .from('enrollments')
-        .select('cohort_id, amount_paid, student_id, profiles(full_name, email)')
-        .in('cohort_id', cohortIds);
-      (enrolls || []).forEach(e => {
-        if (!enrollMap[e.cohort_id]) enrollMap[e.cohort_id] = { totalRevenue: 0, studentCount: 0, students: [] };
-        enrollMap[e.cohort_id].totalRevenue += Number(e.amount_paid || 0);
-        enrollMap[e.cohort_id].studentCount++;
-        enrollMap[e.cohort_id].students.push({
-          name: e.profiles?.full_name || '',
-          email: e.profiles?.email || '',
-          paid: e.amount_paid ?? ''
-        });
-      });
-    }
+    // Apply the same contract filter as the table view
+    const filtered = contract
+      ? _attendanceCache.filter(s => (s.profiles?.contract_type || '') === contract)
+      : _attendanceCache;
 
-    const filtered = contract ? _attendanceCache.filter(s => (s.profiles?.contract_type || '') === contract) : _attendanceCache;
-
-    const rows = [['Date', 'Session Time', 'Duration (min)', 'Instructor', 'Instructor Email', 'Contract', 'Course', 'Booked', 'Attended (Confirmed)', 'Total Round Revenue (EGP)', 'Round Students']];
+    const rows = [['Date', 'Session Time', 'Duration (min)', 'Instructor', 'Instructor Email', 'Contract', 'Course', 'Enrolled Students', 'Paid Students', 'Attended (Confirmed)', 'Round Revenue (EGP, paid only)']];
     filtered.forEach(slot => {
       const sessionTime = new Date(slot.available_at).toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' });
-      const cohortData = enrollMap[slot.cohort_id] || {};
+      const rev = _attendanceRevenueMap[slot.cohort_id] || {};
       rows.push([
         date,
         sessionTime,
@@ -2413,10 +2444,10 @@
         slot.profiles?.email || '',
         slot.profiles?.contract_type || '',
         slot.courses?.name || '',
-        slot.is_booked ? 1 : 0,
+        rev.totalCount || '',
+        rev.paidCount || '',
         slot.attended_count ?? '',
-        cohortData.totalRevenue || '',
-        cohortData.studentCount || ''
+        rev.revenue || ''
       ]);
     });
 
