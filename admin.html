@@ -413,8 +413,8 @@
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Start Date</th><th>Signup Deadline</th><th>Instructors &amp; Capacity</th><th>Enrolled</th><th>Notes</th><th>Actions</th></tr></thead>
-          <tbody id="cohorts-tbody"><tr><td colspan="6"><div class="empty"><span class="icon">🗓️</span>Select a course to view its rounds.</div></td></tr></tbody>
+          <thead><tr><th>Start Date</th><th>Signup Deadline</th><th>Schedule</th><th>Instructors &amp; Capacity</th><th>Enrolled</th><th>Notes</th><th>Actions</th></tr></thead>
+          <tbody id="cohorts-tbody"><tr><td colspan="7"><div class="empty"><span class="icon">🗓️</span>Select a course to view its rounds.</div></td></tr></tbody>
         </table>
       </div>
     </div>
@@ -619,20 +619,74 @@
 
 <!-- COHORT MODAL -->
 <div class="modal-overlay" id="cohort-modal">
-  <div class="modal" style="max-width:560px">
+  <div class="modal" style="max-width:620px;max-height:90vh;overflow-y:auto">
     <h2 id="cohort-modal-title">Add Round</h2>
     <div class="alert" id="cohort-alert"></div>
+
     <div class="form-row">
       <div class="form-group"><label>Start Date</label><input type="date" id="cohort-start"></div>
       <div class="form-group"><label>Signup Deadline</label><input type="date" id="cohort-deadline"></div>
     </div>
+
+    <!-- SCHEDULE BUILDER -->
+    <div class="form-group">
+      <label>Recurring Schedule</label>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px" id="schedule-days-picker">
+        <label style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:400;cursor:pointer"><input type="checkbox" value="0" class="sched-day"> Sun</label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:400;cursor:pointer"><input type="checkbox" value="1" class="sched-day"> Mon</label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:400;cursor:pointer"><input type="checkbox" value="2" class="sched-day"> Tue</label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:400;cursor:pointer"><input type="checkbox" value="3" class="sched-day"> Wed</label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:400;cursor:pointer"><input type="checkbox" value="4" class="sched-day"> Thu</label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:400;cursor:pointer"><input type="checkbox" value="5" class="sched-day"> Fri</label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:400;cursor:pointer"><input type="checkbox" value="6" class="sched-day"> Sat</label>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Session Time</label>
+        <input type="time" id="cohort-session-time" style="width:100%;padding:10px 12px;border:1.5px solid var(--gray-200);border-radius:9px;font-size:14px;font-family:inherit;outline:none">
+      </div>
+      <div class="form-group">
+        <label>Duration</label>
+        <select id="cohort-session-duration" style="width:100%;padding:10px 12px;border:1.5px solid var(--gray-200);border-radius:9px;font-size:14px;font-family:inherit;outline:none;background:white">
+          <option value="60">60 min</option>
+          <option value="90">90 min</option>
+          <option value="120">120 min</option>
+          <option value="150">150 min</option>
+          <option value="180">180 min</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Weeks</label>
+        <input type="number" id="cohort-weeks" value="4" min="1" max="52" style="width:100%;padding:10px 12px;border:1.5px solid var(--gray-200);border-radius:9px;font-size:14px;font-family:inherit;outline:none">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label style="display:flex;align-items:center;justify-content:space-between">
+        <span>Session Dates Preview</span>
+        <button type="button" onclick="generateSessionPreview()" style="background:var(--blue);color:#fff;border:none;border-radius:7px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer">Generate</button>
+      </label>
+      <div id="session-preview" style="margin-top:8px;display:flex;flex-direction:column;gap:6px;max-height:220px;overflow-y:auto">
+        <div style="color:var(--gray-400);font-size:13px">Select days, time, and start date then click Generate.</div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Microsoft Teams Link <span style="color:var(--gray-400);font-weight:400">(optional — can be added later)</span></label>
+      <input type="url" id="cohort-teams-link" placeholder="https://teams.microsoft.com/l/meetup-join/..." style="width:100%;padding:10px 12px;border:1.5px solid var(--gray-200);border-radius:9px;font-size:14px;font-family:inherit;outline:none">
+    </div>
+
     <div class="form-group"><label>Notes (optional)</label><textarea id="cohort-notes" rows="2" style="width:100%;padding:10px 12px;border:1.5px solid var(--gray-200);border-radius:9px;font-size:14px;font-family:inherit;resize:vertical;outline:none" placeholder="Any details about this round..."></textarea></div>
+
     <div class="form-group">
       <label>Instructor Slots</label>
       <div id="cohort-instructor-slots" style="display:flex;flex-direction:column;gap:10px;margin-top:6px">
         <div style="color:var(--gray-400);font-size:13px">Save the course first, or no instructors assigned to this course yet.</div>
       </div>
     </div>
+
     <div class="modal-footer">
       <button class="btn-ghost" onclick="closeModal('cohort-modal')">Cancel</button>
       <button class="btn-primary" id="cohort-save-btn" onclick="saveCohort()">Create Round</button>
@@ -1446,7 +1500,10 @@
       .select('*, cohort_instructors(id, instructor_id, capacity)')
       .eq('course_id', courseId)
       .order('start_date');
-    allCohorts = cohorts || [];
+    allCohorts = (cohorts || []).map(c => ({
+      ...c,
+      schedule_days: c.schedule_days || []
+    }));
 
     if (!allCohorts.length) {
       tbody.innerHTML = '<tr><td colspan="6"><div class="empty"><span class="icon">🗓️</span>No rounds yet for this course.</div></td></tr>';
@@ -1480,6 +1537,7 @@
       }
     });
 
+    const DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
     tbody.innerHTML = allCohorts.map(c => {
       const start = c.start_date ? new Date(c.start_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
       const deadline = c.signup_deadline ? new Date(c.signup_deadline).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
@@ -1487,17 +1545,106 @@
         const used = assignCounts[c.id + ':' + ci.instructor_id] || 0;
         return `<div style="font-size:13px">${ciNameMap[ci.instructor_id] || '?'} <span style="color:var(--gray-400)">(${used} / ${ci.capacity})</span></div>`;
       }).join('') || '<span style="color:var(--gray-400);font-size:13px">—</span>';
+
+      // Schedule summary
+      let schedSummary = '<span style="color:var(--gray-400);font-size:13px">—</span>';
+      if (c.schedule_days && c.schedule_days.length && c.session_time) {
+        const dayLabels = c.schedule_days.map(d => DAY_NAMES[d]).join(' & ');
+        const [h, m] = c.session_time.split(':').map(Number);
+        const ampm = h >= 12 ? 'PM' : 'AM';
+        const h12 = h % 12 || 12;
+        const timeLabel = `${h12}:${m.toString().padStart(2,'0')} ${ampm}`;
+        const durLabel = c.session_duration_mins ? ` · ${c.session_duration_mins} min` : '';
+        const teamsLabel = c.teams_link
+          ? `<span style="display:inline-block;margin-top:3px;font-size:11px;background:#e8eaff;color:#5059c9;border-radius:5px;padding:1px 6px">Teams ✓</span>`
+          : `<span style="display:inline-block;margin-top:3px;font-size:11px;background:var(--gray-100);color:var(--gray-400);border-radius:5px;padding:1px 6px">No Teams link</span>`;
+        schedSummary = `<div style="font-size:13px;font-weight:500">${dayLabels}</div>
+          <div style="font-size:12px;color:var(--gray-600)">${timeLabel}${durLabel} · ${c.weeks || 4} wks</div>
+          ${teamsLabel}`;
+      }
+
       return `<tr>
         <td>${start}</td>
         <td>${deadline}</td>
+        <td>${schedSummary}</td>
         <td>${instList}</td>
         <td>${enrollCounts[c.id] || 0}</td>
-        <td style="font-size:13px;color:var(--gray-600);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.notes || '—'}</td>
+        <td style="font-size:13px;color:var(--gray-600);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.notes || '—'}</td>
         <td style="display:flex;gap:6px">
           <button class="btn-ghost" onclick="editCohort('${c.id}')">Edit</button>
           <button class="btn-danger" onclick="deleteCohort('${c.id}')">Delete</button>
         </td>
       </tr>`;
+    }).join('');
+  }
+
+  let generatedSessionDates = [];
+
+  function resetCohortModal() {
+    document.getElementById('cohort-start').value = '';
+    document.getElementById('cohort-deadline').value = '';
+    document.getElementById('cohort-notes').value = '';
+    document.getElementById('cohort-teams-link').value = '';
+    document.getElementById('cohort-session-time').value = '';
+    document.getElementById('cohort-session-duration').value = '60';
+    document.getElementById('cohort-weeks').value = '4';
+    document.querySelectorAll('.sched-day').forEach(cb => cb.checked = false);
+    document.getElementById('session-preview').innerHTML = '<div style="color:var(--gray-400);font-size:13px">Select days, time, and start date then click Generate.</div>';
+    generatedSessionDates = [];
+  }
+
+  function generateSessionPreview() {
+    const start = document.getElementById('cohort-start').value;
+    const time = document.getElementById('cohort-session-time').value;
+    const weeks = parseInt(document.getElementById('cohort-weeks').value) || 4;
+    const days = Array.from(document.querySelectorAll('.sched-day:checked')).map(cb => parseInt(cb.value));
+    const preview = document.getElementById('session-preview');
+
+    if (!start) { preview.innerHTML = '<div style="color:var(--error);font-size:13px">Set a start date first.</div>'; return; }
+    if (!time) { preview.innerHTML = '<div style="color:var(--error);font-size:13px">Set a session time first.</div>'; return; }
+    if (!days.length) { preview.innerHTML = '<div style="color:var(--error);font-size:13px">Select at least one day.</div>'; return; }
+
+    const DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    generatedSessionDates = [];
+    const startDate = new Date(start + 'T00:00:00');
+    const endDate = new Date(startDate);
+    endDate.setDate(endDate.getDate() + weeks * 7);
+
+    for (let d = new Date(startDate); d < endDate; d.setDate(d.getDate() + 1)) {
+      if (days.includes(d.getDay())) {
+        generatedSessionDates.push(new Date(d));
+      }
+    }
+
+    if (!generatedSessionDates.length) {
+      preview.innerHTML = '<div style="color:var(--gray-400);font-size:13px">No sessions generated — check your days and start date.</div>';
+      return;
+    }
+
+    preview.innerHTML = generatedSessionDates.map((d, i) => {
+      const label = d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+      return `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;border:1px solid var(--gray-200);border-radius:8px;font-size:13px" id="sdate-${i}">
+        <span>${label} · ${time}</span>
+        <button type="button" onclick="removeSessionDate(${i})" style="background:none;border:none;color:var(--gray-400);cursor:pointer;font-size:16px;line-height:1;padding:0 2px" title="Remove">×</button>
+      </div>`;
+    }).join('');
+  }
+
+  function removeSessionDate(index) {
+    generatedSessionDates.splice(index, 1);
+    // Re-render preview
+    const time = document.getElementById('cohort-session-time').value;
+    const preview = document.getElementById('session-preview');
+    if (!generatedSessionDates.length) {
+      preview.innerHTML = '<div style="color:var(--gray-400);font-size:13px">All sessions removed.</div>';
+      return;
+    }
+    preview.innerHTML = generatedSessionDates.map((d, i) => {
+      const label = d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+      return `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;border:1px solid var(--gray-200);border-radius:8px;font-size:13px" id="sdate-${i}">
+        <span>${label} · ${time}</span>
+        <button type="button" onclick="removeSessionDate(${i})" style="background:none;border:none;color:var(--gray-400);cursor:pointer;font-size:16px;line-height:1;padding:0 2px" title="Remove">×</button>
+      </div>`;
     }).join('');
   }
 
@@ -1507,9 +1654,7 @@
     editingCohortId = null;
     document.getElementById('cohort-modal-title').textContent = 'Add Round';
     document.getElementById('cohort-save-btn').textContent = 'Create Round';
-    document.getElementById('cohort-start').value = '';
-    document.getElementById('cohort-deadline').value = '';
-    document.getElementById('cohort-notes').value = '';
+    resetCohortModal();
     await populateCohortInstructorSlots(courseId, []);
     openModal('cohort-modal');
   }
@@ -1520,9 +1665,21 @@
     editingCohortId = cohortId;
     document.getElementById('cohort-modal-title').textContent = 'Edit Round';
     document.getElementById('cohort-save-btn').textContent = 'Save Changes';
+    resetCohortModal();
     document.getElementById('cohort-start').value = cohort.start_date || '';
     document.getElementById('cohort-deadline').value = cohort.signup_deadline || '';
     document.getElementById('cohort-notes').value = cohort.notes || '';
+    document.getElementById('cohort-teams-link').value = cohort.teams_link || '';
+    document.getElementById('cohort-session-time').value = cohort.session_time ? cohort.session_time.slice(0,5) : '';
+    document.getElementById('cohort-session-duration').value = cohort.session_duration_mins || '60';
+    document.getElementById('cohort-weeks').value = cohort.weeks || '4';
+    (cohort.schedule_days || []).forEach(d => {
+      const cb = document.querySelector(`.sched-day[value="${d}"]`);
+      if (cb) cb.checked = true;
+    });
+    if (cohort.start_date && cohort.session_time && (cohort.schedule_days || []).length) {
+      generateSessionPreview();
+    }
     const existing = (cohort.cohort_instructors || []).map(ci => ({ instructor_id: ci.instructor_id, capacity: ci.capacity }));
     await populateCohortInstructorSlots(cohort.course_id, existing);
     openModal('cohort-modal');
@@ -1557,6 +1714,11 @@
     const start = document.getElementById('cohort-start').value;
     const deadline = document.getElementById('cohort-deadline').value;
     const notes = document.getElementById('cohort-notes').value.trim();
+    const teamsLink = document.getElementById('cohort-teams-link').value.trim();
+    const sessionTime = document.getElementById('cohort-session-time').value;
+    const sessionDuration = parseInt(document.getElementById('cohort-session-duration').value) || 60;
+    const weeks = parseInt(document.getElementById('cohort-weeks').value) || 4;
+    const scheduleDays = Array.from(document.querySelectorAll('.sched-day:checked')).map(cb => parseInt(cb.value));
     const alertEl = document.getElementById('cohort-alert');
     alertEl.className = 'alert';
 
@@ -1565,7 +1727,17 @@
     const btn = document.getElementById('cohort-save-btn');
     btn.disabled = true; btn.textContent = 'Saving…';
 
-    const payload = { course_id: courseId, start_date: start, signup_deadline: deadline || null, notes: notes || null };
+    const payload = {
+      course_id: courseId,
+      start_date: start,
+      signup_deadline: deadline || null,
+      notes: notes || null,
+      teams_link: teamsLink || null,
+      session_time: sessionTime || null,
+      session_duration_mins: sessionDuration,
+      weeks,
+      schedule_days: scheduleDays
+    };
     let cohortId = editingCohortId;
 
     if (editingCohortId) {
@@ -1580,13 +1752,12 @@
     // Sync cohort_instructors — collect checked slots
     const course = allCourses.find(c => c.id === courseId);
     const courseInstIds = (course?.course_instructors || []).map(ci => ci.instructor_id);
-    const slots = courseInstIds
-      .filter(iid => document.getElementById('cislot-chk-' + iid)?.checked)
-      .map(iid => ({
-        cohort_id: cohortId,
-        instructor_id: iid,
-        capacity: parseInt(document.getElementById('cislot-cap-' + iid)?.value) || 120
-      }));
+    const checkedInstIds = courseInstIds.filter(iid => document.getElementById('cislot-chk-' + iid)?.checked);
+    const slots = checkedInstIds.map(iid => ({
+      cohort_id: cohortId,
+      instructor_id: iid,
+      capacity: parseInt(document.getElementById('cislot-cap-' + iid)?.value) || 120
+    }));
 
     await db.from('cohort_instructors').delete().eq('cohort_id', cohortId);
     if (slots.length) {
@@ -1594,14 +1765,64 @@
       if (ciErr) { alertEl.className = 'alert error'; alertEl.textContent = 'Round saved but instructor slots failed: ' + ciErr.message; btn.disabled = false; btn.textContent = 'Save Changes'; return; }
     }
 
+    // Generate availability rows from session preview dates
+    if (generatedSessionDates.length && sessionTime && checkedInstIds.length) {
+      // Delete existing admin-generated sessions for this cohort so we don't duplicate on edit
+      await db.from('availability').delete().eq('cohort_id', cohortId);
+
+      const DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+      const schedDayNames = scheduleDays.map(d => DAY_NAMES[d]);
+      const schedLabel = schedDayNames.join(' & ') + ' · ' + formatTime12h(sessionTime);
+
+      const availRows = [];
+      generatedSessionDates.forEach(date => {
+        const [h, m] = sessionTime.split(':').map(Number);
+        const dt = new Date(date);
+        dt.setHours(h, m, 0, 0);
+        checkedInstIds.forEach(iid => {
+          availRows.push({
+            cohort_id: cohortId,
+            course_id: courseId,
+            instructor_id: iid,
+            available_at: dt.toISOString(),
+            duration_mins: sessionDuration,
+            teams_link: teamsLink || null,
+            title: schedLabel,
+            capacity: parseInt(document.getElementById('cislot-cap-' + iid)?.value) || 120
+          });
+        });
+      });
+
+      if (availRows.length) {
+        const { error: avErr } = await db.from('availability').insert(availRows);
+        if (avErr) { alertEl.className = 'alert error'; alertEl.textContent = 'Round saved but sessions failed: ' + avErr.message; btn.disabled = false; btn.textContent = 'Save Changes'; return; }
+      }
+    }
+
+    // If Teams link updated on edit, propagate to existing sessions
+    if (editingCohortId && teamsLink && !generatedSessionDates.length) {
+      await db.from('availability').update({ teams_link: teamsLink }).eq('cohort_id', cohortId);
+    }
+
     alertEl.className = 'alert success';
-    alertEl.textContent = editingCohortId ? 'Round updated!' : 'Round created!';
+    const sessionCount = generatedSessionDates.length * checkedInstIds.length;
+    alertEl.textContent = editingCohortId
+      ? `Round updated!${sessionCount ? ' ' + sessionCount + ' sessions saved.' : ''}`
+      : `Round created!${sessionCount ? ' ' + sessionCount + ' sessions generated.' : ''}`;
     btn.disabled = false;
-    setTimeout(() => { closeModal('cohort-modal'); editingCohortId = null; loadCohorts(); }, 1000);
+    setTimeout(() => { closeModal('cohort-modal'); editingCohortId = null; loadCohorts(); }, 1200);
+  }
+
+  function formatTime12h(time24) {
+    const [h, m] = time24.split(':').map(Number);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const h12 = h % 12 || 12;
+    return `${h12}:${m.toString().padStart(2,'0')} ${ampm}`;
   }
 
   async function deleteCohort(cohortId) {
-    if (!confirm('Delete this round? This cannot be undone.')) return;
+    if (!confirm('Delete this round and all its generated sessions? This cannot be undone.')) return;
+    await db.from('availability').delete().eq('cohort_id', cohortId);
     await db.from('cohort_instructors').delete().eq('cohort_id', cohortId);
     const { error } = await db.from('cohorts').delete().eq('id', cohortId);
     if (error) { alert('Error: ' + error.message); return; }
