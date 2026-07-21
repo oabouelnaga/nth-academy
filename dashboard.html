@@ -951,7 +951,7 @@
       // Fetch all enrollments with course, cohort, and assigned instructor
       const { data: enrollData } = await db
         .from('enrollments')
-        .select('id, course_id, payment_status, enrolled_at, cohort_id, assigned_instructor_id, courses(id, name), cohorts(start_date), profiles!enrollments_assigned_instructor_id_fkey(full_name, email)')
+        .select('id, course_id, payment_status, enrolled_at, cohort_id, assigned_instructor_id, courses(id, name), cohorts(start_date, schedule_days, session_time, session_duration_mins, weeks), profiles!enrollments_assigned_instructor_id_fkey(full_name, email)')
         .eq('student_id', currentUser.id)
         .order('enrolled_at');
       enrollments = enrollData || [];
@@ -1109,7 +1109,7 @@
       const myBooked    = allUpcoming.filter(s => s.booked_by === currentUser.id);
       const pastSlots   = pastAvailRes.data || [];
 
-      renderSessions(myBooked, pastSlots);
+      renderSessions(myBooked, pastSlots, enrollment.cohorts);
       renderHomework(hwRes.data || []);
       renderMaterials(matsRes.data || []);
       renderAvailability(allUpcoming);
@@ -1122,11 +1122,31 @@
       document.getElementById('stat-graded').textContent    = graded;
     }
 
-    function renderSessions(bookedSlots, pastSlots) {
+    function renderSessions(bookedSlots, pastSlots, cohort) {
       const el = document.getElementById('sessions-list');
       document.getElementById('sessions-count').textContent = bookedSlots.length;
 
+      // Schedule summary banner
       let html = '';
+      if (cohort && cohort.schedule_days && cohort.schedule_days.length && cohort.session_time) {
+        const FULL_DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+        const dayLabels = cohort.schedule_days.map(d => FULL_DAYS[d]).join(' & ');
+        const [h, m] = cohort.session_time.split(':').map(Number);
+        const ampm = h >= 12 ? 'PM' : 'AM';
+        const h12 = h % 12 || 12;
+        const timeLabel = `${h12}:${m.toString().padStart(2,'0')} ${ampm}`;
+        const dur = cohort.session_duration_mins;
+        const endMins = h * 60 + m + (dur || 0);
+        const endH = Math.floor(endMins / 60) % 24;
+        const endM = endMins % 60;
+        const endAmpm = endH >= 12 ? 'PM' : 'AM';
+        const endH12 = endH % 12 || 12;
+        const endLabel = `${endH12}:${endM.toString().padStart(2,'0')} ${endAmpm}`;
+        const weeksLabel = cohort.weeks ? ` · ${cohort.weeks} weeks` : '';
+        html += `<div style="background:#eef2ff;border-radius:10px;padding:10px 14px;font-size:13px;color:#3b5bdb;margin-bottom:14px;font-weight:500">
+          📅 ${dayLabels} · ${timeLabel}–${endLabel}${weeksLabel}
+        </div>`;
+      }
 
       if (bookedSlots.length) {
         html += bookedSlots.map(s => {
