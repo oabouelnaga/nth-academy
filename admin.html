@@ -117,6 +117,9 @@
     .btn-danger { background: var(--red-bg); color: var(--red); border: none; padding: 5px 12px; border-radius: 7px; font-size: 13px; font-weight: 500; font-family: inherit; cursor: pointer; }
     .btn-ghost { background: var(--gray-100); color: var(--gray-600); border: none; padding: 5px 12px; border-radius: 7px; font-size: 13px; font-weight: 500; font-family: inherit; cursor: pointer; }
     .btn-ghost:hover { background: var(--gray-200); }
+    .filter-btn { background: var(--gray-100); color: var(--gray-600); border: 1.5px solid var(--gray-200); padding: 5px 14px; border-radius: 20px; font-size: 13px; font-weight: 500; font-family: inherit; cursor: pointer; transition: all 0.15s; }
+    .filter-btn:hover { background: var(--gray-200); }
+    .filter-btn.active { background: var(--blue); color: var(--white); border-color: var(--blue); }
 
     /* TABLE */
     .table-wrap { background: var(--white); border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); overflow: hidden; }
@@ -319,7 +322,12 @@
         <p>Manage instructor accounts and profiles</p>
       </div>
       <div class="toolbar">
-        <div class="search-box"><input type="text" placeholder="Search instructors..." id="search-instructors" oninput="filterTable('instructors-tbody', this.value)"></div>
+        <div class="search-box"><input type="text" placeholder="Search instructors..." id="search-instructors" oninput="filterInstructors()"></div>
+        <div style="display:flex;gap:6px">
+          <button class="filter-btn active" data-contract="" onclick="setInstructorContractFilter('',this)">All</button>
+          <button class="filter-btn" data-contract="hourly" onclick="setInstructorContractFilter('hourly',this)">Hourly</button>
+          <button class="filter-btn" data-contract="commission" onclick="setInstructorContractFilter('commission',this)">Commission</button>
+        </div>
         <button class="btn-primary" onclick="openModal('instructor-modal')">+ Add Instructor</button>
       </div>
       <div class="table-wrap">
@@ -430,6 +438,11 @@
           <label style="font-size:13px;font-weight:500;color:var(--gray-600)">Date:</label>
           <input type="date" id="attendance-date" style="padding:8px 12px;border:1.5px solid var(--gray-200);border-radius:10px;font-size:14px;font-family:inherit;outline:none" onchange="loadAttendance()">
         </div>
+        <div style="display:flex;gap:6px">
+          <button class="filter-btn active" data-contract="" onclick="setAttendanceContractFilter('',this)">All</button>
+          <button class="filter-btn" data-contract="hourly" onclick="setAttendanceContractFilter('hourly',this)">Hourly</button>
+          <button class="filter-btn" data-contract="commission" onclick="setAttendanceContractFilter('commission',this)">Commission</button>
+        </div>
         <button class="btn-primary btn-sm" onclick="loadAttendance()">Refresh</button>
       </div>
       <div class="table-wrap" style="margin-top:4px">
@@ -467,12 +480,17 @@
         <p>All active rounds and their Microsoft Teams meeting links — use this to brief substitutes</p>
       </div>
       <div class="toolbar">
-        <div class="search-box"><input type="text" placeholder="Search by course or instructor..." id="search-teamslinks" oninput="filterTeamsLinks(this.value)"></div>
+        <div class="search-box"><input type="text" placeholder="Search by course or instructor..." id="search-teamslinks" oninput="filterTeamsLinks()"></div>
+        <div style="display:flex;gap:6px">
+          <button class="filter-btn active" data-contract="" onclick="setTeamsLinksContractFilter('',this)">All</button>
+          <button class="filter-btn" data-contract="hourly" onclick="setTeamsLinksContractFilter('hourly',this)">Hourly</button>
+          <button class="filter-btn" data-contract="commission" onclick="setTeamsLinksContractFilter('commission',this)">Commission</button>
+        </div>
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Course</th><th>Start Date</th><th>Schedule</th><th>Instructor(s)</th><th>Teams Link</th></tr></thead>
-          <tbody id="teamslinks-tbody"><tr><td colspan="5" class="loading"><span class="spinner"></span>Loading...</td></tr></tbody>
+          <thead><tr><th>Course</th><th>Start Date</th><th>Schedule</th><th>Instructor(s)</th><th>Contract</th><th>Teams Link</th></tr></thead>
+          <tbody id="teamslinks-tbody"><tr><td colspan="6" class="loading"><span class="spinner"></span>Loading...</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -2037,21 +2055,24 @@
 
   // ── TEAMS LINKS ──────────────────────────────────────────────────────────────
 
+  // ── TEAMS LINKS ──────────────────────────────────────────────────────────────
+
   let _teamsLinksCache = [];
+  let _teamsLinksContractFilter = '';
 
   async function loadTeamsLinks() {
     const tbody = document.getElementById('teamslinks-tbody');
-    tbody.innerHTML = '<tr><td colspan="5" class="loading"><span class="spinner"></span>Loading…</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" class="loading"><span class="spinner"></span>Loading…</td></tr>';
 
     const { data: cohorts, error } = await db
       .from('cohorts')
-      .select('id, start_date, schedule_days, session_time, session_duration_mins, teams_link, course_id, courses(name), cohort_instructors(profiles(full_name, email))')
+      .select('id, start_date, schedule_days, session_time, session_duration_mins, teams_link, course_id, courses(name), cohort_instructors(profiles(full_name, email, contract_type))')
       .not('teams_link', 'is', null)
       .neq('teams_link', '')
       .order('start_date', { ascending: false });
 
     if (error || !cohorts || cohorts.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="5"><div class="empty"><span class="icon">🎥</span>No Teams links added yet. Add one when creating or editing a round.</div></td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6"><div class="empty"><span class="icon">🎥</span>No Teams links added yet. Add one when creating or editing a round.</div></td></tr>';
       return;
     }
 
@@ -2059,9 +2080,32 @@
     renderTeamsLinksRows(cohorts);
   }
 
+  function setTeamsLinksContractFilter(val, btn) {
+    _teamsLinksContractFilter = val;
+    btn.closest('.toolbar').querySelectorAll('.filter-btn').forEach(b => b.classList.toggle('active', b === btn));
+    filterTeamsLinks();
+  }
+
+  function filterTeamsLinks() {
+    const q = (document.getElementById('search-teamslinks')?.value || '').toLowerCase();
+    const contract = _teamsLinksContractFilter;
+    let visible = _teamsLinksCache.filter(c => {
+      const contracts = (c.cohort_instructors || []).map(ci => ci.profiles?.contract_type || '');
+      const matchContract = !contract || contracts.includes(contract);
+      const name = ((c.courses?.name || '') + ' ' + (c.cohort_instructors || []).map(ci => ci.profiles?.full_name || ci.profiles?.email || '').join(' ')).toLowerCase();
+      return matchContract && (!q || name.includes(q));
+    });
+    renderTeamsLinksRows(visible);
+  }
+
   function renderTeamsLinksRows(cohorts) {
     const tbody = document.getElementById('teamslinks-tbody');
     const DAY_LABELS = { 0:'Sun', 1:'Mon', 2:'Tue', 3:'Wed', 4:'Thu', 5:'Fri', 6:'Sat' };
+
+    if (!cohorts.length) {
+      tbody.innerHTML = '<tr><td colspan="6"><div class="empty"><span class="icon">🎥</span>No matching rounds.</div></td></tr>';
+      return;
+    }
 
     tbody.innerHTML = cohorts.map(c => {
       const courseName = c.courses?.name || '—';
@@ -2073,8 +2117,7 @@
         const [h, m] = c.session_time.split(':').map(Number);
         const suffix = h >= 12 ? 'PM' : 'AM';
         const h12 = ((h % 12) || 12);
-        const timeStr = `${h12}:${String(m).padStart(2,'0')} ${suffix}`;
-        schedule += ` · ${timeStr}`;
+        schedule += ` · ${h12}:${String(m).padStart(2,'0')} ${suffix}`;
       }
       if (c.session_duration_mins) schedule += ` · ${c.session_duration_mins} min`;
 
@@ -2082,15 +2125,24 @@
         .map(ci => ci.profiles?.full_name || ci.profiles?.email || 'Unknown')
         .join(', ') || '—';
 
+      // Contract: show unique contract types across instructors on this round
+      const contracts = [...new Set((c.cohort_instructors || []).map(ci => ci.profiles?.contract_type).filter(Boolean))];
+      const contractPill = contracts.length
+        ? contracts.map(ct => ct === 'hourly'
+            ? `<span class="pill pill-green">Hourly</span>`
+            : `<span class="pill pill-blue">Commission</span>`).join(' ')
+        : `<span class="pill pill-gray">—</span>`;
+
       const link = c.teams_link;
-      return `<tr data-search="${(courseName + ' ' + instructors).toLowerCase()}">
+      return `<tr>
         <td><strong>${courseName}</strong></td>
         <td>${startDate}</td>
         <td style="font-size:13px;color:var(--gray-600)">${schedule}</td>
         <td>${instructors}</td>
+        <td>${contractPill}</td>
         <td>
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-            <a href="${link}" target="_blank" rel="noopener" style="color:var(--blue);font-size:13px;font-weight:500;text-decoration:none;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block" title="${link}">Open link</a>
+            <a href="${link}" target="_blank" rel="noopener" style="color:var(--blue);font-size:13px;font-weight:500;text-decoration:none;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block" title="${link}">Open link</a>
             <button class="btn-ghost btn-sm" onclick="copyTeamsLink('${link.replace(/'/g,"\\'")}', this)">Copy</button>
           </div>
         </td>
@@ -2110,12 +2162,18 @@
 
   // ── ATTENDANCE ───────────────────────────────────────────────────────────────
 
+  let _attendanceCache = [];
+  let _attendanceContractFilter = '';
+
   function initAttendanceDatePicker() {
     const input = document.getElementById('attendance-date');
-    if (!input.value) {
-      const today = new Date();
-      input.value = today.toISOString().slice(0, 10);
-    }
+    if (!input.value) input.value = new Date().toISOString().slice(0, 10);
+  }
+
+  function setAttendanceContractFilter(val, btn) {
+    _attendanceContractFilter = val;
+    btn.closest('.toolbar').querySelectorAll('.filter-btn').forEach(b => b.classList.toggle('active', b === btn));
+    renderAttendanceRows(_attendanceCache);
   }
 
   async function loadAttendance() {
@@ -2124,42 +2182,54 @@
     summary.style.display = 'none';
     tbody.innerHTML = '<tr><td colspan="7" class="loading"><span class="spinner"></span>Loading…</td></tr>';
 
-    const dateInput = document.getElementById('attendance-date');
-    const date = dateInput?.value || new Date().toISOString().slice(0, 10);
-
-    // Sessions that started on the selected date (any time that day)
-    const dayStart = date + 'T00:00:00';
-    const dayEnd   = date + 'T23:59:59';
-
+    const date = document.getElementById('attendance-date')?.value || new Date().toISOString().slice(0, 10);
     const { data: slots, error } = await db
       .from('availability')
-      .select('id, available_at, duration_mins, title, capacity, is_booked, booked_by, attended_count, course_id, instructor_id, courses(name), profiles!availability_instructor_id_fkey(full_name, email, contract_type)')
-      .gte('available_at', dayStart)
-      .lte('available_at', dayEnd)
+      .select('id, available_at, duration_mins, title, capacity, is_booked, attended_count, course_id, instructor_id, courses(name), profiles!availability_instructor_id_fkey(full_name, email, contract_type)')
+      .gte('available_at', date + 'T00:00:00')
+      .lte('available_at', date + 'T23:59:59')
       .order('available_at', { ascending: true });
 
     if (error) {
       tbody.innerHTML = `<tr><td colspan="7"><div class="empty"><span class="icon">⚠️</span>${error.message}</div></td></tr>`;
       return;
     }
-
     if (!slots || slots.length === 0) {
       tbody.innerHTML = '<tr><td colspan="7"><div class="empty"><span class="icon">📅</span>No sessions scheduled for this date.</div></td></tr>';
       return;
     }
 
-    const CONTRACT_LABELS = { hourly: 'Hourly', commission: 'Commission', '': '—' };
-    let confirmed = 0, pending = 0, totalStudents = 0;
+    _attendanceCache = slots;
+    renderAttendanceRows(slots);
+  }
 
-    tbody.innerHTML = slots.map(slot => {
+  function renderAttendanceRows(slots) {
+    const tbody = document.getElementById('attendance-tbody');
+    const summary = document.getElementById('attendance-summary');
+    const CONTRACT_LABELS = { hourly: 'Hourly', commission: 'Commission' };
+    const contract = _attendanceContractFilter;
+
+    const filtered = contract ? slots.filter(s => (s.profiles?.contract_type || '') === contract) : slots;
+
+    if (!filtered.length) {
+      tbody.innerHTML = '<tr><td colspan="7"><div class="empty"><span class="icon">📅</span>No sessions match this filter.</div></td></tr>';
+      summary.style.display = 'none';
+      return;
+    }
+
+    let confirmed = 0, pending = 0, totalStudents = 0;
+    tbody.innerHTML = filtered.map(slot => {
       const instructor = slot.profiles?.full_name || slot.profiles?.email || '—';
       const course = slot.courses?.name || '—';
       const sessionTime = new Date(slot.available_at).toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' });
       const dur = slot.duration_mins ? ` · ${slot.duration_mins} min` : '';
       const booked = slot.is_booked ? 1 : 0;
       const contractRaw = slot.profiles?.contract_type || '';
-      const contract = CONTRACT_LABELS[contractRaw] || contractRaw || '—';
-      const contractColor = contractRaw === 'commission' ? 'var(--blue)' : contractRaw === 'hourly' ? 'var(--green)' : 'var(--gray-400)';
+      const contractPill = contractRaw === 'hourly'
+        ? `<span class="pill pill-green">Hourly</span>`
+        : contractRaw === 'commission'
+          ? `<span class="pill pill-blue">Commission</span>`
+          : `<span class="pill pill-gray">—</span>`;
 
       let attendedCell, statusCell;
       if (slot.attended_count !== null && slot.attended_count !== undefined) {
@@ -2177,25 +2247,39 @@
         <td>${instructor}</td>
         <td>${course}</td>
         <td style="white-space:nowrap">${sessionTime}${dur}</td>
-        <td><span style="font-size:13px;font-weight:600;color:${contractColor}">${contract}</span></td>
+        <td>${contractPill}</td>
         <td style="text-align:center">${booked}</td>
         <td style="text-align:center">${attendedCell}</td>
         <td>${statusCell}</td>
       </tr>`;
     }).join('');
 
-    // Summary bar
-    document.getElementById('att-total-sessions').textContent = slots.length;
+    document.getElementById('att-total-sessions').textContent = filtered.length;
     document.getElementById('att-confirmed').textContent = confirmed;
     document.getElementById('att-pending').textContent = pending;
     document.getElementById('att-total-students').textContent = confirmed > 0 ? totalStudents : '—';
     summary.style.display = 'block';
   }
 
-  function filterTeamsLinks(query) {
-    const q = query.toLowerCase();
-    document.querySelectorAll('#teamslinks-tbody tr[data-search]').forEach(row => {
-      row.style.display = row.dataset.search.includes(q) ? '' : 'none';
+  // ── INSTRUCTOR CONTRACT FILTER ────────────────────────────────────────────────
+
+  let _instructorContractFilter = '';
+
+  function setInstructorContractFilter(val, btn) {
+    _instructorContractFilter = val;
+    btn.closest('.toolbar').querySelectorAll('.filter-btn').forEach(b => b.classList.toggle('active', b === btn));
+    filterInstructors();
+  }
+
+  function filterInstructors() {
+    const q = (document.getElementById('search-instructors')?.value || '').toLowerCase();
+    const contract = _instructorContractFilter;
+    document.querySelectorAll('#instructors-tbody tr').forEach(row => {
+      const text = row.textContent.toLowerCase();
+      const contractCell = row.cells[3]?.textContent.toLowerCase().trim() || '';
+      const matchSearch = !q || text.includes(q);
+      const matchContract = !contract || contractCell.includes(contract);
+      row.style.display = matchSearch && matchContract ? '' : 'none';
     });
   }
 
