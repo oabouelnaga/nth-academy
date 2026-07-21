@@ -1258,8 +1258,11 @@
             <span class="en-text">Loading available dates…</span><span class="ar-text">جارٍ تحميل المواعيد…</span>
           </div>
           <select id="enroll-cohort-select" style="display:none;width:100%;padding:10px 14px;border:1.5px solid #dee2e6;border-radius:8px;font-size:14px;font-family:inherit;outline:none;background:#fff;cursor:pointer;transition:border-color 0.2s;"
-            onfocus="this.style.borderColor='#3b5bdb'" onblur="this.style.borderColor='#dee2e6'">
+            onfocus="this.style.borderColor='#3b5bdb'" onblur="this.style.borderColor='#dee2e6'"
+            onchange="onCohortSelectChange()">
           </select>
+          <!-- Schedule summary — shown after round selected -->
+          <div id="enroll-schedule-info" style="display:none;margin-top:10px;padding:10px 14px;background:#eef2ff;border-radius:8px;font-size:13px;color:#3b5bdb;line-height:1.6;"></div>
           <div id="enroll-no-cohorts" style="display:none;font-size:13px;color:#868e96;padding:8px 12px;background:#f8f9fa;border-radius:8px;">
             <span class="en-text">No upcoming dates — check back soon</span><span class="ar-text">لا توجد مواعيد قادمة — تابع معنا قريباً</span>
           </div>
@@ -1942,7 +1945,7 @@
       // Fetch cohorts with open signup deadline
       const { data: cohorts, error } = await catalogDb
         .from('cohorts')
-        .select('id, start_date, signup_deadline')
+        .select('id, start_date, signup_deadline, schedule_days, session_time, session_duration_mins, weeks')
         .eq('course_id', courseId)
         .gte('signup_deadline', today)
         .order('start_date');
@@ -1984,6 +1987,9 @@
         return;
       }
 
+      // Store for schedule lookup on selection change
+      window._enrollCohortMap = Object.fromEntries(openCohorts.map(c => [c.id, c]));
+
       cohortSelect.innerHTML = openCohorts.map(cohort => {
         const dateLabel = new Date(cohort.start_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
         const spotsLabel = cohort.spotsLeft !== null ? ` — ${cohort.spotsLeft} spot${cohort.spotsLeft === 1 ? '' : 's'} left` : '';
@@ -1992,12 +1998,47 @@
 
       cohortSelect.style.display = 'block';
       btn.style.display = '';
+      // Show schedule for the first option immediately
+      onCohortSelectChange();
 
     } catch (e) {
       cohortLoading.style.display = 'none';
       noCohorts.style.display = 'block';
       btn.style.display = 'none';
     }
+  }
+
+  function onCohortSelectChange() {
+    const sel = document.getElementById('enroll-cohort-select');
+    const infoEl = document.getElementById('enroll-schedule-info');
+    const cohortId = sel.value;
+    const cohort = (window._enrollCohortMap || {})[cohortId];
+
+    if (!cohort || !cohort.schedule_days || !cohort.schedule_days.length || !cohort.session_time) {
+      infoEl.style.display = 'none';
+      return;
+    }
+
+    const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const FULL_DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const dayLabels = cohort.schedule_days.map(d => FULL_DAY_NAMES[d]).join(' & ');
+
+    const [h, m] = cohort.session_time.split(':').map(Number);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const h12 = h % 12 || 12;
+    const timeLabel = `${h12}:${m.toString().padStart(2, '0')} ${ampm}`;
+
+    const durMins = cohort.session_duration_mins || 60;
+    const endH = Math.floor((h * 60 + m + durMins) / 60) % 24;
+    const endM = (h * 60 + m + durMins) % 60;
+    const endAmpm = endH >= 12 ? 'PM' : 'AM';
+    const endH12 = endH % 12 || 12;
+    const endLabel = `${endH12}:${endM.toString().padStart(2, '0')} ${endAmpm}`;
+
+    const weeksLabel = cohort.weeks ? `${cohort.weeks} weeks` : '';
+
+    infoEl.style.display = 'block';
+    infoEl.innerHTML = `📅 <strong>${dayLabels}</strong> · ${timeLabel}–${endLabel}${weeksLabel ? ' · ' + weeksLabel : ''}`;
   }
 
   function closeEnrollModal() {
