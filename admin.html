@@ -273,6 +273,7 @@
       <div class="sidebar-label">Content</div>
       <div class="nav-item" onclick="showPage('community')"><span class="icon">📣</span> Community</div>
       <div class="nav-item" onclick="showPage('inquiries')"><span class="icon">📬</span> Inquiries <span class="badge" id="inquiries-badge" style="display:none">0</span></div>
+      <div class="nav-item" onclick="showPage('reviews')"><span class="icon">⭐</span> Reviews <span class="badge" id="reviews-badge" style="display:none">0</span></div>
     </div>
     <div class="sidebar-section">
       <div class="sidebar-label">Switch View</div>
@@ -530,6 +531,74 @@
       </div>
     </div>
 
+    <div id="page-reviews" class="page">
+      <div class="page-header">
+        <h1>Reviews</h1>
+        <p>Student and admin-added reviews — approve before they appear on the homepage</p>
+      </div>
+      <div class="toolbar" style="flex-wrap:wrap;gap:8px">
+        <div class="search-box"><input type="text" id="search-reviews" placeholder="Search reviews..." oninput="filterReviews()"></div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <button class="filter-btn active" onclick="setReviewStatusFilter('', this)">All</button>
+          <button class="filter-btn" onclick="setReviewStatusFilter('pending', this)">Pending</button>
+          <button class="filter-btn" onclick="setReviewStatusFilter('approved', this)">Approved</button>
+          <button class="filter-btn" onclick="setReviewStatusFilter('rejected', this)">Rejected</button>
+        </div>
+        <button class="btn-primary" style="margin-left:auto" onclick="openModal('add-review-modal')">+ Add Review</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Author</th><th>Course</th><th>Rating</th><th class="col-hide-mobile">Review</th><th class="col-hide-mobile">Source</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="reviews-tbody"><tr><td colspan="7" class="loading"><span class="spinner"></span>Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODAL: ADD REVIEW (admin) -->
+<div class="modal-overlay" id="add-review-modal">
+  <div class="modal">
+    <h3>Add Review</h3>
+    <div class="alert" id="add-review-alert"></div>
+    <div class="form-group">
+      <label>Author Name *</label>
+      <input type="text" id="rev-name" placeholder="e.g. Ahmed Hassan">
+    </div>
+    <div class="form-group">
+      <label>Email <span style="color:var(--gray-400);font-weight:400">(optional)</span></label>
+      <input type="email" id="rev-email" placeholder="student@example.com">
+    </div>
+    <div class="form-group">
+      <label>Course <span style="color:var(--gray-400);font-weight:400">(optional)</span></label>
+      <select id="rev-course"><option value="">— none —</option></select>
+    </div>
+    <div class="form-group">
+      <label>Rating *</label>
+      <select id="rev-rating">
+        <option value="5">★★★★★ — 5 stars</option>
+        <option value="4">★★★★☆ — 4 stars</option>
+        <option value="3">★★★☆☆ — 3 stars</option>
+        <option value="2">★★☆☆☆ — 2 stars</option>
+        <option value="1">★☆☆☆☆ — 1 star</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Review Text *</label>
+      <textarea id="rev-body" rows="4" placeholder="Write the review..." style="width:100%;padding:10px;border:1px solid var(--gray-200);border-radius:8px;font-size:14px;resize:vertical;font-family:inherit"></textarea>
+    </div>
+    <div class="form-group">
+      <label>Status</label>
+      <select id="rev-status">
+        <option value="approved">Approved — publish immediately</option>
+        <option value="pending">Pending — hold for review</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal('add-review-modal')">Cancel</button>
+      <button class="btn-primary" onclick="submitAdminReview()">Save Review</button>
+    </div>
   </div>
 </div>
 
@@ -1560,11 +1629,22 @@
     currentPage = page;
     if (page === 'teamslinks') loadTeamsLinks();
     if (page === 'attendance') { initAttendanceDatePicker(); loadAttendance(); }
+    if (page === 'reviews') loadReviews();
   }
 
   // MODAL
   function openModal(id) {
     document.getElementById(id).classList.add('open');
+    if (id === 'add-review-modal') {
+      document.getElementById('rev-course').innerHTML = '<option value="">— none —</option>' +
+        allCourses.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+      document.getElementById('rev-name').value = '';
+      document.getElementById('rev-email').value = '';
+      document.getElementById('rev-body').value = '';
+      document.getElementById('rev-rating').value = '5';
+      document.getElementById('rev-status').value = 'approved';
+      document.getElementById('add-review-alert').className = 'alert';
+    }
     if (id === 'student-modal') {
       // Populate course dropdown
       const courseSel = document.getElementById('stu-course');
@@ -2347,6 +2427,123 @@
     a.download = `attendance-${date}${contract ? '-' + contract : ''}.csv`;
     a.click();
     URL.revokeObjectURL(a.href);
+  }
+
+  // ── REVIEWS ──────────────────────────────────────────────────────────────────
+
+  let _reviewsCache = [];
+  let _reviewStatusFilter = '';
+
+  async function loadReviews() {
+    const tbody = document.getElementById('reviews-tbody');
+    tbody.innerHTML = '<tr><td colspan="7" class="loading"><span class="spinner"></span>Loading…</td></tr>';
+
+    const { data, error } = await db
+      .from('reviews')
+      .select('id, author_name, author_email, rating, body, status, source, created_at, course_id, courses(name)')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      tbody.innerHTML = `<tr><td colspan="7"><div class="empty"><span class="icon">⚠️</span>${error.message}</div></td></tr>`;
+      return;
+    }
+
+    _reviewsCache = data || [];
+    const pending = _reviewsCache.filter(r => r.status === 'pending').length;
+    const badge = document.getElementById('reviews-badge');
+    if (pending > 0) { badge.textContent = pending; badge.style.display = ''; }
+    else badge.style.display = 'none';
+
+    renderReviewRows(_reviewsCache);
+  }
+
+  function setReviewStatusFilter(val, btn) {
+    _reviewStatusFilter = val;
+    btn.closest('.toolbar').querySelectorAll('.filter-btn').forEach(b => b.classList.toggle('active', b === btn));
+    filterReviews();
+  }
+
+  function filterReviews() {
+    const q = (document.getElementById('search-reviews')?.value || '').toLowerCase();
+    const status = _reviewStatusFilter;
+    const filtered = _reviewsCache.filter(r => {
+      const matchStatus = !status || r.status === status;
+      const matchSearch = !q || r.author_name?.toLowerCase().includes(q) || r.body?.toLowerCase().includes(q) || r.courses?.name?.toLowerCase().includes(q);
+      return matchStatus && matchSearch;
+    });
+    renderReviewRows(filtered);
+  }
+
+  function renderReviewRows(rows) {
+    const tbody = document.getElementById('reviews-tbody');
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="7"><div class="empty"><span class="icon">⭐</span>No reviews found</div></td></tr>';
+      return;
+    }
+    const stars = n => '★'.repeat(n) + '☆'.repeat(5 - n);
+    tbody.innerHTML = rows.map(r => {
+      const statusPill = r.status === 'approved'
+        ? `<span style="background:var(--green-bg);color:var(--green);padding:2px 10px;border-radius:10px;font-size:12px;font-weight:600">Approved</span>`
+        : r.status === 'rejected'
+        ? `<span style="background:var(--red-bg);color:var(--red);padding:2px 10px;border-radius:10px;font-size:12px;font-weight:600">Rejected</span>`
+        : `<span style="background:var(--yellow-bg);color:#b45309;padding:2px 10px;border-radius:10px;font-size:12px;font-weight:600">Pending</span>`;
+      const sourcePill = r.source === 'admin'
+        ? `<span style="background:var(--blue-bg);color:var(--blue);padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600">Admin</span>`
+        : `<span style="background:var(--gray-100);color:var(--gray-600);padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600">Student</span>`;
+      const approveBtn = r.status !== 'approved'
+        ? `<button class="btn-primary" style="padding:3px 10px;font-size:12px;margin-right:4px" onclick="setReviewStatus('${r.id}','approved')">Approve</button>`
+        : '';
+      const rejectBtn = r.status !== 'rejected'
+        ? `<button class="btn-secondary" style="padding:3px 10px;font-size:12px;margin-right:4px" onclick="setReviewStatus('${r.id}','rejected')">Reject</button>`
+        : '';
+      const deleteBtn = `<button class="btn-secondary" style="padding:3px 10px;font-size:12px;color:var(--red);border-color:var(--red)" onclick="deleteReview('${r.id}')">Delete</button>`;
+      return `<tr>
+        <td><div style="font-weight:500">${r.author_name}</div><div style="font-size:11px;color:var(--gray-400)">${r.author_email || ''}</div></td>
+        <td>${r.courses?.name || '—'}</td>
+        <td style="color:#f59e0b;font-size:15px">${stars(r.rating || 0)}</td>
+        <td class="col-hide-mobile" style="max-width:240px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.body}</td>
+        <td class="col-hide-mobile">${sourcePill}</td>
+        <td>${statusPill}</td>
+        <td style="white-space:nowrap">${approveBtn}${rejectBtn}${deleteBtn}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  async function setReviewStatus(id, status) {
+    await db.from('reviews').update({ status }).eq('id', id);
+    loadReviews();
+  }
+
+  async function deleteReview(id) {
+    if (!confirm('Delete this review permanently?')) return;
+    await db.from('reviews').delete().eq('id', id);
+    loadReviews();
+  }
+
+  async function submitAdminReview() {
+    const name = document.getElementById('rev-name').value.trim();
+    const email = document.getElementById('rev-email').value.trim();
+    const courseId = document.getElementById('rev-course').value;
+    const rating = parseInt(document.getElementById('rev-rating').value);
+    const body = document.getElementById('rev-body').value.trim();
+    const status = document.getElementById('rev-status').value;
+    const alert = document.getElementById('add-review-alert');
+
+    if (!name || !body) { alert.className = 'alert error'; alert.textContent = 'Name and review text are required.'; return; }
+
+    const { error } = await db.from('reviews').insert({
+      author_name: name,
+      author_email: email || null,
+      course_id: courseId || null,
+      rating,
+      body,
+      status,
+      source: 'admin'
+    });
+
+    if (error) { alert.className = 'alert error'; alert.textContent = error.message; return; }
+    closeModal('add-review-modal');
+    loadReviews();
   }
 
   // ── INSTRUCTOR CONTRACT FILTER ────────────────────────────────────────────────

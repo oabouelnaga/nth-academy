@@ -889,6 +889,40 @@
       </div>
     </div>
 
+    <div class="grid-full" id="review-section">
+      <div class="card">
+        <div class="card-head">
+          <h2>Leave a Review</h2>
+        </div>
+        <div class="card-body" id="review-body">
+          <div id="review-form-wrap">
+            <p style="font-size:13px;color:var(--gray-600);margin-bottom:16px">Share your experience — reviews are approved before being published.</p>
+            <div style="margin-bottom:12px">
+              <label style="font-size:13px;font-weight:500;display:block;margin-bottom:6px">Rating</label>
+              <div id="star-picker" style="display:flex;gap:6px;font-size:26px;cursor:pointer">
+                <span data-v="1" onclick="setRating(1)">☆</span>
+                <span data-v="2" onclick="setRating(2)">☆</span>
+                <span data-v="3" onclick="setRating(3)">☆</span>
+                <span data-v="4" onclick="setRating(4)">☆</span>
+                <span data-v="5" onclick="setRating(5)">☆</span>
+              </div>
+            </div>
+            <div style="margin-bottom:12px">
+              <label style="font-size:13px;font-weight:500;display:block;margin-bottom:6px">Your Review *</label>
+              <textarea id="review-text" rows="4" placeholder="Tell us about your experience..." style="width:100%;padding:10px;border:1px solid var(--gray-200);border-radius:8px;font-size:14px;resize:vertical;font-family:inherit"></textarea>
+            </div>
+            <div id="review-alert" style="display:none;padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:12px"></div>
+            <button class="btn-primary" onclick="submitReview()">Submit Review</button>
+          </div>
+          <div id="review-submitted" style="display:none;text-align:center;padding:24px 0">
+            <div style="font-size:32px;margin-bottom:8px">✅</div>
+            <div style="font-weight:600;color:var(--navy)">Thank you for your review!</div>
+            <div style="font-size:13px;color:var(--gray-600);margin-top:4px">It will be published once approved.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 
   <!-- MODAL: SUBMIT HOMEWORK -->
@@ -1549,6 +1583,62 @@
       isAr = !isAr;
       document.body.classList.toggle('ar');
       document.documentElement.lang = isAr ? 'ar' : 'en';
+    }
+
+    // ── REVIEWS ──────────────────────────────────────────────────────────────────
+    let _selectedRating = 0;
+
+    function setRating(val) {
+      _selectedRating = val;
+      document.querySelectorAll('#star-picker span').forEach(s => {
+        s.textContent = parseInt(s.dataset.v) <= val ? '★' : '☆';
+        s.style.color = parseInt(s.dataset.v) <= val ? '#f59e0b' : 'var(--gray-400)';
+      });
+    }
+
+    async function submitReview() {
+      const body = document.getElementById('review-text').value.trim();
+      const alertEl = document.getElementById('review-alert');
+
+      if (_selectedRating === 0) {
+        alertEl.style.display = '';
+        alertEl.style.background = 'var(--red-bg)';
+        alertEl.style.color = 'var(--red)';
+        alertEl.textContent = 'Please select a star rating.';
+        return;
+      }
+      if (!body) {
+        alertEl.style.display = '';
+        alertEl.style.background = 'var(--red-bg)';
+        alertEl.style.color = 'var(--red)';
+        alertEl.textContent = 'Please write your review.';
+        return;
+      }
+
+      const { data: profile } = await db.from('profiles').select('full_name, email').eq('id', currentUser.id).single();
+      const activeEnrollment = enrollments.find(e => e.course_id === activeCourseId);
+
+      const { error } = await db.from('reviews').insert({
+        student_id: currentUser.id,
+        author_name: profile?.full_name || profile?.email?.split('@')[0] || 'Student',
+        author_email: profile?.email || null,
+        course_id: activeCourseId || null,
+        rating: _selectedRating,
+        body,
+        status: 'pending',
+        source: 'student'
+      });
+
+      if (error) {
+        alertEl.style.display = '';
+        alertEl.style.background = 'var(--red-bg)';
+        alertEl.style.color = 'var(--red)';
+        alertEl.textContent = error.message;
+        return;
+      }
+
+      document.getElementById('review-form-wrap').style.display = 'none';
+      document.getElementById('review-submitted').style.display = '';
     }
   </script>
 
