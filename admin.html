@@ -2320,11 +2320,12 @@
     tbody.innerHTML = '<tr><td colspan="7" class="loading"><span class="spinner"></span>Loading…</td></tr>';
 
     const date = document.getElementById('attendance-date')?.value || new Date().toISOString().slice(0, 10);
+    // Pass Cairo timezone offset (+03:00) so Supabase compares correctly against UTC-stored timestamps
     const { data: slots, error } = await db
       .from('availability')
       .select('id, available_at, duration_mins, title, capacity, is_booked, attended_count, course_id, cohort_id, instructor_id, courses(name), profiles!availability_instructor_id_fkey(full_name, email, contract_type)')
-      .gte('available_at', date + 'T00:00:00')
-      .lte('available_at', date + 'T23:59:59')
+      .gte('available_at', date + 'T00:00:00+03:00')
+      .lte('available_at', date + 'T23:59:59+03:00')
       .order('available_at', { ascending: true });
 
     if (error) {
