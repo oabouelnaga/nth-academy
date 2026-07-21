@@ -1050,6 +1050,7 @@
     <li><a href="#instructors"><span class="en-text">Instructors</span><span class="ar-text">المدربون</span></a></li>
     <li><a href="#about"><span class="en-text">About</span><span class="ar-text">عننا</span></a></li>
     <li><a href="community.html"><span class="en-text">Community</span><span class="ar-text">المجتمع</span></a></li>
+    <li><a href="#reviews"><span class="en-text">Reviews</span><span class="ar-text">آراء الطلاب</span></a></li>
     <li><a href="#contact"><span class="en-text">Contact</span><span class="ar-text">تواصل معنا</span></a></li>
   </ul>
 
@@ -1074,6 +1075,7 @@
   <a href="#instructors" onclick="toggleMobileMenu()"><span class="en-text">Instructors</span><span class="ar-text">المدربون</span></a>
   <a href="#about" onclick="toggleMobileMenu()"><span class="en-text">About</span><span class="ar-text">عننا</span></a>
   <a href="community.html" onclick="toggleMobileMenu()"><span class="en-text">Community</span><span class="ar-text">المجتمع</span></a>
+  <a href="#reviews" onclick="toggleMobileMenu()"><span class="en-text">Reviews</span><span class="ar-text">آراء الطلاب</span></a>
   <a href="#contact" onclick="toggleMobileMenu()"><span class="en-text">Contact</span><span class="ar-text">تواصل معنا</span></a>
   <div id="mobile-nav-auth">
     <a href="login.html" class="mobile-menu-signin"><span class="en-text">Sign In</span><span class="ar-text">تسجيل الدخول</span></a>
@@ -1531,6 +1533,29 @@
       <span class="en-text">🔒 All transactions are encrypted and secure.</span>
       <span class="ar-text">🔒 جميع المعاملات مشفرة وآمنة.</span>
     </p>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ REVIEWS ══════════════════════════ -->
+<section class="section" id="reviews">
+  <div class="section-inner">
+    <div class="section-header">
+      <div class="section-label">
+        <span class="en-text">Student Reviews</span><span class="ar-text">آراء الطلاب</span>
+      </div>
+      <h2>
+        <span class="en-text">What our students <span>say about us</span></span>
+        <span class="ar-text">ماذا يقول <span>طلابنا عننا</span></span>
+      </h2>
+      <p class="section-sub">
+        <span class="en-text">Real feedback from real students.</span>
+        <span class="ar-text">تقييمات حقيقية من طلاب حقيقيين.</span>
+      </p>
+    </div>
+    <div id="reviews-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px;margin-top:8px">
+      <div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--gray-400)">Loading reviews…</div>
+    </div>
   </div>
 </section>
 
@@ -2248,6 +2273,35 @@
     track.addEventListener('mouseleave', () => isDown = false);
     track.addEventListener('mouseup', () => isDown = false);
     track.addEventListener('mousemove', e => { if (!isDown) return; e.preventDefault(); track.scrollLeft = scrollLeft - (e.pageX - track.offsetLeft - startX); });
+  })();
+
+  // Reviews section
+  (async () => {
+    const SUPABASE_URL2 = 'https://mizkuzwfjvvulkiyotle.supabase.co';
+    const SUPABASE_KEY2 = 'sb_publishable_6ebgjsAV5DH3u_h-iKC3jw_WagYY6Mv';
+    const dbR = window.supabase.createClient(SUPABASE_URL2, SUPABASE_KEY2);
+    const grid = document.getElementById('reviews-grid');
+    const { data: reviews } = await dbR
+      .from('reviews')
+      .select('author_name, rating, body, course_id, courses(name)')
+      .eq('status', 'approved')
+      .order('created_at', { ascending: false });
+
+    if (!reviews || !reviews.length) {
+      grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--gray-400)"><span style="font-size:32px;display:block;margin-bottom:8px">⭐</span>No reviews yet — be the first!</div>';
+      return;
+    }
+
+    const stars = n => '<span style="color:#f59e0b">★</span>'.repeat(n) + '<span style="color:#e5e7eb">★</span>'.repeat(5 - n);
+    grid.innerHTML = reviews.map(r => `
+      <div style="background:var(--white);border-radius:14px;padding:24px;box-shadow:0 2px 12px rgba(0,0,0,0.07);display:flex;flex-direction:column;gap:12px">
+        <div style="font-size:18px;line-height:1">${stars(r.rating || 5)}</div>
+        <p style="font-size:14px;line-height:1.6;color:#374151;flex:1">"${r.body}"</p>
+        <div style="border-top:1px solid #f3f4f6;padding-top:12px">
+          <div style="font-weight:600;font-size:13px;color:var(--navy)">${r.author_name}</div>
+          ${r.courses?.name ? `<div style="font-size:12px;color:var(--gray-400);margin-top:2px">${r.courses.name}</div>` : ''}
+        </div>
+      </div>`).join('');
   })();
 
   // Smooth nav active state
