@@ -16,10 +16,10 @@ Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders(origin) });
   if (req.method !== "POST") return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405, headers: { ...corsHeaders(origin), "Content-Type": "application/json" } });
 
-  let body: { email?: string; name?: string; courseId?: string; cohortId?: string };
+  let body: { email?: string; name?: string; courseId?: string; cohortId?: string; amountPaid?: number };
   try { body = await req.json(); } catch { return new Response(JSON.stringify({ error: "Invalid JSON body" }), { status: 400, headers: { ...corsHeaders(origin), "Content-Type": "application/json" } }); }
 
-  const { email, name, courseId, cohortId } = body;
+  const { email, name, courseId, cohortId, amountPaid } = body;
   if (!email) return new Response(JSON.stringify({ error: "email is required" }), { status: 400, headers: { ...corsHeaders(origin), "Content-Type": "application/json" } });
 
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -45,7 +45,7 @@ Deno.serve(async (req: Request) => {
     await fetch(SUPABASE_URL + "/rest/v1/enrollments", {
       method: "POST",
       headers: { "Content-Type": "application/json", "apikey": serviceRoleKey, "Authorization": "Bearer " + serviceRoleKey, "Prefer": "resolution=merge-duplicates" },
-      body: JSON.stringify({ student_id: userId, course_id: courseId, cohort_id: cohortId || null, payment_status: "pending" }),
+      body: JSON.stringify({ student_id: userId, course_id: courseId, cohort_id: cohortId || null, payment_status: "pending", amount_paid: amountPaid ?? null }),
     });
   }
 

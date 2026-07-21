@@ -444,6 +444,7 @@
           <button class="filter-btn" data-contract="commission" onclick="setAttendanceContractFilter('commission',this)">Commission</button>
         </div>
         <button class="btn-primary btn-sm" onclick="loadAttendance()">Refresh</button>
+        <button class="btn-ghost btn-sm" onclick="exportAttendanceCSV()" id="btn-export-attendance" style="display:none">⬇ Export CSV</button>
       </div>
       <div class="table-wrap" style="margin-top:4px">
         <table>
@@ -760,6 +761,15 @@
     <div class="form-group">
       <label>Microsoft Teams Link <span style="color:var(--gray-400);font-weight:400">(optional — can be added later)</span></label>
       <input type="url" id="cohort-teams-link" placeholder="https://teams.microsoft.com/l/meetup-join/..." style="width:100%;padding:10px 12px;border:1.5px solid var(--gray-200);border-radius:9px;font-size:14px;font-family:inherit;outline:none">
+    </div>
+
+    <div class="form-group">
+      <label>Promo Price <span style="color:var(--gray-400);font-weight:400">(optional — overrides course price during promo window)</span></label>
+      <input type="number" id="cohort-promo-price" min="0" step="0.01" placeholder="e.g. 1500" style="width:100%;padding:10px 12px;border:1.5px solid var(--gray-200);border-radius:9px;font-size:14px;font-family:inherit;outline:none">
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Promo Start</label><input type="date" id="cohort-promo-start" style="width:100%;padding:10px 12px;border:1.5px solid var(--gray-200);border-radius:9px;font-size:14px;font-family:inherit;outline:none"></div>
+      <div class="form-group"><label>Promo End</label><input type="date" id="cohort-promo-end" style="width:100%;padding:10px 12px;border:1.5px solid var(--gray-200);border-radius:9px;font-size:14px;font-family:inherit;outline:none"></div>
     </div>
 
     <div class="form-group"><label>Notes (optional)</label><textarea id="cohort-notes" rows="2" style="width:100%;padding:10px 12px;border:1.5px solid var(--gray-200);border-radius:9px;font-size:14px;font-family:inherit;resize:vertical;outline:none" placeholder="Any details about this round..."></textarea></div>
@@ -1670,8 +1680,18 @@
           ${teamsLabel}`;
       }
 
+      // Promo: active if today falls within promo_start..promo_end
+      const today = new Date().toISOString().slice(0,10);
+      const promoActive = c.promo_price && c.promo_start && c.promo_end
+        && today >= c.promo_start && today <= c.promo_end;
+      const promoBadge = promoActive
+        ? `<span style="display:inline-block;margin-top:3px;font-size:11px;background:#fff0b3;color:#92600a;border-radius:5px;padding:1px 7px;font-weight:600">🏷 PROMO</span>`
+        : c.promo_price && c.promo_start
+          ? `<span style="display:inline-block;margin-top:3px;font-size:11px;background:var(--gray-100);color:var(--gray-400);border-radius:5px;padding:1px 7px">Promo scheduled</span>`
+          : '';
+
       return `<tr>
-        <td>${start}</td>
+        <td><div>${start}</div>${promoBadge}</td>
         <td>${deadline}</td>
         <td>${schedSummary}</td>
         <td>${instList}</td>
@@ -1695,6 +1715,9 @@
     document.getElementById('cohort-session-time').value = '';
     document.getElementById('cohort-session-duration').value = '60';
     document.getElementById('cohort-weeks').value = '4';
+    document.getElementById('cohort-promo-price').value = '';
+    document.getElementById('cohort-promo-start').value = '';
+    document.getElementById('cohort-promo-end').value = '';
     document.querySelectorAll('.sched-day').forEach(cb => cb.checked = false);
     document.getElementById('session-preview').innerHTML = '<div style="color:var(--gray-400);font-size:13px">Select days, time, and start date then click Generate.</div>';
     generatedSessionDates = [];
@@ -1777,6 +1800,9 @@
     document.getElementById('cohort-deadline').value = cohort.signup_deadline || '';
     document.getElementById('cohort-notes').value = cohort.notes || '';
     document.getElementById('cohort-teams-link').value = cohort.teams_link || '';
+    document.getElementById('cohort-promo-price').value = cohort.promo_price || '';
+    document.getElementById('cohort-promo-start').value = cohort.promo_start || '';
+    document.getElementById('cohort-promo-end').value = cohort.promo_end || '';
     document.getElementById('cohort-session-time').value = cohort.session_time ? cohort.session_time.slice(0,5) : '';
     document.getElementById('cohort-session-duration').value = cohort.session_duration_mins || '60';
     document.getElementById('cohort-weeks').value = cohort.weeks || '4';
@@ -1826,10 +1852,14 @@
     const sessionDuration = parseInt(document.getElementById('cohort-session-duration').value) || 60;
     const weeks = parseInt(document.getElementById('cohort-weeks').value) || 4;
     const scheduleDays = Array.from(document.querySelectorAll('.sched-day:checked')).map(cb => parseInt(cb.value));
+    const promoPrice = parseFloat(document.getElementById('cohort-promo-price').value) || null;
+    const promoStart = document.getElementById('cohort-promo-start').value || null;
+    const promoEnd = document.getElementById('cohort-promo-end').value || null;
     const alertEl = document.getElementById('cohort-alert');
     alertEl.className = 'alert';
 
     if (!start) { alertEl.className = 'alert error'; alertEl.textContent = 'Start date is required.'; return; }
+    if (promoPrice && (!promoStart || !promoEnd)) { alertEl.className = 'alert error'; alertEl.textContent = 'Promo price requires both a start and end date.'; return; }
 
     const btn = document.getElementById('cohort-save-btn');
     btn.disabled = true; btn.textContent = 'Saving…';
@@ -1843,7 +1873,10 @@
       session_time: sessionTime || null,
       session_duration_mins: sessionDuration,
       weeks,
-      schedule_days: scheduleDays
+      schedule_days: scheduleDays,
+      promo_price: promoPrice,
+      promo_start: promoStart,
+      promo_end: promoEnd
     };
     let cohortId = editingCohortId;
 
@@ -2259,6 +2292,61 @@
     document.getElementById('att-pending').textContent = pending;
     document.getElementById('att-total-students').textContent = confirmed > 0 ? totalStudents : '—';
     summary.style.display = 'block';
+    document.getElementById('btn-export-attendance').style.display = '';
+  }
+
+  async function exportAttendanceCSV() {
+    const date = document.getElementById('attendance-date')?.value || new Date().toISOString().slice(0, 10);
+    const contract = _attendanceContractFilter;
+
+    // Fetch enrollments for all cohorts on this date to get amount_paid per student
+    const cohortIds = [...new Set(_attendanceCache.map(s => s.cohort_id).filter(Boolean))];
+    let enrollMap = {}; // cohortId -> { totalRevenue, studentCount }
+    if (cohortIds.length) {
+      const { data: enrolls } = await db
+        .from('enrollments')
+        .select('cohort_id, amount_paid, student_id, profiles(full_name, email)')
+        .in('cohort_id', cohortIds);
+      (enrolls || []).forEach(e => {
+        if (!enrollMap[e.cohort_id]) enrollMap[e.cohort_id] = { totalRevenue: 0, studentCount: 0, students: [] };
+        enrollMap[e.cohort_id].totalRevenue += Number(e.amount_paid || 0);
+        enrollMap[e.cohort_id].studentCount++;
+        enrollMap[e.cohort_id].students.push({
+          name: e.profiles?.full_name || '',
+          email: e.profiles?.email || '',
+          paid: e.amount_paid ?? ''
+        });
+      });
+    }
+
+    const filtered = contract ? _attendanceCache.filter(s => (s.profiles?.contract_type || '') === contract) : _attendanceCache;
+
+    const rows = [['Date', 'Session Time', 'Duration (min)', 'Instructor', 'Instructor Email', 'Contract', 'Course', 'Booked', 'Attended (Confirmed)', 'Total Round Revenue (EGP)', 'Round Students']];
+    filtered.forEach(slot => {
+      const sessionTime = new Date(slot.available_at).toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' });
+      const cohortData = enrollMap[slot.cohort_id] || {};
+      rows.push([
+        date,
+        sessionTime,
+        slot.duration_mins || '',
+        slot.profiles?.full_name || '',
+        slot.profiles?.email || '',
+        slot.profiles?.contract_type || '',
+        slot.courses?.name || '',
+        slot.is_booked ? 1 : 0,
+        slot.attended_count ?? '',
+        cohortData.totalRevenue || '',
+        cohortData.studentCount || ''
+      ]);
+    });
+
+    const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `attendance-${date}${contract ? '-' + contract : ''}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
   }
 
   // ── INSTRUCTOR CONTRACT FILTER ────────────────────────────────────────────────

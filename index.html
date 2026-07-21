@@ -1790,6 +1790,7 @@
   let allCatalogCourses = [];
   let activeCatalogFilter = 'all';
   let enrollingCourseId = null;
+  let enrollingCoursePrice = null;
 
   async function loadCatalog() {
     const { data, error } = await catalogDb
@@ -1878,6 +1879,7 @@
     const c = allCatalogCourses.find(x => x.id === courseId);
     if (!c) return;
     enrollingCourseId = courseId;
+    enrollingCoursePrice = c.price || null;
     const isAr = document.body.classList.contains('ar');
 
     const cover = document.getElementById('enroll-modal-cover');
@@ -1945,7 +1947,7 @@
       // Fetch cohorts with open signup deadline
       const { data: cohorts, error } = await catalogDb
         .from('cohorts')
-        .select('id, start_date, signup_deadline, schedule_days, session_time, session_duration_mins, weeks')
+        .select('id, start_date, signup_deadline, schedule_days, session_time, session_duration_mins, weeks, promo_price, promo_start, promo_end')
         .eq('course_id', courseId)
         .gte('signup_deadline', today)
         .order('start_date');
@@ -2037,8 +2039,21 @@
 
     const weeksLabel = cohort.weeks ? `${cohort.weeks} weeks` : '';
 
+    // Promo price: active if today falls within promo window
+    const today = new Date().toISOString().slice(0, 10);
+    const promoActive = cohort.promo_price && cohort.promo_start && cohort.promo_end
+      && today >= cohort.promo_start && today <= cohort.promo_end;
+    const coursePrice = enrollingCoursePrice; // set when modal opens
+    let priceHtml = '';
+    if (promoActive) {
+      priceHtml = ` · <span style="background:#fff0b3;color:#92600a;border-radius:4px;padding:1px 7px;font-weight:700;font-size:12px">🏷 PROMO</span> <strong style="color:#e03131">${Number(cohort.promo_price).toLocaleString()} EGP</strong>`
+        + (coursePrice ? ` <span style="text-decoration:line-through;color:var(--gray-400);font-size:12px">${Number(coursePrice).toLocaleString()} EGP</span>` : '');
+    } else if (coursePrice) {
+      priceHtml = ` · <strong>${Number(coursePrice).toLocaleString()} EGP</strong>`;
+    }
+
     infoEl.style.display = 'block';
-    infoEl.innerHTML = `📅 <strong>${dayLabels}</strong> · ${timeLabel}–${endLabel}${weeksLabel ? ' · ' + weeksLabel : ''}`;
+    infoEl.innerHTML = `📅 <strong>${dayLabels}</strong> · ${timeLabel}–${endLabel}${weeksLabel ? ' · ' + weeksLabel : ''}${priceHtml}`;
   }
 
   function closeEnrollModal() {
@@ -2086,10 +2101,19 @@
     btn.textContent = isAr ? 'جارٍ التسجيل…' : 'Sending…';
 
     try {
+      // Determine effective price: promo if active today, otherwise course price
+      const selectedCohort = (window._enrollCohortMap || {})[cohortId];
+      const today = new Date().toISOString().slice(0, 10);
+      const promoActive = selectedCohort?.promo_price && selectedCohort?.promo_start && selectedCohort?.promo_end
+        && today >= selectedCohort.promo_start && today <= selectedCohort.promo_end;
+      const amountPaid = promoActive
+        ? Number(selectedCohort.promo_price)
+        : enrollingCoursePrice ? Number(enrollingCoursePrice) : null;
+
       const resp = await fetch('https://mizkuzwfjvvulkiyotle.supabase.co/functions/v1/send-invite', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${CATALOG_KEY}` },
-        body: JSON.stringify({ email, name, courseId: enrollingCourseId, cohortId }),
+        body: JSON.stringify({ email, name, courseId: enrollingCourseId, cohortId, amountPaid }),
       });
 
       if (!resp.ok) {
