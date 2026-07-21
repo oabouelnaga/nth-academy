@@ -324,8 +324,8 @@
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Name</th><th>Email</th><th class="col-hide-mobile">Subject</th><th class="col-hide-mobile">Students</th><th>Actions</th></tr></thead>
-          <tbody id="instructors-tbody"><tr><td colspan="5" class="loading"><span class="spinner"></span>Loading...</td></tr></tbody>
+          <thead><tr><th>Name</th><th>Email</th><th class="col-hide-mobile">Subject</th><th>Contract</th><th class="col-hide-mobile">Students</th><th>Actions</th></tr></thead>
+          <tbody id="instructors-tbody"><tr><td colspan="6" class="loading"><span class="spinner"></span>Loading...</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -530,6 +530,14 @@
     <div class="form-row">
       <div class="form-group"><label>Subject</label><input type="text" id="inst-subject" placeholder="English, Psychology..."></div>
       <div class="form-group"><label>Max Students</label><input type="number" id="inst-max" value="45"></div>
+    </div>
+    <div class="form-group">
+      <label>Contract Type</label>
+      <select id="inst-contract">
+        <option value="">— select —</option>
+        <option value="hourly">Hourly</option>
+        <option value="commission">Commission</option>
+      </select>
     </div>
     <div class="modal-footer">
       <button class="btn-ghost" onclick="closeModal('instructor-modal')">Cancel</button>
@@ -966,11 +974,11 @@
   async function loadInstructors() {
     // Source of truth: profiles with role instructor or admin, joined via course_instructors
     const { data: profs } = await db.from('profiles')
-      .select('id, full_name, email, role')
+      .select('id, full_name, email, role, contract_type')
       .in('role', ['instructor', 'admin'])
       .order('full_name');
 
-    allInstructors = (profs || []).map(p => ({ id: p.id, full_name: p.full_name, email: p.email, role: p.role }));
+    allInstructors = (profs || []).map(p => ({ id: p.id, full_name: p.full_name, email: p.email, role: p.role, contract_type: p.contract_type }));
     populateInstructorSelects();
 
     const tbody = document.getElementById('instructors-tbody');
@@ -999,6 +1007,11 @@
     tbody.innerHTML = allInstructors.map(i => {
       const courses = (courseMap[i.id] || []).join(', ') || '—';
       const students = enrollCounts[i.id] || 0;
+      const contractPill = i.contract_type === 'hourly'
+        ? `<span class="pill pill-green">Hourly</span>`
+        : i.contract_type === 'commission'
+          ? `<span class="pill pill-blue">Commission</span>`
+          : `<span class="pill pill-gray">—</span>`;
       return `
       <tr>
         <td><div style="display:flex;align-items:center;gap:10px;">
@@ -1007,6 +1020,7 @@
         </div></td>
         <td style="color:var(--gray-600)">${i.email || '—'}</td>
         <td><span class="pill pill-blue">${courses}</span></td>
+        <td>${contractPill}</td>
         <td>${students}</td>
         <td><button class="btn-ghost" onclick="editInstructor('${i.id}')">Edit</button></td>
       </tr>`;
@@ -1026,11 +1040,20 @@
         <span>${c.name}</span>
       </label>`).join('');
 
+    const currentContract = instr.contract_type || '';
     const modal = document.createElement('div');
     modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;padding:16px';
     modal.innerHTML = `
       <div style="background:#fff;border-radius:16px;padding:28px;width:100%;max-width:420px">
         <h3 style="margin:0 0 16px;font-size:17px">Edit Instructor — ${instr.full_name}</h3>
+        <div style="margin-bottom:16px">
+          <label style="display:block;font-size:13px;font-weight:500;color:#374151;margin-bottom:5px">Contract Type</label>
+          <select id="edit-instr-contract" style="width:100%;padding:10px 12px;border:1.5px solid #e5e7eb;border-radius:9px;font-size:14px;font-family:inherit;outline:none;background:#fff">
+            <option value="" ${currentContract===''?'selected':''}>— select —</option>
+            <option value="hourly" ${currentContract==='hourly'?'selected':''}>Hourly</option>
+            <option value="commission" ${currentContract==='commission'?'selected':''}>Commission</option>
+          </select>
+        </div>
         <p style="font-size:13px;color:#6b7280;margin:0 0 12px">Assigned courses:</p>
         <div id="edit-instr-courses">${courseCheckboxes}</div>
         <div style="display:flex;gap:10px;margin-top:20px">
@@ -1045,7 +1068,12 @@
     btn.disabled = true; btn.textContent = 'Saving…';
     const modal = btn.closest('[style*=fixed]');
     const checked = [...modal.querySelectorAll('#edit-instr-courses input:checked')].map(el => el.value);
-    await db.from('course_instructors').delete().eq('instructor_id', instructorId);
+    const contractType = modal.querySelector('#edit-instr-contract')?.value || null;
+
+    await Promise.all([
+      db.from('profiles').update({ contract_type: contractType || null }).eq('id', instructorId),
+      db.from('course_instructors').delete().eq('instructor_id', instructorId)
+    ]);
     if (checked.length) {
       await db.from('course_instructors').insert(checked.map(cid => ({ course_id: cid, instructor_id: instructorId })));
     }
@@ -1311,6 +1339,7 @@
     const password = document.getElementById('inst-password').value;
     const subject = document.getElementById('inst-subject').value.trim();
     const max = parseInt(document.getElementById('inst-max').value) || 45;
+    const contractType = document.getElementById('inst-contract').value || null;
     const alertEl = document.getElementById('inst-alert');
     alertEl.className = 'alert';
 
@@ -1337,7 +1366,7 @@
     const userId = authData.user.id;
 
     // 2. Update profiles row with instructor role
-    await db.from('profiles').upsert({ id: userId, email, full_name: name, role: 'instructor' });
+    await db.from('profiles').upsert({ id: userId, email, full_name: name, role: 'instructor', contract_type: contractType });
 
     // 3. Insert into instructors table
     const { error: instError } = await db.from('instructors').insert({
