@@ -345,9 +345,14 @@
         <h1>Students</h1>
         <p>Manage student accounts and instructor assignments</p>
       </div>
-      <div class="toolbar">
-        <div class="search-box"><input type="text" placeholder="Search students..." id="search-students" oninput="filterTable('students-tbody', this.value)"></div>
-        <button class="btn-primary" onclick="openModal('student-modal')">+ Add Student</button>
+      <div class="toolbar" style="flex-wrap:wrap;gap:8px">
+        <div class="search-box"><input type="text" placeholder="Search students..." id="search-students" oninput="filterStudents()"></div>
+        <div style="display:flex;gap:6px">
+          <button class="filter-btn active" onclick="setStudentFilter('all',this)">All</button>
+          <button class="filter-btn" onclick="setStudentFilter('no-instructor',this)">No Instructor</button>
+          <button class="filter-btn" onclick="setStudentFilter('unpaid',this)">Unpaid</button>
+        </div>
+        <button class="btn-primary" style="margin-left:auto" onclick="openModal('student-modal')">+ Add Student</button>
       </div>
       <div class="table-wrap">
         <table>
@@ -1070,15 +1075,23 @@
     const paid    = enrollments.filter(e => e.payment_status === 'paid').length;
     const pending = enrollments.filter(e => e.payment_status === 'pending').length;
 
-    // Unique students
-    const { data: studentProfiles } = await db.from('profiles').select('id', { count: 'exact' }).eq('role', 'student');
+    const studentCount = enrollments.length;
 
     document.getElementById('s-instructors').textContent = instrRes.count ?? 0;
-    document.getElementById('s-students').textContent    = studentProfiles?.length ?? enrollments.length;
+    document.getElementById('s-students').textContent    = studentCount;
     document.getElementById('s-paid').textContent        = paid;
     document.getElementById('s-pending').textContent     = pending;
     document.getElementById('s-hw').textContent          = hwRes.count ?? 0;
-    document.getElementById('students-badge').textContent = studentProfiles?.length ?? enrollments.length;
+
+    // Badge: only show when count has grown since last visit
+    const lastSeen = parseInt(localStorage.getItem('nth_students_last_seen') || '0', 10);
+    const badge = document.getElementById('students-badge');
+    if (studentCount > lastSeen) {
+      badge.textContent = '+' + (studentCount - lastSeen);
+      badge.style.display = '';
+    } else {
+      badge.style.display = 'none';
+    }
 
     // Course breakdown
     const byCourse = {};
@@ -1318,8 +1331,9 @@
         </div>`;
       }
 
+      const hasInstructor = e.assigned_instructor_id ? 'yes' : 'no';
       return `
-      <tr>
+      <tr data-instructor="${hasInstructor}" data-payment="${ps}">
         <td><div style="display:flex;align-items:center;gap:10px;">
           <div class="avatar">${(prof.full_name || prof.email || '?')[0].toUpperCase()}</div>
           <span>${prof.full_name || '—'}</span>
@@ -1332,6 +1346,27 @@
         <td style="display:flex;gap:6px;flex-wrap:wrap">${actions}</td>
       </tr>`;
     }).join('');
+  }
+
+  let _studentFilter = 'all';
+
+  function setStudentFilter(val, btn) {
+    _studentFilter = val;
+    btn.closest('.toolbar').querySelectorAll('.filter-btn').forEach(b => b.classList.toggle('active', b === btn));
+    filterStudents();
+  }
+
+  function filterStudents() {
+    const q = (document.getElementById('search-students')?.value || '').toLowerCase();
+    document.querySelectorAll('#students-tbody tr').forEach(row => {
+      if (!row.cells.length) return;
+      const text = row.textContent.toLowerCase();
+      const matchSearch = !q || text.includes(q);
+      let matchFilter = true;
+      if (_studentFilter === 'no-instructor') matchFilter = row.dataset.instructor === 'no';
+      if (_studentFilter === 'unpaid') matchFilter = row.dataset.payment === 'pending';
+      row.style.display = matchSearch && matchFilter ? '' : 'none';
+    });
   }
 
   async function adminEnrollCourse(studentId) {
@@ -1688,6 +1723,11 @@
     if (page === 'teamslinks') loadTeamsLinks();
     if (page === 'attendance') { initAttendanceDatePicker(); loadAttendance(); }
     if (page === 'reviews') loadReviews();
+    if (page === 'students') {
+      const count = parseInt(document.getElementById('s-students').textContent || '0', 10);
+      if (count) localStorage.setItem('nth_students_last_seen', count);
+      document.getElementById('students-badge').style.display = 'none';
+    }
   }
 
   // MODAL
